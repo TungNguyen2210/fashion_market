@@ -1,0 +1,64 @@
+.image{
+    width: 20px;
+    height: 15px;
+}
+
+.hoverLink {
+  color: #000000!important;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+}
+
+.hoverLink:after {    
+  background: none repeat scroll 0 0 transparent;
+  bottom: 0px;
+  content: "";
+  height: 2px;
+  left: 50%;
+  position: absolute;
+  background: #FFFFFF;
+  transition: width 0.3s ease 0s, left 0.3s ease 0s;
+  width: 0;
+  
+  margin-bottom: 12px;
+}
+
+.hoverLink:hover:after { 
+  width: 100%; 
+  left: 0; 
+}
+
+.fixLine{
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; 
+  max-width: 400px;
+  margin: 0 0 1em 0;
+  overflow: hidden; 
+}
+
+.header-logo{
+  display: none;
+}
+
+.navlink{
+  color: "#000000"
+}
+
+@media screen and (max-width: 480px) {
+  .header-text{
+    display: none;
+  }
+
+  .header-logo{
+    display: block;
+  }
+
+  .ant-layout-header{
+    padding: 0;
+    padding-left: 10px;
+  }
+
+}
