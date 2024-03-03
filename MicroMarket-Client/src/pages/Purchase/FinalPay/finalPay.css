@@ -1,0 +1,139 @@
+.container {
+    max-width: 1280px;
+}
+
+.container .product_detail{
+    padding-top: 20px;
+    padding-left: 25px;
+    padding-right: 25px;
+    padding-bottom: 25px;
+}
+
+.card_image img {
+    display: flex;
+    justify-content: center;
+    width: 70%;
+}
+
+.price_product {
+    font-size: 16px;
+    font-weight: 700;
+    color: #d70018;
+    display: inline;
+}
+
+.promotion_product {
+    color: #707070;
+    font-weight: 700;
+    text-decoration: line-through;
+    font-size: 14px;
+    display: inline;
+    margin-left: 15px;
+}
+
+.price_group {
+    display: flex;
+}
+
+.box-product-promotion-header {
+    background-color: #fee2e2;
+    color: #d70018;
+    gap: 10px;
+    height: 42px;
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 10px;
+}
+
+.box-product-promotion {
+    margin-top: 20px;
+    border: 1px solid #fee2e2;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.box-product-promotion-header p {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.box-content-promotion{
+    padding-left: 15px;
+    padding-right: 15px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+hr {
+    background-color: #ccccccc0;
+}
+
+.box_cart{
+    display: flex;
+}
+
+.box_cart .by{
+    margin-top: 20px;
+    width: 100%;
+}
+
+.box_cart .cart{
+    margin-top: 20px;
+    margin-left: 5px;
+}
+
+.box_detail_description{
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-bottom: 20px;
+}
+
+.product_name{
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.price h1{
+    display: block;
+    padding: 0;
+    margin: 0;
+}
+
+.price{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.price .rate{
+    margin-left: 15px;
+}
+
+.policy_intuitive {
+    margin-top: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    margin-bottom: 25px;
+}
+
+.policy {
+    margin: 20px 16px 0 16px;
+   
+}
+
+.payment_progress{
+    margin-top: 50px;
+}
+
+.information_pay{
+    margin-top: 30px;
+}
+
+.ant-input .ant-input-disabled{
+    color: #707070!important;
+}
+
+.ant-input[disabled] {
+    color: #707070!important;
+    background-color: rgb(86, 181, 236);
+}

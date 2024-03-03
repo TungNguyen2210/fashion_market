@@ -1,0 +1,66 @@
+{
+  "name": "3a2s-client",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "^27.1.0",
+    "@ckeditor/ckeditor5-react": "^3.0.2",
+    "@react-google-maps/api": "^2.1.1",
+    "@sensorfactdev/qr-code-scanner": "^1.0.10",
+    "@tawk.to/tawk-messenger-react": "^2.0.2",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "antd": "^4.24.8",
+    "axios": "^0.21.1",
+    "bootstrap": "^5.2.3",
+    "bootstrap-icons": "^1.5.0",
+    "moment": "^2.29.4",
+    "qrcode.react": "^1.0.1",
+    "query-string": "^7.0.0",
+    "rc-animate": "^3.1.1",
+    "rc-banner-anim": "^2.4.5",
+    "rc-queue-anim": "^1.8.5",
+    "rc-scroll-anim": "^2.7.6",
+    "rc-texty": "^0.2.0",
+    "rc-tween-one": "^2.7.3",
+    "react": "^17.0.2",
+    "react-corner-ribbon": "0.0.5",
+    "react-dom": "^17.0.2",
+    "react-google-font-loader": "^1.1.0",
+    "react-icons": "^4.2.0",
+    "react-open-weather": "^1.1.5",
+    "react-qr-reader": "^2.2.1",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "^5.0.1",
+    "react-slick": "^0.28.1",
+    "react-social-icons": "^5.4.1",
+    "sass": "^1.32.10",
+    "web-vitals": "^1.0.1"
+  },
+  "scripts": {
+    "start": "set PORT=3500 && react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "deploy": "sh ./deploy-firebase.sh"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
