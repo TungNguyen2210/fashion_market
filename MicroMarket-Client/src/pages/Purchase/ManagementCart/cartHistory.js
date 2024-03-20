@@ -1,40 +1,15 @@
-import React, { useState, useEffect } from "react";
-import styles from "./cartHistory.css";
+import {
+  Breadcrumb, Card, Form,
+  Input,
+  Select, Spin, Table, Tag, Typography, notification
+} from "antd";
+import moment from "moment";
+import React, { useEffect, useState } from "react";
+import { useHistory, useParams } from "react-router-dom";
 import axiosClient from "../../../apis/axiosClient";
-import { useParams } from "react-router-dom";
 import eventApi from "../../../apis/eventApi";
 import productApi from "../../../apis/productApi";
-import { useHistory } from "react-router-dom";
-import { Col, Row, Tag, Spin, Card } from "antd";
-import { DateTime } from "../../../utils/dateTime";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
-import {
-  Typography,
-  Button,
-  Badge,
-  Breadcrumb,
-  Popconfirm,
-  notification,
-  Form,
-  Input,
-  Select,
-  Rate,
-  Table,
-} from "antd";
-import {
-  HistoryOutlined,
-  AuditOutlined,
-  AppstoreAddOutlined,
-  CloseOutlined,
-  UserOutlined,
-  MehOutlined,
-  TeamOutlined,
-  HomeOutlined,
-  CheckOutlined,
-} from "@ant-design/icons";
-import moment from "moment";
 
-import Slider from "react-slick";
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -207,7 +182,7 @@ const CartHistory = () => {
       render: (products) => (
         <div>
           {products.map((item, index) => (
-            <div key={index}>{item.product.name}</div>
+            <div key={index}>{item.product?.name}</div>
           ))}
         </div>
       ),
@@ -220,7 +195,7 @@ const CartHistory = () => {
         <div>
           {products.map((item, index) => (
             <div key={index}>
-              {item.product.price.toLocaleString("vi", {
+              {item.product?.price.toLocaleString("vi", {
                 style: "currency",
                 currency: "VND",
               })}
@@ -235,8 +210,8 @@ const CartHistory = () => {
       key: "products",
       render: (products) => (
         <div>
-          {products.map((item, index) => (
-            <div key={index}>{item.quantity}</div>
+          {products?.map((item, index) => (
+            <div key={index}>{item?.quantity}</div>
           ))}
         </div>
       ),
