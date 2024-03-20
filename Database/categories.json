@@ -1,0 +1,61 @@
+[{
+  "_id": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "name": "Du Xuân",
+  "description": "Du Xuân",
+  "slug": "/du xuân",
+  "createdAt": {
+    "$date": "2023-04-17T05:26:32.307Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T04:45:47.150Z"
+  },
+  "__v": 0,
+  "image": "http://localhost:3100/uploads\\1708749947137-bosuutap1_banner_image_1.jpg"
+},{
+  "_id": {
+    "$oid": "643cd89a79b4192efedda4ee"
+  },
+  "name": "Nouveau Chapitre",
+  "description": "Nouveau Chapitre",
+  "slug": "/nouveau-chapitre",
+  "createdAt": {
+    "$date": "2023-04-17T05:26:50.892Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T04:46:46.433Z"
+  },
+  "__v": 0,
+  "image": "http://localhost:3100/uploads\\1708750006419-bosuutap1_banner_image_2.jpg"
+},{
+  "_id": {
+    "$oid": "643d030051fc7a906603da39"
+  },
+  "name": "Winter Delights",
+  "description": "Winter Delights",
+  "slug": "/winter-delights",
+  "createdAt": {
+    "$date": "2023-04-17T08:27:44.893Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T04:47:19.505Z"
+  },
+  "__v": 0,
+  "image": "http://localhost:3100/uploads\\1708750039494-bosuutap1_banner_image_3.jpg"
+},{
+  "_id": {
+    "$oid": "644d0f9dd8de2d2d1bac40f5"
+  },
+  "name": "Holiday Your Way",
+  "description": "Holiday Your Way",
+  "slug": "/teen",
+  "createdAt": {
+    "$date": "2023-04-29T12:37:49.064Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T04:48:12.798Z"
+  },
+  "__v": 0,
+  "image": "http://localhost:3100/uploads\\1708750092783-bosuutap1_banner_image_4.jpg"
+}]

@@ -1,0 +1,91 @@
+[{
+  "_id": {
+    "$oid": "64491f49903624fa08f00dc6"
+  },
+  "email": "admin@gmail.com",
+  "phone": "0938283923",
+  "username": "admin",
+  "password": "$2b$10$HAathgnQy3LZkX2c4tJXcuJ55qzhphtpyI.NEfsRMdFvpcla9dsiO",
+  "role": "isAdmin",
+  "status": "actived",
+  "image": "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+  "createdAt": {
+    "$date": "2023-04-26T12:55:37.978Z"
+  },
+  "updatedAt": {
+    "$date": "2023-04-26T12:55:37.978Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "64491f7e903624fa08f00dcb"
+  },
+  "email": "client@gmail.com",
+  "phone": "0938283923",
+  "username": "client",
+  "password": "$2b$10$lkVrXppwZi.bMBBN2R/kfeb5i.QKkOe0tv1/.rjrIXyKzbH0PggNK",
+  "role": "isClient",
+  "status": "actived",
+  "image": "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+  "createdAt": {
+    "$date": "2023-04-26T12:56:30.535Z"
+  },
+  "updatedAt": {
+    "$date": "2023-04-29T16:01:58.871Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "64747e9fbbc861d2823d147c"
+  },
+  "email": "admin2@gmail.com",
+  "phone": "0938283923",
+  "username": "admin2",
+  "password": "$2b$10$F8Jjqhnc9G7KNP5aUAULK.h/q/u/LnU2bIvCvv68wwBJJJen7bFXm",
+  "role": "isAdmin",
+  "status": "actived",
+  "image": "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+  "createdAt": {
+    "$date": "2023-05-29T10:29:51.313Z"
+  },
+  "updatedAt": {
+    "$date": "2023-05-29T10:29:51.313Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "653284cc94da53cffa44ba05"
+  },
+  "email": "nguyenhoang@gmail.com",
+  "phone": "0123456789",
+  "username": "Nguyễn Hoàng",
+  "password": "$2b$10$mjSBOo3SdBCBK.jBCRXLFu6KxMxRX6.oJTJpJgoPVF2alYWnX.PnG",
+  "role": "isClient",
+  "status": "actived",
+  "image": "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+  "createdAt": {
+    "$date": "2023-10-20T13:46:52.646Z"
+  },
+  "updatedAt": {
+    "$date": "2023-10-20T13:46:52.646Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "65dad801931e057e6950192c"
+  },
+  "email": "nhanvien1@gmail.com",
+  "phone": "0338728372",
+  "username": "Nhân viên 1",
+  "password": "$2b$10$1hy7TUwxP7RfvjPCpYmIfumSj6wlLSs0gzemlzIcEjuAnh3XJ7oUe",
+  "role": "isStaff",
+  "status": "actived",
+  "image": "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+  "createdAt": {
+    "$date": "2024-02-25T06:02:41.654Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-25T17:13:23.155Z"
+  },
+  "__v": 0
+}]

@@ -1,0 +1,27 @@
+[{
+  "_id": {
+    "$oid": "65daa37ae136186148f16a99"
+  },
+  "maKhuyenMai": "LTML",
+  "phanTramKhuyenMai": 10,
+  "thoiGianBD": {
+    "$date": "2024-02-25T00:00:00.000Z"
+  },
+  "thoiGianKT": {
+    "$date": "2024-02-27T00:00:00.000Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "65daa50c8859c92d650cdec0"
+  },
+  "maKhuyenMai": "KTML2",
+  "phanTramKhuyenMai": 10,
+  "thoiGianBD": {
+    "$date": "2024-02-25T00:00:00.000Z"
+  },
+  "thoiGianKT": {
+    "$date": "2024-02-27T00:00:00.000Z"
+  },
+  "__v": 0
+}]
