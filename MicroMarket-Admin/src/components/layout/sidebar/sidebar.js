@@ -40,7 +40,7 @@ function Sidebar() {
     },
     {
       key: "supplier",
-      title: "Quản lý nhà cung cấp",
+      title: "Thương hiệu",
       link: "/supplier",
       icon: <ContainerOutlined />
     },
@@ -49,6 +49,12 @@ function Sidebar() {
       title: "Quản lý màu",
       link: "/color-list",
       icon: <BgColorsOutlined />
+    },
+    {
+      key: "promotion-management",
+      title: "Quản lý voucher",
+      link: "/promotion-management",
+      icon: <SolutionOutlined />
     },
     {
       key: "order-list",
