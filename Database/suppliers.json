@@ -1,0 +1,35 @@
+[{
+  "_id": {
+    "$oid": "65d97af9bc3e36f1fda8c1a5"
+  },
+  "name": "Louis Vuitton ",
+  "contactPerson": "Louis Vuitton ",
+  "email": "LouisVuitton@gmail.com",
+  "phone": "0338928392",
+  "address": "HCM",
+  "image": "http://localhost:3100/uploads\\1708751609802-louis-vuitton-logo.jpg",
+  "createdAt": {
+    "$date": "2024-02-24T05:13:29.826Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T05:13:29.826Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "65d97b1cbc3e36f1fda8c1a9"
+  },
+  "name": "Gucci",
+  "contactPerson": "Gucci",
+  "email": "Gucci@gmail.com",
+  "phone": "0338928382",
+  "address": "HCM",
+  "image": "http://localhost:3100/uploads\\1708751644655-logo-thuong-hieu-gucci-elle-man-10_df4de72cb1674f88a66001c6f0e81c08_2048x2048.jpg",
+  "createdAt": {
+    "$date": "2024-02-24T05:14:04.666Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T05:14:04.666Z"
+  },
+  "__v": 0
+}]
