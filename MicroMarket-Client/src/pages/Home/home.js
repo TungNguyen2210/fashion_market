@@ -313,53 +313,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="image-footer">
-          <OverPack style={{ overflow: "hidden", height: 800, marginTop: 20 }}>
-            <TweenOne
-              key="0"
-              animation={{ opacity: 1 }}
-              className="code-box-shape"
-              style={{ opacity: 0 }}
-            />
-            <QueueAnim
-              key="queue"
-              animConfig={[
-                { opacity: [1, 0], translateY: [0, 50] },
-                { opacity: [1, 0], translateY: [0, -50] },
-              ]}
-            >
-              <div className="texty-demo-footer">
-                <Texty>NHANH LÊN! </Texty>
-              </div>
-              <div className="texty-title-footer">
-                <p>
-                  Tham Dự Buổi <strong>Ra Bộ Sưu Tập Mới</strong>
-                </p>
-              </div>
-              <Row
-                justify="center"
-                style={{ marginBottom: 30, fill: "#FFFFFF" }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="71px"
-                  height="11px"
-                >
-                  {" "}
-                  <path
-                    fill-rule="evenodd"
-                    d="M59.669,10.710 L49.164,3.306 L39.428,10.681 L29.714,3.322 L20.006,10.682 L10.295,3.322 L1.185,10.228 L-0.010,8.578 L10.295,0.765 L20.006,8.125 L29.714,0.765 L39.428,8.125 L49.122,0.781 L59.680,8.223 L69.858,1.192 L70.982,2.895 L59.669,10.710 Z"
-                  ></path>
-                </svg>
-              </Row>
-              <Row justify="center">
-                <a href="#" class="footer-button" role="button">
-                  <span>ĐĂNG KÝ NGAY</span>
-                </a>
-              </Row>
-            </QueueAnim>
-          </OverPack>
-        </div>
+      
       </div>
 
       <BackTop style={{ textAlign: "right" }} />

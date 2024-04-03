@@ -124,7 +124,14 @@ const ProductList = () => {
     }
 
     const [file, setUploadFile] = useState();
-
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
+    }
 
 
     const handleUpdateProduct = async (values) => {
@@ -220,14 +227,7 @@ const ProductList = () => {
         }
     }
 
-    const handleChangeImage = async (e) => {
-        setLoading(true);
-        const response = await uploadFileApi.uploadFile(e);
-        if (response) {
-            setUploadFile(response);
-        }
-        setLoading(false);
-    }
+  
 
     const handleProductEdit = (id) => {
         setOpenModalUpdate(true);

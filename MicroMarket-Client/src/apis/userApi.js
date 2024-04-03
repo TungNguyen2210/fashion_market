@@ -11,7 +11,7 @@ const userApi = {
             .then(response => {
 
                 console.log(response);
-                if (response) {
+                if (response.status == true && response.user.role == "isClient") {
                     localStorage.setItem("client", response.token);
                 }
                 return response;

@@ -1,22 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import "./news.css";
 import {
-    Col, Row, Typography, Spin, Button, Card, Badge, Empty, Input, Space,
-    Form, Pagination, Modal, Popconfirm, notification, BackTop, Tag, Breadcrumb, Select, Table
-} from 'antd';
-import {
-    AppstoreAddOutlined, QrcodeOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, ExclamationCircleOutlined, SearchOutlined,
-    CalendarOutlined, UserOutlined, TeamOutlined, HomeOutlined, HistoryOutlined, BarsOutlined, FormOutlined, TagOutlined, EditOutlined
+    BarsOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    HomeOutlined,
+    PlusOutlined
 } from '@ant-design/icons';
-import eventApi from "../../apis/eventApi";
-import newsApi from "../../apis/newsApi";
-import { useHistory } from 'react-router-dom';
-import { DateTime } from "../../utils/dateTime";
-import ProductList from '../ProductList/productList';
-import axiosClient from '../../apis/axiosClient';
-import 'suneditor/dist/css/suneditor.min.css';
-import SunEditor from 'suneditor-react';
 import { PageHeader } from '@ant-design/pro-layout';
+import {
+    BackTop,
+    Breadcrumb,
+    Button,
+    Col,
+    Empty,
+    Form,
+    Input,
+    Modal, Popconfirm,
+    Row,
+    Space,
+    Spin,
+    Table,
+    Typography,
+    notification
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import SunEditor from 'suneditor-react';
+import 'suneditor/dist/css/suneditor.min.css';
+import axiosClient from '../../apis/axiosClient';
+import newsApi from "../../apis/newsApi";
+import "./news.css";
+import uploadFileApi from '../../apis/uploadFileApi';
 const { confirm } = Modal;
 const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
 const { Title } = Typography;
@@ -42,44 +55,43 @@ const NewsList = () => {
         setOpenModalCreate(true);
     };
 
-    const handleChangeImage = (event) => {
-        setImage(event.target.files[0]);
+    const [file, setUploadFile] = useState();
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
     }
 
 
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
+
+            const categoryList = {
+                "name": values.name,
+                "description": description,
+                "image": file,
+            }
+            return axiosClient.post("/news", categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo tin tức thất bại',
+                    });
                 }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "description": description,
-                    "image": response.image_url,
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo tin tức thành công',
+                    });
+                    setOpenModalCreate(false);
+                    handleCategoryList();
                 }
-                return axiosClient.post("/news", categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo tin tức thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo tin tức thành công',
-                        });
-                        setOpenModalCreate(false);
-                        handleCategoryList();
-                    }
-                })
             })
 
             setLoading(false);
@@ -92,69 +104,33 @@ const NewsList = () => {
         console.log(values);
         setLoading(true);
         try {
-            if (image) {
-                var formData = new FormData();
-                formData.append("image", image);
 
-                await axiosClient.post("/uploadFile", formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }).then(response => {
-                    const categoryList = {
-                        "name": values.name,
-                        "description": description,
-                        "category": values.category,
-                        "image": response.image_url,
-                    };
+            const categoryList = {
+                "name": values.name,
+                "description": description,
+                "category": values.category,
+                "image": file,
+            };
 
-                    return axiosClient.put("/news/" + id, categoryList).then(response => {
-                        if (response === undefined) {
-                            notification["error"]({
-                                message: `Thông báo`,
-                                description:
-                                    'Chỉnh sửa tin tức thất bại',
-                            });
-                        }
-                        else {
-                            notification["success"]({
-                                message: `Thông báo`,
-                                description:
-                                    'Chỉnh sửa tin tức thành công',
-                            });
-                            handleCategoryList();
-                            setOpenModalUpdate(false);
-                            setLoading(false);
-                        }
-                    })
-                });
-            } else { // Nếu image không tồn tại, chỉ gọi API put
-                const categoryList = {
-                    "name": values.name,
-                    "description": description,
-                    "category": values.category,
-                };
-
-                return axiosClient.put("/news/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa tin tức thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa tin tức thành công',
-                        });
-                        handleCategoryList();
-                        setOpenModalUpdate(false);
-                        setLoading(false);
-                    }
-                });
-            }
+            return axiosClient.put("/news/" + id, categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa tin tức thất bại',
+                    });
+                }
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa tin tức thành công',
+                    });
+                    handleCategoryList();
+                    setOpenModalUpdate(false);
+                    setLoading(false);
+                }
+            })
         } catch (error) {
             throw error;
         }

@@ -119,7 +119,7 @@ const Profile = () => {
                                             </Row>
                                             <Row justify="center" style={{ marginTop: 20, marginBottom: 15 }}>
                                                 <Button type="primary" onClick={handleEditProfile}>
-                                                    Chỉnh sửa profile
+                                                    Chỉnh sửa trang cá nhân
                                                 </Button>
                                             </Row>
                                         </Col>
