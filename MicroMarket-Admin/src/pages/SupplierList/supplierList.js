@@ -1,21 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import "./supplierList.css";
 import {
-    Col, Row, Typography, Spin, Button, Card, Badge, Empty, Input, Space,
-    Form, Pagination, Modal, Popconfirm, notification, BackTop, Tag, Breadcrumb, Select, Table
-} from 'antd';
-import {
-    AppstoreAddOutlined, QrcodeOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, ExclamationCircleOutlined, SearchOutlined,
-    CalendarOutlined, UserOutlined, TeamOutlined, HomeOutlined, HistoryOutlined, ShoppingOutlined, FormOutlined, TagOutlined, EditOutlined
+    DeleteOutlined,
+    EditOutlined,
+    HomeOutlined,
+    PlusOutlined,
+    ShoppingOutlined
 } from '@ant-design/icons';
-import supplierApi from "../../apis/supplierApi";
-import { useHistory } from 'react-router-dom';
-import { DateTime } from "../../utils/dateTime";
-import axiosClient from '../../apis/axiosClient';
 import { PageHeader } from '@ant-design/pro-layout';
-const { confirm } = Modal;
-const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
-const { Title } = Typography;
+import {
+    BackTop,
+    Breadcrumb,
+    Button,
+    Col,
+    Empty,
+    Form,
+    Input,
+    Modal, Popconfirm,
+    Row,
+    Space,
+    Spin,
+    Table,
+    notification
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import axiosClient from '../../apis/axiosClient';
+import supplierApi from "../../apis/supplierApi";
+import "./supplierList.css";
+import uploadFileApi from '../../apis/uploadFileApi';
 
 const SupplierList = () => {
 
@@ -36,44 +47,37 @@ const SupplierList = () => {
         setOpenModalCreate(true);
     };
 
+
+
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
+            const categoryList = {
+                "name": values.name,
+                "contactPerson": values.contactPerson,
+                "email": values.email,
+                "phone": values.phone,
+                "address": values.address,
+                "image": file
+            }
+            return axiosClient.post("/suppliers/create", categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo thương hiệu thất bại',
+                    });
                 }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "contactPerson": values.contactPerson,
-                    "email": values.email,
-                    "phone": values.phone,
-                    "address": values.address,
-                    "image": response.image_url
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo thương hiệu thành công',
+                    });
+                    setOpenModalCreate(false);
+                    handleCategoryList();
                 }
-                return axiosClient.post("/suppliers/create", categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo nhà cung cấp thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo nhà cung cấp thành công',
-                        });
-                        setOpenModalCreate(false);
-                        handleCategoryList();
-                    }
-                })
             })
-            setLoading(false);
 
         } catch (error) {
             throw error;
@@ -83,79 +87,37 @@ const SupplierList = () => {
     const handleUpdateCategory = async (values) => {
         console.log(image);
         setLoading(true);
-        if (image) {
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }).then(response => {
-                try {
-                    const categoryList = {
-                        "name": values.name,
-                        "contactPerson": values.contactPerson,
-                        "email": values.email,
-                        "phone": values.phone,
-                        "address": values.address,
-                        "image": response.image_url
-                    }
-                    return axiosClient.put("/suppliers/" + id, categoryList).then(response => {
-                        if (response === undefined) {
-                            notification["error"]({
-                                message: `Thông báo`,
-                                description:
-                                    'Chỉnh sửa nhà cung cấp thất bại',
-                            });
-                        }
-                        else {
-                            notification["success"]({
-                                message: `Thông báo`,
-                                description:
-                                    'Chỉnh sửa nhà cung cấp thành công',
-                            });
-                            handleCategoryList();
-                            setOpenModalUpdate(false);
-                        }
-                    })
 
-                } catch (error) {
-                    throw error;
+        try {
+            const categoryList = {
+                "name": values.name,
+                "contactPerson": values.contactPerson,
+                "email": values.email,
+                "phone": values.phone,
+                "address": values.address,
+                "image": file || values.image
+            }
+            return axiosClient.put("/suppliers/" + id, categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa thương hiệu thất bại',
+                    });
+                }
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa thương hiệu thành công',
+                    });
+                    handleCategoryList();
+                    setOpenModalUpdate(false);
                 }
             })
-        } else {
 
-            try {
-                const categoryList = {
-                    "name": values.name,
-                    "contactPerson": values.contactPerson,
-                    "email": values.email,
-                    "phone": values.phone,
-                    "address": values.address,
-                }
-                await axiosClient.put("/suppliers/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa nhà cung cấp thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa nhà cung cấp thành công',
-                        });
-                        handleCategoryList();
-                        setOpenModalUpdate(false);
-                    }
-                })
-                setLoading(false);
-
-            } catch (error) {
-                throw error;
-            }
+        } catch (error) {
+            throw error;
         }
     }
 
@@ -190,7 +152,7 @@ const SupplierList = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa nhà cung cấp thất bại',
+                            'Xóa thương hiệu thất bại',
 
                     });
                     setLoading(false);
@@ -199,7 +161,7 @@ const SupplierList = () => {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa nhà cung cấp thành công',
+                            'Xóa thương hiệu thành công',
 
                     });
                     setCurrentPage(1);
@@ -212,10 +174,6 @@ const SupplierList = () => {
         } catch (error) {
             console.log('Failed to fetch event list:' + error);
         }
-    }
-
-    const handleDetailView = (id) => {
-        history.push("/category-detail/" + id)
     }
 
     const handleEditCategory = (id) => {
@@ -249,12 +207,15 @@ const SupplierList = () => {
         }
     }
 
-    const handleChangeImage = (event) => {
-        setImage(event.target.files[0]);
-    }
+    const [file, setUploadFile] = useState();
 
-    function NoData() {
-        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
     }
 
     const columns = [
@@ -312,7 +273,7 @@ const SupplierList = () => {
                         <div
                             style={{ marginLeft: 10 }}>
                             <Popconfirm
-                                title="Bạn có chắc chắn xóa nhà cung cấp này?"
+                                title="Bạn có chắc chắn xóa thương hiệu này?"
                                 onConfirm={() => handleDeleteCategory(record._id)}
                                 okText="Yes"
                                 cancelText="No"
@@ -358,7 +319,7 @@ const SupplierList = () => {
                             </Breadcrumb.Item>
                             <Breadcrumb.Item href="">
                                 <ShoppingOutlined />
-                                <span>Nhà cung cấp</span>
+                                <span>Thương hiệu</span>
                             </Breadcrumb.Item>
                         </Breadcrumb>
                     </div>
@@ -381,7 +342,7 @@ const SupplierList = () => {
                                     <Col span="6">
                                         <Row justify="end">
                                             <Space>
-                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo nhà cung cấp</Button>
+                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo thương hiệu</Button>
                                             </Space>
                                         </Row>
                                     </Col>
@@ -397,7 +358,7 @@ const SupplierList = () => {
                 </div>
 
                 <Modal
-                    title="Tạo nhà cung cấp mới"
+                    title="Tạo thương hiệu mới"
                     visible={openModalCreate}
                     style={{ top: 100 }}
                     onOk={() => {
@@ -508,13 +469,13 @@ const SupplierList = () => {
                         >
                             <input type="file" onChange={handleChangeImage} id="avatar" name="file" accept="image/png, image/jpeg" />
                         </Form.Item>
-                        
+
                     </Form>
                 </Modal>
 
 
                 <Modal
-                    title="Chỉnh sửa nhà cung cấp"
+                    title="Chỉnh sửa thương hiệu"
                     visible={openModalUpdate}
                     style={{ top: 100 }}
                     onOk={() => {

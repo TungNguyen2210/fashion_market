@@ -1,25 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import "./color.css";
 import {
-    Col, Row, Typography, Spin, Button, Card, Badge, Empty, Input, Space,
-    Form, Pagination, Modal, Popconfirm, notification, BackTop, Tag, Breadcrumb, ColorPicker, Table
-} from 'antd';
-import {
-    AppstoreAddOutlined, QrcodeOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, ExclamationCircleOutlined, SearchOutlined,
-    CalendarOutlined, UserOutlined, TeamOutlined, HomeOutlined, HistoryOutlined, BarsOutlined, FormOutlined, TagOutlined, EditOutlined
+    BarsOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    HomeOutlined,
+    PlusOutlined
 } from '@ant-design/icons';
-import eventApi from "../../apis/eventApi";
-import newsApi from "../../apis/newsApi";
-import { useHistory } from 'react-router-dom';
-import { DateTime } from "../../utils/dateTime";
-import ProductList from '../ProductList/productList';
-import axiosClient from '../../apis/axiosClient';
-import 'suneditor/dist/css/suneditor.min.css';
-import SunEditor from 'suneditor-react';
 import { PageHeader } from '@ant-design/pro-layout';
-const { confirm } = Modal;
-const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
-const { Title } = Typography;
+import {
+    BackTop,
+    Breadcrumb,
+    Button,
+    Col,
+    ColorPicker,
+    Empty,
+    Form,
+    Input,
+    Modal, Popconfirm,
+    Row,
+    Space,
+    Spin,
+    Table,
+    notification
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import 'suneditor/dist/css/suneditor.min.css';
+import axiosClient from '../../apis/axiosClient';
+import newsApi from "../../apis/newsApi";
+import "./color.css";
+import uploadFileApi from '../../apis/uploadFileApi';
 
 const Color = () => {
 
@@ -43,8 +52,15 @@ const Color = () => {
         setOpenModalCreate(true);
     };
 
-    const handleChangeImage = (event) => {
-        setImage(event.target.files[0]);
+    const [file, setUploadFile] = useState();
+
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
     }
 
 
@@ -61,7 +77,7 @@ const Color = () => {
                 const categoryList = {
                     "name": values.name,
                     "description": color,
-                    "image": response.image_url,
+                    "image": file,
                 }
                 return axiosClient.post("/color", categoryList).then(response => {
                     if (response === undefined) {
@@ -104,7 +120,7 @@ const Color = () => {
                 const categoryList = {
                     "name": values.name,
                     "description": color,
-                    "image": response.image_url,
+                    "image": file,
                 }
                 return axiosClient.put("/color/" + id, categoryList).then(response => {
                     if (response === undefined) {
@@ -189,11 +205,6 @@ const Color = () => {
         }
     }
 
-    const handleChange = (content) => {
-        console.log(content);
-        setDescription(content);
-    }
-
     const handleEditCategory = (id) => {
         setOpenModalUpdate(true);
         (async () => {
@@ -222,11 +233,7 @@ const Color = () => {
             console.log('search to fetch news list:' + error);
         }
     }
-
-    function NoData() {
-        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
-    }
-
+    
     const columns = [
         {
             title: 'ID',
