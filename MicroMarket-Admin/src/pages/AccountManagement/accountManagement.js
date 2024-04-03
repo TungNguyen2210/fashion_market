@@ -26,6 +26,26 @@ const AccountManagement = () => {
         return splitStr.join(' ');
     }
 
+    const handleChangeRole = async (record) => {
+        try {
+            const params = {
+                role: 'isAdmin', // Thay đổi quyền thành admin
+            };
+            await userApi.updateUser(record._id, params,); // Gọi API update user
+            notification.success({
+                message: 'Thành công',
+                description: 'Thay đổi quyền admin thành công!',
+            });
+            handleListUser(); // Load lại danh sách người dùng sau khi thay đổi
+        } catch (error) {
+            console.log('Failed to change role:' + error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Thay đổi quyền admin thất bại!',
+            });
+        }
+    };
+
     const columns = [
         {
             title: 'ID',
@@ -71,8 +91,8 @@ const AccountManagement = () => {
                         text === "isAdmin" ?
                             <Tag color="blue" key={text} style={{ width: 100, textAlign: "center" }} icon={<CopyOutlined />}>
                                 Quản lý
-                            </Tag> : text === "isStaff" ? <Tag color="green" key={text} style={{ width: 100, textAlign: "center" }} icon={<CheckCircleOutlined />}>
-                                Nhân viên
+                            </Tag> : text === "isCompany" ? <Tag color="green" key={text} style={{ width: 100, textAlign: "center" }} icon={<CheckCircleOutlined />}>
+                                Công ty
                             </Tag> : <Tag color="magenta" key={text} style={{ width: 100, textAlign: "center" }} icon={<CheckCircleOutlined />}>
                                 Khách hàng
                             </Tag>
@@ -110,33 +130,54 @@ const AccountManagement = () => {
             render: (text, record) => (
                 <div>
                     <Row>
-                        {record.status !== "actived" ? <Popconfirm
-                            title="Bạn muốn mở chặn tài khoản này?"
-                            onConfirm={() => handleUnBanAccount(record)}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                size="small"
-                                icon={<CheckCircleOutlined />}
-                                style={{ width: 160, borderRadius: 15, height: 30 }}
-                            >{"Mở chặn tài khoản"}
-                            </Button>
-                        </Popconfirm> : <Popconfirm
-                            title="Bạn muốn chặn tài khoản này?"
-                            onConfirm={() => handleBanAccount(record)}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                size="small"
-                                icon={<StopOutlined />}
-                                style={{ width: 160, borderRadius: 15, height: 30 }}
-                            >{"Chặn tài khoản"}
-                            </Button>
-                        </Popconfirm>}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div>
+                                {/* Kiểm tra nếu người dùng không phải là admin và không phải là tài khoản admin */}
+                                {!record.role.includes('isAdmin') && (
+                                    <Button
+                                        size="small"
+                                        icon={<SecurityScanOutlined />}
+                                        style={{ width: 190, borderRadius: 15, height: 30 }}
+                                        onClick={() => handleChangeRole(record)}
+                                    >
+                                        {"Thay đổi quyền admin"}
+                                    </Button>
+                                )}
+                            </div>
+                            <div style={{ marginTop: 5 }}>
+                                {record.status !== "actived" ? <Popconfirm
+                                    title="Bạn muốn mở chặn tài khoản này?"
+                                    onConfirm={() => handleUnBanAccount(record)}
+                                    okText="Yes"
+                                    cancelText="No"
+                                >
+                                    <Button
+                                        size="small"
+                                        icon={<CheckCircleOutlined />}
+                                        style={{ width: 190, borderRadius: 15, height: 30 }}
+                                    >{"Mở chặn tài khoản"}
+                                    </Button>
+                                </Popconfirm> : (
+                                    // Kiểm tra nếu người dùng không phải là admin thì mới hiển thị nút chặn tài khoản
+                                    !record.role.includes('isAdmin') &&
+                                    <Popconfirm
+                                        title="Bạn muốn chặn tài khoản này?"
+                                        onConfirm={() => handleBanAccount(record)}
+                                        okText="Yes"
+                                        cancelText="No"
+                                    >
+                                        <Button
+                                            size="small"
+                                            icon={<StopOutlined />}
+                                            style={{ width: 190, borderRadius: 15, height: 30 }}
+                                        >{"Chặn tài khoản"}
+                                        </Button>
+                                    </Popconfirm>
+                                )}
+                            </div>
+                        </div>
                     </Row>
-
+        
                 </div >
             ),
         },

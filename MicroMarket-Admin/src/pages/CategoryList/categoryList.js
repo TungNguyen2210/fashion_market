@@ -1,23 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import "./categoryList.css";
 import {
-    Col, Row, Typography, Spin, Button, Card, Badge, Empty, Input, Space,
-    Form, Pagination, Modal, Popconfirm, notification, BackTop, Tag, Breadcrumb, Select, Table
-} from 'antd';
-import {
-    AppstoreAddOutlined, QrcodeOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, ExclamationCircleOutlined, SearchOutlined,
-    CalendarOutlined, UserOutlined, TeamOutlined, HomeOutlined, HistoryOutlined, ShoppingOutlined, FormOutlined, TagOutlined, EditOutlined
+    DeleteOutlined,
+    EditOutlined,
+    HomeOutlined,
+    PlusOutlined,
+    ShoppingOutlined
 } from '@ant-design/icons';
-import eventApi from "../../apis/eventApi";
-import productApi from "../../apis/productsApi";
-import { useHistory } from 'react-router-dom';
-import { DateTime } from "../../utils/dateTime";
-import ProductList from '../ProductList/productList';
-import axiosClient from '../../apis/axiosClient';
 import { PageHeader } from '@ant-design/pro-layout';
-const { confirm } = Modal;
-const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
-const { Title } = Typography;
+import {
+    BackTop,
+    Breadcrumb,
+    Button,
+    Col,
+    Form,
+    Input,
+    Modal, Popconfirm,
+    Row,
+    Space,
+    Spin,
+    Table,
+    Tag,
+    notification
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import axiosClient from '../../apis/axiosClient';
+import productApi from "../../apis/productsApi";
+import uploadFileApi from '../../apis/uploadFileApi';
+import "./categoryList.css";
 
 const CategoryList = () => {
 
@@ -30,7 +39,6 @@ const CategoryList = () => {
     const [total, setTotalList] = useState();
     const [currentPage, setCurrentPage] = useState(1);
     const [id, setId] = useState();
-    const [image, setImage] = useState();
 
     const history = useHistory();
 
@@ -41,39 +49,31 @@ const CategoryList = () => {
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
+
+            const categoryList = {
+                "name": values.name,
+                "description": values.description,
+                "slug": values.slug,
+                "image": file
+            }
+            return axiosClient.post("/category", categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo danh mục thất bại',
+                    });
                 }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "description": values.description,
-                    "slug": values.slug,
-                    "image": response.image_url
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Tạo danh mục thành công',
+                    });
+                    setOpenModalCreate(false);
+                    handleCategoryList();
                 }
-                return axiosClient.post("/category", categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo danh mục thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo danh mục thành công',
-                        });
-                        setOpenModalCreate(false);
-                        handleCategoryList();
-                    }
-                })
             })
-            setLoading(false);
 
         } catch (error) {
             throw error;
@@ -81,78 +81,35 @@ const CategoryList = () => {
     }
 
     const handleUpdateCategory = async (values) => {
-        console.log(image);
         setLoading(true);
-        if(image){
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }).then(response => {
-            try {
-                const categoryList = {
-                    "name": values.name,
-                    "description": values.description,
-                    "slug": values.slug,
-                    "image": response.image_url,
-                }
-                return axiosClient.put("/category/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa danh mục thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa danh mục thành công',
-                        });
-                        handleCategoryList();
-                        setOpenModalUpdate(false);
-                    }
-                })
-                setLoading(false);
-    
-            } catch (error) {
-                throw error;
+        try {
+            const categoryList = {
+                "name": values.name,
+                "description": values.description,
+                "slug": values.slug,
+                "image": file || values.image,
             }
-        })
-        }else{
+            return axiosClient.put("/category/" + id, categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa danh mục thất bại',
+                    });
+                }
+                else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description:
+                            'Chỉnh sửa danh mục thành công',
+                    });
+                    handleCategoryList();
+                    setOpenModalUpdate(false);
+                }
+            })
 
-            try {
-                const categoryList = {
-                    "name": values.name,
-                    "description": values.description,
-                    "slug": values.slug
-                }
-                await axiosClient.put("/category/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa danh mục thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa danh mục thành công',
-                        });
-                        handleCategoryList();
-                        setOpenModalUpdate(false);
-                    }
-                })
-                setLoading(false);
-    
-            } catch (error) {
-                throw error;
-            }
+        } catch (error) {
+            throw error;
         }
     }
 
@@ -211,10 +168,6 @@ const CategoryList = () => {
         }
     }
 
-    const handleDetailView = (id) => {
-        history.push("/category-detail/" + id)
-    }
-
     const handleEditCategory = (id) => {
         setOpenModalUpdate(true);
         (async () => {
@@ -244,12 +197,15 @@ const CategoryList = () => {
         }
     }
 
-    const handleChangeImage = (event) => {
-        setImage(event.target.files[0]);
-    }
+    const [file, setUploadFile] = useState();
 
-    function NoData() {
-        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
     }
 
     const columns = [

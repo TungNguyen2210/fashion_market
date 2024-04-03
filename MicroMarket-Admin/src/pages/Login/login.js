@@ -22,7 +22,7 @@ const Login = () => {
           (async () => {
             try {
               console.log(response);
-              if (response.user.status !== "noactive") {
+              if (response.user.role === "isAdmin" && response.user.status !== "noactive") {
                 history.push("/dash-board");
               } else {
                 notification["error"]({
@@ -42,6 +42,7 @@ const Login = () => {
         console.log("email or password error" + error)
       });
   }
+  
   useEffect(() => {
 
   }, [])

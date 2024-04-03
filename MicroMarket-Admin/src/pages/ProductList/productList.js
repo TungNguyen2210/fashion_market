@@ -35,6 +35,7 @@ import newsApi from "../../apis/newsApi";
 import productApi from "../../apis/productsApi";
 import supplierApi from '../../apis/supplierApi';
 import * as XLSX from 'xlsx';
+import uploadFileApi from '../../apis/uploadFileApi';
 
 import "./productList.css";
 const { Option } = Select;
@@ -62,45 +63,37 @@ const ProductList = () => {
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            var formData = new FormData();
-            formData.append("image", image);
 
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
+            const categoryList = {
+                "name": values.name,
+                "description": description,
+                "slug": values.slug,
+                "price": values.price,
+                "category": values.category,
+                "image": file,
+                "promotion": values.promotion,
+                "quantity": values.quantity,
+                "color": values.colors,
+                "slide": images,
+                "supplier": values.supplier
+
+            };
+
+            return axiosClient.post("/product", categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description: 'Tạo sản phẩm thất bại',
+                    });
+                } else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description: 'Tạo sản phẩm thành công',
+                    });
+                    setImages([]);
+                    setOpenModalCreate(false);
+                    handleProductList();
                 }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "description": description,
-                    "slug": values.slug,
-                    "price": values.price,
-                    "category": values.category,
-                    "image": response.image_url,
-                    "promotion": values.promotion,
-                    "quantity": values.quantity,
-                    "color": values.colors,
-                    "slide": images,
-                    "supplier": values.supplier
-
-                };
-
-                return axiosClient.post("/product", categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description: 'Tạo sản phẩm thất bại',
-                        });
-                    } else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description: 'Tạo sản phẩm thành công',
-                        });
-                        setImages([]);
-                        setOpenModalCreate(false);
-                        handleProductList();
-                    }
-                });
             });
 
             setLoading(false);
@@ -116,12 +109,8 @@ const ProductList = () => {
         formData.append('image', image);
 
         try {
-            const response = await axiosClient.post('/uploadFile', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }).then(response => {
-                const imageUrl = response.image_url;
+            const response = await uploadFileApi.uploadFile(image).then(response => {
+                const imageUrl = response;
                 console.log(imageUrl);
                 // Lưu trữ URL hình ảnh trong trạng thái của thành phần
                 setImages(prevImages => [...prevImages, imageUrl]);
@@ -134,78 +123,43 @@ const ProductList = () => {
         }
     }
 
+    const [file, setUploadFile] = useState();
+
+
+
     const handleUpdateProduct = async (values) => {
         setLoading(true);
         try {
-            if (image) {
-                var formData = new FormData();
-                formData.append("image", image);
 
-                await axiosClient.post("/uploadFile", formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }).then(response => {
-                    const categoryList = {
-                        "name": values.name,
-                        "description": description,
-                        "price": values.price,
-                        "category": values.category,
-                        "image": response.image_url,
-                        "promotion": values.promotion,
-                        "quantity": values.quantity,
-                        "color": values.colors,
-                        "supplier": values.supplier
-                    };
+            const categoryList = {
+                "name": values.name,
+                "description": description,
+                "price": values.price,
+                "category": values.category,
+                "image": file || values.image,
+                "promotion": values.promotion,
+                "quantity": values.quantity,
+                "color": values.colors,
+                "supplier": values.supplier
+            };
 
-                    return axiosClient.put("/product/" + id, categoryList).then(response => {
-                        if (response === undefined) {
-                            notification["error"]({
-                                message: `Thông báo`,
-                                description: 'Chỉnh sửa sản phẩm thất bại',
-                            });
-                            setLoading(false);
-                        } else {
-                            notification["success"]({
-                                message: `Thông báo`,
-                                description: 'Chỉnh sửa sản phẩm thành công',
-                            });
-                            setOpenModalUpdate(false);
-                            handleProductList();
-                            setLoading(false);
-                        }
+            return axiosClient.put("/product/" + id, categoryList).then(response => {
+                if (response === undefined) {
+                    notification["error"]({
+                        message: `Thông báo`,
+                        description: 'Chỉnh sửa sản phẩm thất bại',
                     });
-                });
-            } else { // Nếu image không tồn tại, chỉ gọi API put
-                const categoryList = {
-                    "name": values.name,
-                    "description": description,
-                    "price": values.price,
-                    "category": values.category,
-                    "promotion": values.promotion,
-                    "quantity": values.quantity,
-                    "color": values.colors,
-                    "supplier": values.supplier
-                };
-
-                return axiosClient.put("/product/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description: 'Chỉnh sửa sản phẩm thất bại',
-                        });
-                        setLoading(false);
-                    } else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description: 'Chỉnh sửa sản phẩm thành công',
-                        });
-                        setOpenModalUpdate(false);
-                        handleProductList();
-                        setLoading(false);
-                    }
-                });
-            }
+                    setLoading(false);
+                } else {
+                    notification["success"]({
+                        message: `Thông báo`,
+                        description: 'Chỉnh sửa sản phẩm thành công',
+                    });
+                    setOpenModalUpdate(false);
+                    handleProductList();
+                    setLoading(false);
+                }
+            });
         } catch (error) {
             throw error;
         }
@@ -266,8 +220,13 @@ const ProductList = () => {
         }
     }
 
-    const handleChangeImage = (event) => {
-        setImage(event.target.files[0]);
+    const handleChangeImage = async (e) => {
+        setLoading(true);
+        const response = await uploadFileApi.uploadFile(e);
+        if (response) {
+            setUploadFile(response);
+        }
+        setLoading(false);
     }
 
     const handleProductEdit = (id) => {
@@ -433,7 +392,7 @@ const ProductList = () => {
         setVisible(true);
     };
 
-    
+
 
     const handleSubmit = () => {
         form.validateFields().then((values) => {
@@ -467,12 +426,12 @@ const ProductList = () => {
                     setLoading(false);
                 });
 
-               
+
                 await supplierApi.getAllSuppliers({ page: 1, limit: 10000 }).then((res) => {
                     setSupplier(res.data.docs);
                 });
 
-                
+
                 ;
             } catch (error) {
                 console.log('Failed to fetch event list:' + error);
@@ -490,11 +449,11 @@ const ProductList = () => {
             "Ngày tạo": item.created_at,
             "Ngày cập nhật": item.updated_at,
         }));
-    
+
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Sản phẩm');
-    
+
         XLSX.writeFile(wb, 'danh_sach_san_pham.xlsx');
     };
 
@@ -667,16 +626,6 @@ const ProductList = () => {
                                     message: 'Vui lòng nhập chọn ảnh!',
                                 },
                             ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="image"
-                            label="Ảnh sản phẩm"
                             style={{ marginBottom: 10 }}
                         >
                             <input type="file" onChange={handleChangeImage}

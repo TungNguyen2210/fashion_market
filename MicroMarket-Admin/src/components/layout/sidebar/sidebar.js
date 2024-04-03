@@ -52,7 +52,7 @@ function Sidebar() {
     },
     {
       key: "promotion-management",
-      title: "Quản lý voucher",
+      title: "Quản lý khuyến mãi",
       link: "/promotion-management",
       icon: <SolutionOutlined />
     },

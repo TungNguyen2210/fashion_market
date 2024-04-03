@@ -57,7 +57,7 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Tên voucher không được trùng',
+                            'Tên khuyến mãi không được trùng',
                     });
                     setLoading(false);
                     return;
@@ -66,14 +66,14 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Tạo voucher thất bại',
+                            'Tạo khuyến mãi thất bại',
                     });
                 }
                 else {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Tạo voucher thành công',
+                            'Tạo khuyến mãi thành công',
                     });
                     setOpenModalCreate(false);
                     handleCategoryList();
@@ -100,7 +100,7 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Tên voucher không được trùng',
+                            'Tên khuyến mãi không được trùng',
                     });
                     setLoading(false);
                     return;
@@ -110,14 +110,14 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Chỉnh sửa voucher thất bại',
+                            'Chỉnh sửa khuyến mãi thất bại',
                     });
                 }
                 else {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Chỉnh sửa voucher thành công',
+                            'Chỉnh sửa khuyến mãi thành công',
                     });
                     handleCategoryList();
                     setOpenModalUpdate(false);
@@ -158,7 +158,7 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            "Không thể xóa voucher vì nó đã được sử dụng trong một sự kiện hoặc quá trình khác.",
+                            "Không thể xóa khuyến mãi vì nó đã được sử dụng trong một sự kiện hoặc quá trình khác.",
 
                     });
                     setLoading(false);
@@ -168,7 +168,7 @@ const PromotionManagement = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa voucher thất bại',
+                            'Xóa khuyến mãi thất bại',
 
                     });
                     setLoading(false);
@@ -177,7 +177,7 @@ const PromotionManagement = () => {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa voucher thành công',
+                            'Xóa khuyến mãi thành công',
 
                     });
                     handleCategoryList();
@@ -269,7 +269,7 @@ const PromotionManagement = () => {
                         <div
                             style={{ marginLeft: 6 }}>
                             <Popconfirm
-                                title="Bạn có chắc chắn xóa voucher này?"
+                                title="Bạn có chắc chắn xóa khuyến mãi này?"
                                 onConfirm={() => handleDeleteCategory(record._id)}
                                 okText="Yes"
                                 cancelText="No"
@@ -313,7 +313,7 @@ const PromotionManagement = () => {
                             </Breadcrumb.Item>
                             <Breadcrumb.Item href="">
                                 <ShoppingOutlined />
-                                <span>Quản lý voucher</span>
+                                <span>Quản lý khuyến mãi</span>
                             </Breadcrumb.Item>
                         </Breadcrumb>
                     </div>
@@ -337,7 +337,7 @@ const PromotionManagement = () => {
                                         <Row justify="end">
                                             <Space>
 
-                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo voucher</Button>
+                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo khuyến mãi</Button>
                                             </Space>
                                         </Row>
                                     </Col>
@@ -353,7 +353,7 @@ const PromotionManagement = () => {
                 </div>
 
                 <Modal
-                    title="Tạo voucher mới"
+                    title="Tạo khuyến mãi mới"
                     visible={openModalCreate}
                     style={{ top: 100 }}
                     onOk={() => {
@@ -386,30 +386,30 @@ const PromotionManagement = () => {
 
                             <Form.Item
                                 name="maKhuyenMai"
-                                label="Mã voucher"
+                                label="Mã khuyến mãi"
                                 rules={[
                                     {
                                         required: true,
-                                        message: 'Vui lòng nhập mã voucher!',
+                                        message: 'Vui lòng nhập mã khuyến mãi!',
                                     },
                                 ]}
                                 style={{ marginBottom: 10 }}
                             >
-                                <Input placeholder="Mã voucher" />
+                                <Input placeholder="Mã khuyến mãi" />
                             </Form.Item>
 
                             <Form.Item
                                 name="phantramkhuyenmai"
-                                label="Phần trăm voucher"
+                                label="Phần trăm khuyến mãi"
                                 rules={[
                                     {
                                         required: true,
-                                        message: 'Vui lòng nhập phần trăm voucher!',
+                                        message: 'Vui lòng nhập phần trăm khuyến mãi!',
                                     },
                                 ]}
                                 style={{ marginBottom: 10 }}
                             >
-                                <Input type="number" placeholder="Phần trăm voucher" />
+                                <Input type="number" placeholder="Phần trăm khuyến mãi" />
                             </Form.Item>
                             <Form.Item
                                 name="thoigianBD"
@@ -447,7 +447,7 @@ const PromotionManagement = () => {
                 </Modal>
 
                 <Modal
-                    title="Chỉnh sửa voucher"
+                    title="Chỉnh sửa khuyến mãi"
                     visible={openModalUpdate}
                     style={{ top: 100 }}
                     onOk={() => {
@@ -479,30 +479,30 @@ const PromotionManagement = () => {
                         <Spin spinning={loading}>
                             <Form.Item
                                 name="maKhuyenMai"
-                                label="Mã voucher"
+                                label="Mã khuyến mãi"
                                 rules={[
                                     {
                                         required: true,
-                                        message: 'Vui lòng nhập mã voucher!',
+                                        message: 'Vui lòng nhập mã khuyến mãi!',
                                     },
                                 ]}
                                 style={{ marginBottom: 10 }}
                             >
-                                <Input placeholder="Mã voucher" />
+                                <Input placeholder="Mã khuyến mãi" />
                             </Form.Item>
 
                             <Form.Item
                                 name="phantramkhuyenmai"
-                                label="Phần trăm voucher"
+                                label="Phần trăm khuyến mãi"
                                 rules={[
                                     {
                                         required: true,
-                                        message: 'Vui lòng nhập phần trăm voucher!',
+                                        message: 'Vui lòng nhập phần trăm khuyến mãi!',
                                     },
                                 ]}
                                 style={{ marginBottom: 10 }}
                             >
-                                <Input type="number" placeholder="Phần trăm voucher" />
+                                <Input type="number" placeholder="Phần trăm khuyến mãi" />
                             </Form.Item>
                             <Form.Item
                                 name="thoigianBD"
