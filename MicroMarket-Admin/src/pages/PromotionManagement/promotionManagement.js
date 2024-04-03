@@ -241,15 +241,15 @@ const PromotionManagement = () => {
         },
         {
             title: 'Thời gian bắt đầu',
-            dataIndex: 'thoigianBD',
-            key: 'thoigianBD',
+            dataIndex: 'thoiGianBD',
+            key: 'thoiGianBD',
             render: (text) => moment(text).format('YYYY-MM-DD'),
 
         },
         {
             title: 'Thời gian kết thúc',
-            dataIndex: 'thoigianKT',
-            key: 'thoigianKT',
+            dataIndex: 'thoiGianKT',
+            key: 'thoiGianKT',
             render: (text) => moment(text).format('YYYY-MM-DD'),
 
         },
