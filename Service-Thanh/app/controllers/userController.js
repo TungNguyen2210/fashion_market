@@ -58,19 +58,20 @@ const userController = {
 
     updateUser: async (req, res) => {
         const _id = req.params.id;
-        const { username, phone } = req.body;
+        const { username, email, password, role, phone, status } = req.body;
         try {
-            const user = await UserModel.findByIdAndUpdate(_id, { username, phone }, { new: true });
+            const user = await UserModel.findByIdAndUpdate(_id, { username, email, password, role, phone, status }, { new: true });
             if (!user) {
                 return res.status(404).json({ message: 'User not found' });
             }
-    
-            return res.status(200).json({ message: 'Update success', user });
+
+            return res.status(200).json("Update success");
         } catch (err) {
             console.log(err);
             return res.status(500).json(err);
         }
     },
+
 
     logout: async (req, res) => {
         try {
