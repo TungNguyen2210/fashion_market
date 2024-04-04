@@ -2,6 +2,7 @@ const OrderModel = require('../models/order');
 const _const = require('../config/constant')
 const jwt = require('jsonwebtoken');
 const Product = require('../models/product');
+const user = require('../models/user');
 
 const orderController = {
     getAllOrder: async (req, res) => {
@@ -18,7 +19,8 @@ const orderController = {
             const orderList = await OrderModel.paginate({}, options);
             res.status(200).json({ data: orderList });
         } catch (err) {
-            res.status(500).json(err);
+            console.log(err)
+            res.status(200).json(err);
         }
     },
 

@@ -2,7 +2,7 @@ const orderController = require("../controllers/orderController");
 const router = require("express").Router();
 const middleware = require('../utils/middleware');
 
-router.post('/search', middleware.checkLogin, orderController.getAllOrder);
+router.post('/search', orderController.getAllOrder);
 router.get("/searchByName", middleware.checkLogin, orderController.searchOrderByName);
 router.get("/user", middleware.checkLogin, orderController.getOrderByUser);
 

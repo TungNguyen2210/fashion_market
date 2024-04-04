@@ -343,7 +343,7 @@ const Cart = () => {
                         </li>
                         <li>
                           Đổi trả sản phẩm nếu có lỗi từ nhà sản xuất theo quy
-                          định của nhà sách:<br></br>- Sản phẩm phải còn nguyên,
+                          định của shop:<br></br>- Sản phẩm phải còn nguyên,
                           chưa qua sử dụng, giặt tẩy, không bị bẩn hoặc bị hư
                           hỏng bởi các tác nhân bên ngoài. <br></br>- Sản phẩm
                           hư hỏng do vận chuyển hoặc do nhà sản xuất.
