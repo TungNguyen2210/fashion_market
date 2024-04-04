@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, default: '' },
     status: { type: String, default: 'actived' },
     image: {type: String, default: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png'}
-}, { timestamps: true }, { collection: 'users' })
+}, { timestamps: true }, { collection: 'user' })
 
 userSchema.plugin(mongoosePaginate);
 userSchema.index({ email: 1 }) //Nơi đánh index

@@ -43,7 +43,7 @@ function _Footer() {
                             <SocialIcon url="https://www.youtube.com/" style={{ height: 35, width: 35, cursor: "pointer" }} />
                         </Col>
                         <Col span={6}>
-                            <SocialIcon url="https://www.facebook.com/nqhuy.andrew" style={{ height: 35, width: 35, cursor: "pointer" }} />
+                            <SocialIcon url="https://www.facebook.com/share/FtJZ8hMNwqS3YBRg/?mibextid=LQQJ4d" style={{ height: 35, width: 35, cursor: "pointer" }} />
                         </Col>
                         <Col span={6}>
                             <SocialIcon url="https://www.instagram.com/qhuy.n_/?fbclid=IwAR2f4MgLZzSJMeUpgws1CWdjJVw0w5ooEieEn8f5E3EarifbFswHG934qsI" style={{ height: 35, width: 35, cursor: "pointer" }} />

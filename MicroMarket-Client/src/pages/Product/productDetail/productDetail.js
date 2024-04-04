@@ -238,7 +238,7 @@ const ProductDetail = () => {
             <hr/>
             <div className="describe">
               <div className="title_total" style={{fontSize: 20, marginBottom: 10, fontWeight: 'bold'}}>
-                Giới thiệu sách: "{productDetail.name}"
+                Giới thiệu sản phẩm: "{productDetail.name}"
               </div>
               <div
                 className="describe_detail_description"
