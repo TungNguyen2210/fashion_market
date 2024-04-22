@@ -40,7 +40,7 @@ function Sidebar() {
     },
     {
       key: "supplier",
-      title: "Thương hiệu",
+      title: "Bộ sưu tập",
       link: "/supplier",
       icon: <ContainerOutlined />
     },
