@@ -65,14 +65,14 @@ const SupplierList = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Tạo thương hiệu thất bại',
+                            'Tạo bộ sưu tập thất bại',
                     });
                 }
                 else {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Tạo thương hiệu thành công',
+                            'Tạo bộ sưu tập thành công',
                     });
                     setOpenModalCreate(false);
                     handleCategoryList();
@@ -102,14 +102,14 @@ const SupplierList = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Chỉnh sửa thương hiệu thất bại',
+                            'Chỉnh sửa bộ sưu tập thất bại',
                     });
                 }
                 else {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Chỉnh sửa thương hiệu thành công',
+                            'Chỉnh sửa bộ sưu tập thành công',
                     });
                     handleCategoryList();
                     setOpenModalUpdate(false);
@@ -152,7 +152,7 @@ const SupplierList = () => {
                     notification["error"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa thương hiệu thất bại',
+                            'Xóa bộ sưu tập thất bại',
 
                     });
                     setLoading(false);
@@ -161,7 +161,7 @@ const SupplierList = () => {
                     notification["success"]({
                         message: `Thông báo`,
                         description:
-                            'Xóa thương hiệu thành công',
+                            'Xóa bộ sưu tập thành công',
 
                     });
                     setCurrentPage(1);
@@ -273,7 +273,7 @@ const SupplierList = () => {
                         <div
                             style={{ marginLeft: 10 }}>
                             <Popconfirm
-                                title="Bạn có chắc chắn xóa thương hiệu này?"
+                                title="Bạn có chắc chắn xóa bộ sưu tập này?"
                                 onConfirm={() => handleDeleteCategory(record._id)}
                                 okText="Yes"
                                 cancelText="No"
@@ -319,7 +319,7 @@ const SupplierList = () => {
                             </Breadcrumb.Item>
                             <Breadcrumb.Item href="">
                                 <ShoppingOutlined />
-                                <span>Thương hiệu</span>
+                                <span>bộ sưu tập</span>
                             </Breadcrumb.Item>
                         </Breadcrumb>
                     </div>
@@ -342,7 +342,7 @@ const SupplierList = () => {
                                     <Col span="6">
                                         <Row justify="end">
                                             <Space>
-                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo thương hiệu</Button>
+                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo bộ sưu tập</Button>
                                             </Space>
                                         </Row>
                                     </Col>
@@ -358,7 +358,7 @@ const SupplierList = () => {
                 </div>
 
                 <Modal
-                    title="Tạo thương hiệu mới"
+                    title="Tạo bộ sưu tập mới"
                     visible={openModalCreate}
                     style={{ top: 100 }}
                     onOk={() => {
@@ -475,7 +475,7 @@ const SupplierList = () => {
 
 
                 <Modal
-                    title="Chỉnh sửa thương hiệu"
+                    title="Chỉnh sửa bộ sưu tập"
                     visible={openModalUpdate}
                     style={{ top: 100 }}
                     onOk={() => {
