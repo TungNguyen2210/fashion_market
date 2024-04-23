@@ -625,7 +625,7 @@ const ProductList = () => {
                         >
                             <Select
                                 mode="multiple"
-                                placeholder="Chọn size áo"
+                                placeholder="Chọn size"
                             >
                                 <Select.Option key="S" value="S">S</Select.Option>
                                 <Select.Option key="M" value="M">M</Select.Option>
@@ -900,7 +900,7 @@ const ProductList = () => {
                         >
                             <Select
                                 mode="multiple"
-                                placeholder="Chọn size áo"
+                                placeholder="Chọn size"
                             >
                                 <Select.Option key="S" value="S">S</Select.Option>
                                 <Select.Option key="M" value="M">M</Select.Option>

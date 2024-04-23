@@ -154,7 +154,7 @@ const ProductDetail = () => {
                     {productDetail.slide.map((item) => (
                       <div className="img" key={item}>
                         <img
-                          style={{ width:'100%', objectFit: 'contain', height: '500px' }}
+                          style={{ width: '100%', objectFit: 'contain', height: '500px' }}
                           src={item}
                           alt=""
                         />
@@ -204,6 +204,7 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="color-product">
+                    Màu trang phục:
                     {productDetail?.color?.map((color) => (
                       <span
                         key={color}
@@ -214,6 +215,13 @@ const ProductDetail = () => {
                       ></span>
                     ))}
                   </div>
+                  <div className="product-sizes">
+                    Kích thước trang phục:
+                    {productDetail?.sizes?.map((size) => (
+                      <span key={size}>{size}</span>
+                    ))}
+                  </div>
+
                   <div className="box_cart_1">
                     <Button
                       type="primary"
@@ -235,9 +243,9 @@ const ProductDetail = () => {
                 </Card>
               </Col>
             </Row>
-            <hr/>
+            <hr />
             <div className="describe">
-              <div className="title_total" style={{fontSize: 20, marginBottom: 10, fontWeight: 'bold'}}>
+              <div className="title_total" style={{ fontSize: 20, marginBottom: 10, fontWeight: 'bold' }}>
                 Giới thiệu sản phẩm: "{productDetail.name}"
               </div>
               <div
@@ -245,7 +253,7 @@ const ProductDetail = () => {
                 dangerouslySetInnerHTML={{ __html: productDetail.description }}
               ></div>
             </div>
-            <hr/>
+            <hr />
             <div className="price" style={{ marginTop: 20, fontSize: 20 }}>
               <h1 className="product_name" style={{ fontWeight: 'bold' }}>Sản phẩm bạn có thể quan tâm</h1>
             </div>
@@ -263,7 +271,7 @@ const ProductDetail = () => {
                   onClick={() => handleReadMore(item._id)}
                   key={item._id}
                 >
-                  <div className="show-product" style={{marginRight: 15}}>
+                  <div className="show-product" style={{ marginRight: 15 }}>
                     {item.image ? (
                       <img className="image-product" src={item.image} />
                     ) : (
@@ -273,7 +281,7 @@ const ProductDetail = () => {
                       />
                     )}
                     <div className="wrapper-products">
-                    
+
                       <div className="price-amount">
                         <Paragraph className="price-product">
                           {numberWithCommas(item.price - item.promotion)} đ
