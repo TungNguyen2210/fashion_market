@@ -244,3 +244,23 @@ hr {
     font-size: 14px;
   }
   
+  .product-sizes {
+    display: flex;
+    align-items: center;
+  }
+  
+  .product-sizes span {
+    display: inline-block;
+    margin-right: 5px; 
+    padding: 5px 10px; 
+    border: 1px solid #ccc;
+    border-radius: 5px; 
+    font-size: 14px;
+    cursor: pointer; 
+    transition: transform 0.3s; 
+  }
+  
+  .product-sizes span:hover {
+    transform: scale(1.1); 
+  }
+  
