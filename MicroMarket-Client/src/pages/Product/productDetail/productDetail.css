@@ -241,3 +241,19 @@ hr {
 .color-product {
     margin-top: 15px;
 }
+
+.color-product {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .dot {
+    width: 20px; 
+    height: 20px;
+    border-radius: 50%; 
+    cursor: pointer;
+  }
+  
+  .dot.active {
+    border: 2px solid white; 
+  }

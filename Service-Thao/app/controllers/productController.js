@@ -65,7 +65,8 @@ const productController = {
             quantity,
             slide,
             supplier,
-            inventory
+            inventory,
+            color
 
         } = req.body;
 
@@ -79,6 +80,7 @@ const productController = {
             quantity,
             slide,
             supplier,
+            color,
             inventory: {
                 quantityOnHand: inventory?.quantityOnHand || 0,
                 expirationDate: inventory?.expirationDate || null
@@ -123,6 +125,7 @@ const productController = {
             color,
             supplier,
             inventory,
+
         } = req.body;
 
         try {

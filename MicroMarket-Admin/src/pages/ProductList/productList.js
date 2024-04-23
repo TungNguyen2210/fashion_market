@@ -352,12 +352,6 @@ const ProductList = () => {
                 <div>
                     <Row>
                         <div className='groupButton'>
-                            {/* <Button
-                                size="small"
-                                icon={<EyeOutlined />}
-                                style={{ width: 150, borderRadius: 15, height: 30 }}
-                            >{"Xem chi tiết"}
-                            </Button> */}
                             <Button
                                 size="small"
                                 icon={<EditOutlined />}
@@ -391,8 +385,6 @@ const ProductList = () => {
     const handleOpen = () => {
         setVisible(true);
     };
-
-
 
     const handleSubmit = () => {
         form.validateFields().then((values) => {
