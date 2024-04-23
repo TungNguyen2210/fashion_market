@@ -207,6 +207,8 @@ const Pay = () => {
             history.push("/final-pay");
             localStorage.removeItem("cart");
             localStorage.removeItem("cartLength");
+            localStorage.removeItem("phanTramKhuyenMai");
+
           }
         });
         notification["success"]({
@@ -267,7 +269,11 @@ const Pay = () => {
           totalPrice += price;
         }
 
-        setOrderTotal(totalPrice);
+       const phanTramKhuyenMai = localStorage.getItem("phanTramKhuyenMai");
+       const discount = (totalPrice * phanTramKhuyenMai) / 100;
+
+        console.log(totalPrice - discount)
+        setOrderTotal(totalPrice - discount);
         setProductDetail(transformedData);
         console.log(transformedData);
         setUserData(response.user);

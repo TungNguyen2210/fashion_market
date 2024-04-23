@@ -176,6 +176,7 @@ const Cart = () => {
     const { value } = e.target;
     const foundCategory = category.find((item) => item.maKhuyenMai === value);
     if (foundCategory) {
+      localStorage.setItem("phanTramKhuyenMai", foundCategory.phanTramKhuyenMai);
       setPhanTramKhuyenMai(foundCategory.phanTramKhuyenMai);
       const discount = (cartTotal * foundCategory.phanTramKhuyenMai) / 100;
       setCartTotal(cartTotal - discount);
