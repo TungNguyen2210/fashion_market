@@ -9,7 +9,7 @@ import { useHistory, useParams } from "react-router-dom";
 import productApi from "../../../apis/productApi";
 import triangleTopRight from "../../../assets/icon/Triangle-Top-Right.svg";
 import { numberWithCommas } from "../../../utils/common";
-
+import "./productDetail.css";
 
 const ProductDetail = () => {
   const [productDetail, setProductDetail] = useState([]);
