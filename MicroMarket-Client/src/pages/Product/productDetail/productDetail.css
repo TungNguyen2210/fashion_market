@@ -208,29 +208,17 @@ hr {
     margin-right: 10px;
 }
 
+.dotactive{
+    height: 30px;
+    width: 30px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+}
+
 .dot:hover {
     cursor: pointer;
     transform: scale(1.2);
-}
-
-.dot.blue {
-    background-color: blue;
-    border: 3px solid #e0e0e0;
-}
-
-.dot.red {
-    background-color: red;
-    border: 3px solid #e0e0e0;
-}
-
-.dot.green {
-    background-color: green;
-    border: 3px solid #e0e0e0;
-}
-
-.dot.yellow {
-    background-color: yellow;
-    border: 3px solid #e0e0e0;
 }
 
 .dot.active {
@@ -240,20 +228,4 @@ hr {
 
 .color-product {
     margin-top: 15px;
-}
-
-.color-product {
-    display: flex;
-    gap: 5px;
-}
-
-.dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    cursor: pointer;
-}
-
-.dot.active {
-    border: 2px solid white;
 }
