@@ -207,7 +207,7 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="color-product">
-                    Màu trang phục:
+                  <span style={{marginRight: 10}}> Màu trang phục:</span> 
                     {productDetail?.color?.map((color) => (
                       <span
                         key={color}
@@ -219,7 +219,7 @@ const ProductDetail = () => {
                     ))}
                   </div>
                   <div className="product-sizes">
-                    Kích thước trang phục:
+                    <span style={{marginRight: 10}}>Kích thước trang phục:</span> 
                     {productDetail?.sizes?.map((size) => (
                       <span
                         key={size}
