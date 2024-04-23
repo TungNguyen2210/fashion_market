@@ -66,7 +66,8 @@ const productController = {
             slide,
             supplier,
             inventory,
-            color
+            color,
+            sizes
 
         } = req.body;
 
@@ -81,6 +82,7 @@ const productController = {
             slide,
             supplier,
             color,
+            sizes,
             inventory: {
                 quantityOnHand: inventory?.quantityOnHand || 0,
                 expirationDate: inventory?.expirationDate || null
@@ -125,7 +127,7 @@ const productController = {
             color,
             supplier,
             inventory,
-
+            sizes
         } = req.body;
 
         try {
@@ -158,6 +160,7 @@ const productController = {
             existingProduct.promotion = promotion || existingProduct.promotion;
             existingProduct.color = color || existingProduct.color;
             existingProduct.supplier = supplier || existingProduct.supplier;
+            existingProduct.sizes = sizes || existingProduct.sizes;
 
             // Save the updated product
             const updatedProduct = await existingProduct.save();

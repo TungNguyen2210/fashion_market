@@ -75,7 +75,8 @@ const ProductList = () => {
                 "quantity": values.quantity,
                 "color": values.colors,
                 "slide": images,
-                "supplier": values.supplier
+                "supplier": values.supplier,
+                "sizes": values.sizes
 
             };
 
@@ -147,7 +148,8 @@ const ProductList = () => {
                 "promotion": values.promotion,
                 "quantity": values.quantity,
                 "color": values.colors,
-                "supplier": values.supplier
+                "supplier": values.supplier,
+                "sizes": values.sizes
             };
 
             return axiosClient.put("/product/" + id, categoryList).then(response => {
@@ -227,7 +229,7 @@ const ProductList = () => {
         }
     }
 
-  
+
 
     const handleProductEdit = (id) => {
         setOpenModalUpdate(true);
@@ -610,6 +612,29 @@ const ProductList = () => {
                         </Form.Item>
 
                         <Form.Item
+                            name="sizes"
+                            label="Size"
+                            rules={[
+                                {
+                                    required: true,
+                                    message: 'Vui lòng chọn ít nhất một size!',
+                                },
+                            ]}
+                            style={{ marginBottom: 10 }}
+                        >
+                            <Select
+                                mode="multiple"
+                                placeholder="Chọn size"
+                            >
+                                {Array.from({ length: 9 }, (_, index) => (
+                                    <Select.Option key={36 + index} value={36 + index}>
+                                        {36 + index}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item
                             name="image"
                             label="Ảnh"
                             rules={[
@@ -855,6 +880,29 @@ const ProductList = () => {
                                 {newsList.map((color) => (
                                     <Select.Option key={color._id} value={color?.description}>
                                         {color.name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item
+                            name="sizes"
+                            label="Size"
+                            rules={[
+                                {
+                                    required: true,
+                                    message: 'Vui lòng chọn ít nhất một size!',
+                                },
+                            ]}
+                            style={{ marginBottom: 10 }}
+                        >
+                            <Select
+                                mode="multiple"
+                                placeholder="Chọn size"
+                            >
+                                {Array.from({ length: 9 }, (_, index) => (
+                                    <Select.Option key={36 + index} value={36 + index}>
+                                        {36 + index}
                                     </Select.Option>
                                 ))}
                             </Select>
