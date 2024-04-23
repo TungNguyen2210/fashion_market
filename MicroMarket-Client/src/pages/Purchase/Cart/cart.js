@@ -1,122 +1,32 @@
-import React, { useState, useEffect } from "react";
-import styles from "./cart.css";
-import axiosClient from "../../../apis/axiosClient";
-import { useParams } from "react-router-dom";
-import eventApi from "../../../apis/eventApi";
-import productApi from "../../../apis/productApi";
-import { useHistory } from "react-router-dom";
-import { Col, Row, Tag, Spin, Card } from "antd";
-import { DateTime } from "../../../utils/dateTime";
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import {
-  Typography,
-  Button,
-  Badge,
-  Breadcrumb,
-  Popconfirm,
-  InputNumber,
-  notification,
-  Form,
-  Input,
-  Select,
-  Rate,
-} from "antd";
-import { Layout, Table, Divider, Statistic } from "antd";
-import {
-  HistoryOutlined,
-  AuditOutlined,
-  AppstoreAddOutlined,
-  CloseOutlined,
-  UserOutlined,
-  DeleteOutlined,
   CreditCardOutlined,
-  HomeOutlined,
-  CheckOutlined,
-  LeftSquareOutlined,
+  LeftSquareOutlined
 } from "@ant-design/icons";
+import {
+  Breadcrumb, Button, Card, Col, Divider, Form,
+  InputNumber, Layout, Row,
+  Spin, Statistic, Table,
+  Input
+} from "antd";
+import React, { useEffect, useState } from "react";
+import { useHistory, useParams } from "react-router-dom";
+import axiosClient from "../../../apis/axiosClient";
+import eventApi from "../../../apis/eventApi";
+import "./cart.css";
 
-import Slider from "react-slick";
+import promotionManagementApi from "../../../apis/promotionManagementApi";
 
-const { Meta } = Card;
-const { Option } = Select;
 const { Content } = Layout;
-const { Title } = Typography;
-const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
-const { TextArea } = Input;
 
 const Cart = () => {
   const [productDetail, setProductDetail] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [suggest, setSuggest] = useState([]);
-  const [visible, setVisible] = useState(false);
-  const [dataForm, setDataForm] = useState([]);
-  const [lengthForm, setLengthForm] = useState();
   const [cartLength, setCartLength] = useState();
   const [cartTotal, setCartTotal] = useState();
   const [form] = Form.useForm();
   let { id } = useParams();
   const history = useHistory();
 
-  const steps = [
-    {
-      title: "First",
-      content: "First-content",
-    },
-    {
-      title: "Second",
-      content: "Second-content",
-    },
-    {
-      title: "Last",
-      content: "Last-content",
-    },
-  ];
-
-  const listEvent = () => {
-    setLoading(true);
-    (async () => {
-      try {
-        const response = await eventApi.getDetailEvent(id);
-        console.log(response);
-        setProductDetail(response);
-        setLoading(false);
-      } catch (error) {
-        console.log("Failed to fetch event detail:" + error);
-      }
-    })();
-    window.scrollTo(0, 0);
-  };
-
-  const handleDetailEvent = (id) => {
-    history.replace("/event-detail/" + id);
-    window.location.reload();
-    window.scrollTo(0, 0);
-  };
-
-  const getDataForm = async (uid) => {
-    try {
-      await axiosClient
-        .get("/event/" + id + "/template_feedback/" + uid + "/question")
-        .then((response) => {
-          console.log(response);
-          setDataForm(response);
-          let tabs = [];
-          for (let i = 0; i < response.length; i++) {
-            tabs.push({
-              content: response[i]?.content,
-              uid: response[i]?.uid,
-              is_rating: response[i]?.is_rating,
-            });
-          }
-          form.setFieldsValue({
-            users: tabs,
-          });
-          setLengthForm(tabs.length);
-        });
-    } catch (error) {
-      throw error;
-    }
-  };
 
   const handlePay = () => {
     history.push("/pay");
@@ -126,49 +36,6 @@ const Cart = () => {
     localStorage.removeItem("cart");
     localStorage.removeItem("cartLength");
     window.location.reload(true);
-  };
-
-  const onFinish = async (values) => {
-    console.log(values.users);
-    let tabs = [];
-    for (let i = 0; i < values.users.length; i++) {
-      tabs.push({
-        scope:
-          values.users[i]?.scope == undefined ? null : values.users[i]?.scope,
-        comment:
-          values.users[i]?.comment == undefined
-            ? null
-            : values.users[i]?.comment,
-        question_uid: values.users[i]?.uid,
-      });
-    }
-    console.log(tabs);
-    setLoading(true);
-    try {
-      const dataForm = {
-        answers: tabs,
-      };
-      await axiosClient
-        .post("/event/" + id + "/answer", dataForm)
-        .then((response) => {
-          if (response === undefined) {
-            notification["error"]({
-              message: `Notification`,
-              description: "Answer event question failed",
-            });
-            setLoading(false);
-          } else {
-            notification["success"]({
-              message: `Notification`,
-              description: "Successfully answer event question",
-            });
-            setLoading(false);
-            form.resetFields();
-          }
-        });
-    } catch (error) {
-      throw error;
-    }
   };
 
   const updateQuantity = (productId, newQuantity) => {
@@ -271,12 +138,16 @@ const Cart = () => {
     },
   ];
 
-  useEffect(() => {
+  const [category, setCategory] = useState([]);
+
+  const handleCart = () => {
     (async () => {
       try {
-        // await productApi.getDetailProduct(id).then((item) => {
-        //     setProductDetail(item);
-        // });
+        await promotionManagementApi.listPromotionManagement().then((res) => {
+          console.log(res);
+          setCategory(res.data);
+          setLoading(false);
+        });
         const cart = JSON.parse(localStorage.getItem("cart")) || [];
         setProductDetail(cart);
         console.log(cart);
@@ -292,8 +163,27 @@ const Cart = () => {
         console.log("Failed to fetch event detail:" + error);
       }
     })();
+  }
+
+  useEffect(() => {
+    handleCart();
     window.scrollTo(0, 0);
   }, []);
+
+  const [phanTramKhuyenMai, setPhanTramKhuyenMai] = useState("");
+
+  const handleInputChange = (e) => {
+    const { value } = e.target;
+    const foundCategory = category.find((item) => item.maKhuyenMai === value);
+    if (foundCategory) {
+      setPhanTramKhuyenMai(foundCategory.phanTramKhuyenMai);
+      const discount = (cartTotal * foundCategory.phanTramKhuyenMai) / 100;
+      setCartTotal(cartTotal - discount);
+    } else {
+      handleCart();
+      setPhanTramKhuyenMai(""); // Nếu không tìm thấy, gán lại giá trị rỗng
+    }
+  };
 
   return (
     <div>
@@ -343,7 +233,7 @@ const Cart = () => {
                         </li>
                         <li>
                           Đổi trả sản phẩm nếu có lỗi từ nhà sản xuất theo quy
-                          định của shop:<br></br>- Sản phẩm phải còn nguyên,
+                          định của nhà sách:<br></br>- Sản phẩm phải còn nguyên,
                           chưa qua sử dụng, giặt tẩy, không bị bẩn hoặc bị hư
                           hỏng bởi các tác nhân bên ngoài. <br></br>- Sản phẩm
                           hư hỏng do vận chuyển hoặc do nhà sản xuất.
@@ -354,6 +244,13 @@ const Cart = () => {
                     </Col>
                   </Row>
                   <br></br>
+                  <Input
+                    type="text"
+                    placeholder="Nhập mã khuyến mãi"
+                    onChange={handleInputChange}
+                    style={{width: 300, marginBottom: 10}}
+                  />
+                  <p>Phần trăm khuyến mãi: {phanTramKhuyenMai}</p>
                   <Divider orientation="right">
                     <p>Thanh toán</p>
                   </Divider>
