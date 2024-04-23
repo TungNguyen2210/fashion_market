@@ -126,6 +126,9 @@ const ProductDetail = () => {
     window.scrollTo(0, 0);
   }, [cartLength]);
 
+  const [selectedSize, setSelectedSize] = useState(null);
+
+
   return (
     <div>
       <Spin spinning={false}>
@@ -218,7 +221,13 @@ const ProductDetail = () => {
                   <div className="product-sizes">
                     Kích thước trang phục:
                     {productDetail?.sizes?.map((size) => (
-                      <span key={size}>{size}</span>
+                      <span
+                        key={size}
+                        onClick={() => setSelectedSize(size === selectedSize ? null : size)}
+                        style={{ transform: size === selectedSize ? 'scale(1.1)' : 'scale(1)' }}
+                      >
+                        {size}
+                      </span>
                     ))}
                   </div>
 
