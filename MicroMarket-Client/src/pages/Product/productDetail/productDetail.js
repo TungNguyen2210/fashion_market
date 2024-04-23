@@ -208,7 +208,7 @@ const ProductDetail = () => {
                       <span
                         key={color}
                         style={{ backgroundColor: color }} // Sửa đổi ở đây
-                        className={`dot ${selectedColor === color ? "active" : ""
+                        className={`dot${selectedColor === color ? "active" : ""
                           }`}
                         onClick={() => handleClick(color)}
                       ></span>
