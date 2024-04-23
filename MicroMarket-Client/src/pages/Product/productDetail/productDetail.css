@@ -24,7 +24,7 @@
 }
 
 .price_product {
-    font-size: 22px!important;
+    font-size: 22px !important;
     font-weight: 700;
     color: #d70018;
     display: inline;
@@ -175,7 +175,7 @@ hr {
 
 .describe .title_total {
     padding-bottom: 18px;
-    font-size: 21px!important;
+    font-size: 21px !important;
 }
 
 .is-active {
@@ -245,15 +245,15 @@ hr {
 .color-product {
     display: flex;
     gap: 5px;
-  }
-  
-  .dot {
-    width: 20px; 
+}
+
+.dot {
+    width: 20px;
     height: 20px;
-    border-radius: 50%; 
+    border-radius: 50%;
     cursor: pointer;
-  }
-  
-  .dot.active {
-    border: 2px solid white; 
-  }
+}
+
+.dot.active {
+    border: 2px solid white;
+}
