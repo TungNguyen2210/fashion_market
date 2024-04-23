@@ -244,8 +244,9 @@ const ProductList = () => {
                     category: response?.product.category?._id,
                     quantity: response.product.quantity,
                     promotion: response.product.promotion,
-                    color: response.product.color,
+                    colors: response.product.color,
                     supplier: response?.product.supplier,
+                    sizes: response?.product.sizes
                 });
                 console.log(form2);
                 setDescription(response.product.description);
@@ -604,7 +605,7 @@ const ProductList = () => {
                                 placeholder="Chọn màu"
                             >
                                 {newsList.map((color) => (
-                                    <Select.Option key={color._id} value={color?.description}>
+                                    <Select.Option key={color.description} value={color?.description}>
                                         {color.name}
                                     </Select.Option>
                                 ))}
@@ -624,13 +625,14 @@ const ProductList = () => {
                         >
                             <Select
                                 mode="multiple"
-                                placeholder="Chọn size"
+                                placeholder="Chọn size áo"
                             >
-                                {Array.from({ length: 9 }, (_, index) => (
-                                    <Select.Option key={36 + index} value={36 + index}>
-                                        {36 + index}
-                                    </Select.Option>
-                                ))}
+                                <Select.Option key="S" value="S">S</Select.Option>
+                                <Select.Option key="M" value="M">M</Select.Option>
+                                <Select.Option key="L" value="L">L</Select.Option>
+                                <Select.Option key="XL" value="XL">XL</Select.Option>
+                                <Select.Option key="XXL" value="XXL">XXL</Select.Option>
+                              
                             </Select>
                         </Form.Item>
 
@@ -878,7 +880,7 @@ const ProductList = () => {
                                 placeholder="Chọn màu"
                             >
                                 {newsList.map((color) => (
-                                    <Select.Option key={color._id} value={color?.description}>
+                                    <Select.Option key={color.description} value={color?.description}>
                                         {color.name}
                                     </Select.Option>
                                 ))}
@@ -898,13 +900,14 @@ const ProductList = () => {
                         >
                             <Select
                                 mode="multiple"
-                                placeholder="Chọn size"
+                                placeholder="Chọn size áo"
                             >
-                                {Array.from({ length: 9 }, (_, index) => (
-                                    <Select.Option key={36 + index} value={36 + index}>
-                                        {36 + index}
-                                    </Select.Option>
-                                ))}
+                                <Select.Option key="S" value="S">S</Select.Option>
+                                <Select.Option key="M" value="M">M</Select.Option>
+                                <Select.Option key="L" value="L">L</Select.Option>
+                                <Select.Option key="XL" value="XL">XL</Select.Option>
+                                <Select.Option key="XXL" value="XXL">XXL</Select.Option>
+                              
                             </Select>
                         </Form.Item>
 
