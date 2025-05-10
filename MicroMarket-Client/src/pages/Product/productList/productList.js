@@ -152,44 +152,39 @@ const ProductList = () => {
                   renderItem={(item) => (
                     <List.Item>
                       <div
-                        className="show-product"
+                        className="client-list-product-card"
                         onClick={() => handleReadMore(item._id)}
                       >
-                        {item.image ? (
-                          <img className="image-product" src={item.image} />
-                        ) : (
-                          <img
-                            className="image-product"
-                            src={require("../../../assets/image/NoImageAvailable.jpg")}
-                          />
-                        )}
-                        <div className="wrapper-products">
-                          <div className="price-amount">
-                            <Paragraph className="price-product">
-                              {numberWithCommas(item.promotion)} đ
-                            </Paragraph>
-                            {item.promotion !== 0 && (
-                              <Paragraph className="price-cross">
-                                {numberWithCommas(item.price)} đ
-                              </Paragraph>
-                            )}
-                          </div>
+                        <div className="client-list-product-image-container">
+                          {item.image ? (
+                            <img className="client-list-product-image" src={item.image} alt={item.name}/>
+                          ) : (
+                            <img
+                              className="client-list-product-image"
+                              src={require("../../../assets/image/NoImageAvailable.jpg")}
+                              alt="No image available"
+                            />
+                          )}
+                        </div>
+                        <div className="client-list-product-details">
                           <Paragraph
-                            className="title-product"
-                            ellipsis={{ rows: 2 }}
+                            className="client-list-product-name"
+                            ellipsis={{ rows: 2, tooltip: item.name }}
                           >
                             {item.name}
                           </Paragraph>
-
+                          <div className="client-list-product-pricing">
+                            <span className="client-list-product-price-promoted">
+                              {numberWithCommas(item.promotion)} đ
+                            </span>
+                            {item.price && item.promotion < item.price && (
+                              <span className="client-list-product-price-original">
+                                {numberWithCommas(item.price)} đ
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {/* <Paragraph
-                        className="badge"
-                        style={{ position: "absolute", top: 10, left: 9 }}
-                      >
-                        <span>Giảm giá</span>
-                        <img src={triangleTopRight} />
-                      </Paragraph> */}
                     </List.Item>
                   )}
                 ></List>
