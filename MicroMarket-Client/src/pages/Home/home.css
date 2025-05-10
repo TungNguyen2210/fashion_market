@@ -616,8 +616,6 @@ h3 {
     margin-top: -500px;
 }
 
-
-
 .footer-button {
     font-size: 16px;
     font-weight: 700;
@@ -968,125 +966,120 @@ ul {
 .row-product {
     margin: 20px 0px 10px 0px;
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 .col-product {
     position: relative;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.col-product > div {
+    height: 100%;
+}
+
+.show-product {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 3px 6px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     cursor: pointer;
-}
-
-.col-product>div {
-    cursor: pointer;
-}
-
-.image-product {
-    width: 100%;
-    object-fit: scale-down;
-    margin-top: 12px;
-}
-
-.show-product{
-    border-radius: 12px;
+    border: 1px solid #f0f0f0;
 }
 
 .show-product:hover {
-    transform: scale(1.03);
-    cursor: pointer;
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.product-image-container {
+    width: 100%;
+    padding-top: 100%;
+    position: relative;
+    background-color: #f9f9f9;
+}
+
+.image-product {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    padding: 8px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .wrapper-products {
+    padding: 12px 16px 16px;
     display: flex;
     flex-direction: column;
-    background-color: #fff !important;
-    margin-top: 14px;
-    border-radius: 12px;
-    border-bottom-left-radius: 3px;
-    border-bottom-right-radius: 3px;
+    flex-grow: 1;
 }
 
 .title-product {
-    font-size: 1.1rem;
-    font-weight: bold;
-    line-height: 1.5;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #262626;
+    margin-bottom: 8px;
 }
 
 .price-amount {
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    margin-top: auto;
+    gap: 8px;
 }
 
 .price-product {
-    font-size: 17px;
-    color: #e44424 !important;
+    font-size: 1.05rem;
+    color: #d70018;
     font-weight: 700;
-    padding: 0!important;
-    margin-bottom: 4px!important;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
 }
 
 .price-cross {
-    text-align: right;
-    color: #7e7e7e !important;
-    font-size: 17px;
-    font-weight: 700;
+    color: #8c8c8c;
+    font-size: 0.85rem;
+    font-weight: 500;
     text-decoration: line-through;
-    padding: 0!important;
-    margin-bottom: 4px!important;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
 }
 
 .badge {
-    display: flex;
+    display: inline-flex;
     flex-direction: column;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    align-items: flex-start;
 }
 
 .badge > span {
-    font-size: 16px;
-    color: #fff !important;
+    font-size: 0.7rem;
+    color: #fff;
     background-color: #da1b14;
-    border: 1px solid #da1b14;
-    padding: 2px 6px;
+    padding: 3px 7px;
+    border-radius: 3px;
+    font-weight: 600;
+    line-height: 1;
 }
 
 .badge > img {
     width: 8px;
-}
-
-.product-card {
-    width: 250px;
-    text-align: center;
-    background-color: white;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: transform 0.2s ease-in-out;
-    display: flex;
-    flex-direction: row;
-    padding: 10px;
-    justify-content: center;
-    align-items: center;
-    border-radius: 10px;
-}
-
-.product-card:hover {
-    transform: scale(1.05);
-}
-
-.product-image img {
-    width: 80px;
-    border-radius: 50%;
-}
-
-.product-name {
-    padding: 10px 0;
-    margin-left: 8px;
-    font-size: 18px;
-}
-
-.product-promotion{
-    display: flex;
-    flex-direction: row;
-    margin-top: 20px;
-    justify-content: space-between;
-
 }

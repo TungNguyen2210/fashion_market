@@ -26,15 +26,10 @@ import { useHistory } from "react-router-dom";
 import { numberWithCommas } from "../../utils/common";
 
 const Home = () => {
-  const [productList, setProductList] = useState([]);
   const [eventListHome, setEventListHome] = useState([]);
-  const [totalEvent, setTotalEvent] = useState(Number);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState([]);
-  const [productsPhone, setProductsPhone] = useState([]);
-  const [productsPC, setProductsPC] = useState([]);
-  const [productsTablet, setProductsTablet] = useState([]);
+  const [categorizedProducts, setCategorizedProducts] = useState([]);
   const [visible, setVisible] = useState(true);
   const initialCountdownDate = new Date().getTime() + 24 * 60 * 60 * 1000;
   const [countdownDate, setCountdownDate] = useState(
@@ -62,74 +57,62 @@ const Home = () => {
   };
 
   useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const response = await productApi.getListProducts({
-          page: 1,
-          limit: 10,
-        });
-        setProductList(response.data.docs);
-        setTotalEvent(response);
-        setLoading(false);
-      } catch (error) {
-        console.log("Failed to fetch event list:" + error);
-      }
 
-      try {
-        const response = await productApi.getListEvents(1, 6);
-        setEventListHome(response.data);
-        setTotalEvent(response.total_count);
-      } catch (error) {
-        console.log("Failed to fetch event list:" + error);
-      }
-      try {
-        const response = await productApi.getCategory({ limit: 10, page: 1 });
-        console.log(response);
-        setCategories(response.data.docs);
-      } catch (error) {
-        console.log(error);
-      }
-      try {
-        const data = { limit: 10, page: 1 };
-        const response = await productApi.getProductsByCategory(
-          data,
-          "643cd88879b4192efedda4e6"
-        );
-        console.log(response);
-        setProductsPhone(response.data.docs);
-        const response2 = await productApi.getProductsByCategory(
-          data,
-          "643cd89a79b4192efedda4ee"
-        );
-        console.log(response2);
-        setProductsPC(response2.data.docs);
-        const response3 = await productApi.getProductsByCategory(
-          data,
-          "643d030051fc7a906603da39"
-        );
-        console.log(response3);
-        setProductsTablet(response3.data.docs);
-      } catch (error) {
-        console.log(error);
-      }
+        const categoryResponse = await productApi.getCategory({ limit: 5, page: 1 });
+        const fetchedCategories = categoryResponse.data.docs;
+        setCategories(fetchedCategories);
 
-      localStorage.setItem("countdownDate", countdownDate);
+        if (fetchedCategories && fetchedCategories.length > 0) {
+          const productsPromises = fetchedCategories.map(async (category) => {
+            try {
+              const productsResponse = await productApi.getProductsByCategory(
+                { limit: 4, page: 1 },
+                category._id
+              );
+              return {
+                categoryName: category.name,
+                categoryId: category._id,
+                products: productsResponse.data.docs,
+              };
+            } catch (prodError) {
+              console.error(`Failed to fetch products for category ${category.name || category._id}:`, prodError);
+              return { categoryName: category.name, categoryId: category._id, products: [] };
+            }
+          });
 
-      const interval = setInterval(() => {
-        const newTimeLeft = countdownDate - new Date().getTime();
-        setTimeLeft(newTimeLeft);
-
-        if (newTimeLeft <= 0) {
-          clearInterval(interval);
+          const allCategorizedProducts = await Promise.all(productsPromises);
+          setCategorizedProducts(allCategorizedProducts.filter(cp => cp.products && cp.products.length > 0));
         }
-      }, 1000);
+      } catch (error) {
+        console.log("Failed to fetch home page data:", error);
+        setEventListHome([]);
+        setCategories([]);
+        setCategorizedProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      return () => clearInterval(interval);
-    })();
-  }, [countdownDate]);
+    fetchData();
+
+    localStorage.setItem("countdownDate", countdownDate.toString());
+    const interval = setInterval(() => {
+      const newTimeLeft = parseInt(localStorage.getItem("countdownDate"), 10) - new Date().getTime();
+      setTimeLeft(newTimeLeft);
+
+      if (newTimeLeft <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <Spin spinning={false}>
+    <Spin spinning={loading}>
       <div
         style={{
           background: "#FFFFFF",
@@ -149,97 +132,91 @@ const Home = () => {
                   <img
                     style={{ width: "100%", height: 750 }}
                     src="https://theme.hstatic.net/200000964164/1001330875/14/slider_1.jpg?v=220"
-                    alt=""
+                    alt="Slider 1"
                   />
                 </div>
                 <div className="img">
                   <img
                     style={{ width: "100%", height: 750 }}
                     src="https://theme.hstatic.net/200000964164/1001330875/14/slider_2.jpg?v=220"
-                    alt=""
+                    alt="Slider 2"
                   />
                 </div>
                 <div className="img">
                   <img
                     style={{ width: "100%", height: 750 }}
                     src="https://theme.hstatic.net/200000964164/1001330875/14/slider_3.jpg?v=220"
-                    alt=""
+                    alt="Slider 3"
                   />
                 </div>
               </Carousel>
-
             </Col>
           </Row>
         </div>
 
-        <div className="image-one">
-          <div className="texty-demo">
-            <Texty>Khuyến Mãi</Texty>
-          </div>
-          <div className="texty-title">
-            <p>
-              Sản Phẩm <strong style={{ color: "#3b1d82" }}>Mới</strong>
-            </p>
-          </div>
-
-
-          <div className="list-products container" key="1">
-
-            <Row
-              gutter={{ xs: 8, sm: 16, md: 24, lg: 48 }}
-              className="row-product"
-            >
-              {productsPhone.map((item) => (
-                <Col
-                  xl={{ span: 6 }}
-                  lg={{ span: 8 }}
-                  md={{ span: 12 }}
-                  sm={{ span: 12 }}
-                  xs={{ span: 24 }}
-                  className="col-product"
-                  onClick={() => handleReadMore(item._id)}
-                  key={item._id}
-                >
-                  <div className="show-product">
-                    {item.image ? (
-                      <img className="image-product" src={item.image} />
-                    ) : (
-                      <img
-                        className="image-product"
-                        src={require("../../assets/image/NoImageAvailable.jpg")}
-                      />
-                    )}
-                    <div className="wrapper-products">
-                      <Paragraph
-                        className="title-product"
-                        ellipsis={{ rows: 2 }}
-                      >
-                        {item.name}
-                      </Paragraph>
-                      <div className="price-amount">
-                        <Paragraph className="price-product">
-                          {numberWithCommas(item.promotion)} đ
-                        </Paragraph>
-                        {item.promotion !== 0 && (
-                          <Paragraph className="price-cross">
-                            {numberWithCommas(item.price)} đ
-                          </Paragraph>
+        {categorizedProducts.map((categoryGroup) => (
+          <div className="category-section container" key={categoryGroup.categoryId} style={{ marginTop: 30, marginBottom: 30 }}>
+            <div className="texty-demo" style={{ marginBottom: 10 }}>
+              <Texty>{categoryGroup.categoryName}</Texty>
+            </div>
+            <div className="list-products">
+              <Row
+                gutter={{ xs: 8, sm: 16, md: 24, lg: 32 }}
+                className="row-product"
+              >
+                {categoryGroup.products.map((item) => (
+                  <Col
+                    xl={{ span: 6 }}
+                    lg={{ span: 6 }}
+                    md={{ span: 8 }}
+                    sm={{ span: 12 }}
+                    xs={{ span: 24 }}
+                    className="col-product"
+                    key={item._id}
+                  >
+                    <div className="show-product" onClick={() => handleReadMore(item._id)}>
+                      <div className="product-image-container">
+                        {item.image ? (
+                          <img className="image-product" src={item.image} alt={item.name} />
+                        ) : (
+                          <img
+                            className="image-product"
+                            src={require("../../assets/image/NoImageAvailable.jpg")}
+                            alt="No image available"
+                          />
                         )}
                       </div>
+                      <div className="wrapper-products">
+                        <Paragraph
+                          className="title-product"
+                          ellipsis={{ rows: 2, tooltip: item.name }}
+                        >
+                          {item.name}
+                        </Paragraph>
+                        <div className="price-amount">
+                          <span className="price-product">
+                            {numberWithCommas(item.promotion)} đ
+                          </span>
+                          {item.price && item.promotion < item.price && (
+                            <span className="price-cross">
+                              {numberWithCommas(item.price)} đ
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {item.price && item.promotion < item.price && (
+                        <div className="badge">
+                          <span>Giảm giá</span>
+                          <img src={triangleTopRight} alt="Discount badge icon" />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <Paragraph
-                    className="badge"
-                    style={{ position: "absolute", top: 10, left: 9 }}
-                  >
-                    <span>Giảm giá</span>
-                    <img src={triangleTopRight} />
-                  </Paragraph>
-                </Col>
-              ))}
-            </Row>
+                  </Col>
+                ))}
+              </Row>
+            </div>
           </div>
-        </div>
+        ))}
 
         <div className="image-one">
           <div className="heading_slogan">
@@ -252,8 +229,8 @@ const Home = () => {
                 bordered={false}
                 className="card_suggest card_why card_slogan"
               >
-                <img src={service6}></img>
-                <p class="card-text mt-3 fw-bold text-center">
+                <img src={service6} alt="Fast and Secure Shipping"></img>
+                <p className="card-text mt-3 fw-bold text-center">
                   Nhanh chóng & Bảo mật <br />
                   Vận chuyển
                 </p>
@@ -264,8 +241,8 @@ const Home = () => {
                 bordered={false}
                 className="card_suggest card_why card_slogan"
               >
-                <img src={service7}></img>
-                <p class="card-text mt-3 fw-bold text-center">
+                <img src={service7} alt="100% Genuine Guarantee"></img>
+                <p className="card-text mt-3 fw-bold text-center">
                   Đảm bảo 100% <br />
                   Chính Hãng
                 </p>
@@ -276,8 +253,8 @@ const Home = () => {
                 bordered={false}
                 className="card_suggest card_why card_slogan"
               >
-                <img src={service8}></img>
-                <p class="card-text mt-3 fw-bold text-center">
+                <img src={service8} alt="24 Hour Return"></img>
+                <p className="card-text mt-3 fw-bold text-center">
                   24 Giờ <br /> Đổi Trả
                 </p>
               </Card>
@@ -287,8 +264,8 @@ const Home = () => {
                 bordered={false}
                 className="card_suggest card_why card_slogan"
               >
-                <img src={service9}></img>
-                <p class="card-text mt-3 fw-bold text-center">
+                <img src={service9} alt="Fastest Delivery"></img>
+                <p className="card-text mt-3 fw-bold text-center">
                   Giao hàng <br /> Nhanh nhất
                 </p>
               </Card>
@@ -298,16 +275,14 @@ const Home = () => {
                 bordered={false}
                 className="card_suggest card_why card_slogan"
               >
-                <img src={service10}></img>
-                <p class="card-text mt-3 fw-bold text-center">
+                <img src={service10} alt="Quick Support"></img>
+                <p className="card-text mt-3 fw-bold text-center">
                   Hỗ trợ <br /> Nhanh chóng
                 </p>
               </Card>
             </div>
           </div>
         </div>
-
-      
       </div>
 
       <BackTop style={{ textAlign: "right" }} />

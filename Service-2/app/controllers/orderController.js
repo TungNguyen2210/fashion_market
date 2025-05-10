@@ -3,6 +3,7 @@ const _const = require('../config/constant')
 const jwt = require('jsonwebtoken');
 const Product = require('../models/product');
 const user = require('../models/user');
+const nodemailer = require('nodemailer');
 
 const orderController = {
     getAllOrder: async (req, res) => {
@@ -59,25 +60,72 @@ const orderController = {
                         quantity: product ? product.quantity : 0,
                     });
                 }
+            }
 
-                if (insufficientQuantityProducts.length > 0) {
-                    return res.status(200).json({
-                        error: 'Insufficient quantity for one or more products.',
-                        insufficientQuantityProducts,
-                    });
-                }
+            if (insufficientQuantityProducts.length > 0) {
+                return res.status(200).json({
+                    error: 'Insufficient quantity for one or more products.',
+                    insufficientQuantityProducts,
+                });
+            }
 
-
-                // Update the product quantity
-                if (product) {
+            // Update product quantities after check and before saving order
+            for (const productItem of req.body.products) {
+                const productId = productItem.product;
+                const quantity = productItem.quantity;
+                const product = await Product.findById(productId);
+                if (product) { // Product should exist at this point due to the check above
                     product.quantity -= quantity;
                     await product.save();
                 }
             }
 
+            const savedOrder = await order.save();
 
-            const orderList = await order.save();
-            res.status(200).json(orderList);
+            // Send email to user
+            try {
+                const customer = await user.findById(req.body.userId);
+                if (customer && customer.email) {
+                    // Set up the email transporter
+                    const transporter = nodemailer.createTransport({
+                        host: 'smtp.gmail.com',
+                        port: 587, // Port should be a number, not a string
+                        secure: false, // true for 465, false for other ports
+                        auth: {
+                            user: 'h5studiogl@gmail.com', // Consider using environment variables for credentials
+                            pass: 'ubqq hfra cduj tlnq', // Consider using environment variables for credentials
+                        },
+                    });
+
+                    const mailOptions = {
+                        from: '"MicroMarket" <h5studiogl@gmail.com>',
+                        to: customer.email,
+                        subject: 'Xác nhận đơn hàng của bạn tại MicroMarket',
+                        html: `<h1>Cảm ơn bạn đã đặt hàng!</h1>
+                             <p>Đơn hàng với mã số ${savedOrder._id} của bạn đã được đặt thành công.</p>
+                             <p>Tổng tiền đơn hàng: ${savedOrder.orderTotal}</p>
+                             <p>Tên người nhận hàng: ${savedOrder.billing}</p>
+                             <p>Địa chỉ giao hàng: ${savedOrder.address}</p>
+                             <p>Chúng tôi sẽ thông báo cho bạn khi đơn hàng bắt đầu được giao.</p>
+                             <p>Cảm ơn bạn đã mua sắm tại MicroMarket!</p>`,
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error('Error sending email:', error);
+                        } else {
+                            console.log('Email sent: ' + info.response);
+                        }
+                    });
+                } else {
+                    console.log('User email not found, skipping email notification.');
+                }
+            } catch (emailError) {
+                console.error('Failed to send order confirmation email:', emailError);
+                // Decide if this error should affect the response to the client
+            }
+
+            res.status(200).json(savedOrder);
 
 
         }
