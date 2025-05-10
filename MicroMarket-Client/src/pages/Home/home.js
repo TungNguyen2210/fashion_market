@@ -148,28 +148,22 @@ const Home = () => {
                 <div className="img">
                   <img
                     style={{ width: "100%", height: 750 }}
-                    src="https://theme.hstatic.net/200000549029/1000902525/14/home_slider_image_1.jpg?v=3037"
+                    src="https://theme.hstatic.net/200000964164/1001330875/14/slider_1.jpg?v=220"
                     alt=""
                   />
                 </div>
                 <div className="img">
                   <img
                     style={{ width: "100%", height: 750 }}
-                    src="https://theme.hstatic.net/200000549029/1000902525/14/home_slider_image_1.jpg?v=3037"
+                    src="https://theme.hstatic.net/200000964164/1001330875/14/slider_2.jpg?v=220"
                     alt=""
                   />
                 </div>
                 <div className="img">
                   <img
                     style={{ width: "100%", height: 750 }}
-                    src="https://theme.hstatic.net/200000549029/1000902525/14/home_slider_image_1.jpg?v=3037"
+                    src="https://theme.hstatic.net/200000964164/1001330875/14/slider_3.jpg?v=220"
                     alt=""
-                  />
-                </div>
-                <div className="img">
-                  <img
-                    style={{ width: "100%", height: 750 }}
-                    src="https://theme.hstatic.net/200000549029/1000902525/14/home_slider_image_1.jpg?v=3037"
                   />
                 </div>
               </Carousel>
