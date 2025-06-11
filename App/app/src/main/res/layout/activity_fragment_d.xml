@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#5FA778"
+    android:padding="20dp"
+    tools:context=".activity.FragmentD">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="Kết Nối Với Ứng Dụng Đặt Tour Du Lịch Của Chúng Tôi"
+        android:textColor="#F55050"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/edtS_Email"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/facebook"
+        android:hint="Facebook: Ứng Dụng Đặt Tour Du Lịch"
+        android:textSize="20sp"
+        android:minHeight="48dp"
+        />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/instagram"
+        android:hint="Instagram: @tourbookingapp"
+        android:textSize="20sp"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:textSize="20sp"
+        android:hint="YouTube: Tour Booking Official"
+        android:drawableLeft="@drawable/youtube"
+        android:minHeight="48dp" />
+
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:textColorHint="@color/black"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:drawableLeft="@drawable/gmail"
+        android:hint="Email: contact@tourbookingapp.com"
+        android:textSize="20sp"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:textColorHint="@color/black"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:drawableLeft="@drawable/tiktok"
+        android:hint="Tiktok: @tourbookingapp"
+        android:textSize="20sp"
+        android:minHeight="48dp" />
+
+</LinearLayout>

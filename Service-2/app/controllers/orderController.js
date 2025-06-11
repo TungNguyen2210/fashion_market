@@ -85,6 +85,7 @@ const orderController = {
             // Send email to user
             try {
                 const customer = await user.findById(req.body.userId);
+                console.log(customer);
                 if (customer && customer.email) {
                     // Set up the email transporter
                     const transporter = nodemailer.createTransport({

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarchitietsanpham"
+            android:background="@color/teal_200"
+            app:titleTextColor="@color/black"
+            app:title="Chi Tiết Sản Phẩm"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize">
+        </androidx.appcompat.widget.Toolbar>
+
+        <ImageView
+            android:id="@+id/imgchitietsanpham"
+            android:src="@mipmap/ic_launcher"
+            android:layout_gravity="center"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:id="@+id/tvtenchitietsanpham"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:textColor="#F44336"
+            android:textStyle="bold"
+            android:text="Tên Sản Phẩm"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:id="@+id/tvgiachitietsanpham"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Giá Sản Phẩm"
+            android:textColor="#F44336"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_gravity="center"
+            android:layout_marginTop="8dp" />
+
+
+        <Button
+            android:id="@+id/btnmua"
+            android:textSize="18sp"
+            android:text="Thêm Giỏ Hàng"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mô tả chi tiết sản phẩm"
+            android:textSize="24sp"
+            android:textColor="#F6072B"
+            android:layout_marginTop="16dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/tvmotachitietsanpham"
+                android:padding="8dp"
+                android:textSize="18sp" />
+        </ScrollView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Danh sách đánh giá"
+            android:textSize="24sp"
+            android:textColor="#F6072B"
+            android:layout_marginTop="16dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvReviews"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Đánh giá sản phẩm"
+            android:textSize="24sp"
+            android:textColor="#F6072B"
+            android:layout_marginTop="16dp" />
+
+        <EditText
+            android:id="@+id/edtDanhGia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nhập đánh giá"
+            android:padding="8dp" />
+
+        <EditText
+            android:id="@+id/edtDiemDanhGia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nhập điểm đánh giá"
+            android:inputType="number"
+            android:padding="8dp" />
+
+        <Button
+            android:id="@+id/btnGuiDanhGia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Gửi"
+            android:padding="8dp"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/tvKetQuaDanhGia"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#000000"
+            android:textSize="18sp" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

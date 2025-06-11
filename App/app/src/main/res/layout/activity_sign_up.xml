@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:background="@drawable/logosignup"
+    android:padding="20dp"
+    tools:context=".activity.SignUpActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="TẠO TÀI KHOẢN ĐĂNG NHẬP"
+        android:textColor="#EFF5F5"
+        android:textSize="25dp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/edtS_FullName"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:hint="Họ và Tên"
+        android:drawableLeft="@drawable/ic_image_fullname"
+        android:minHeight="48dp"
+        android:padding="10dp"
+        android:background="@drawable/edittext_background"
+        android:textColor="#000000"
+        android:fontFamily="sans-serif-light"/>
+
+
+    <EditText
+        android:id="@+id/edtS_Email"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:hint="Email"
+        android:minHeight="48dp"
+        android:drawableLeft="@drawable/ic_image_acount"
+        android:padding="10dp"
+        android:background="@drawable/edittext_background"
+        android:textColor="#000000"
+        android:fontFamily="sans-serif-light"/>
+
+    <EditText
+        android:id="@+id/edtS_Pass"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:hint="Mật khẩu"
+        android:drawableLeft="@drawable/ic_image_password"
+        android:minHeight="48dp"
+        android:padding="10dp"
+        android:background="@drawable/edittext_background"
+        android:textColor="#000000"
+        android:fontFamily="sans-serif-light"/>
+
+    <EditText
+        android:id="@+id/edtS_EnterThePass"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:hint="Nhập lại mật khẩu"
+        android:drawableLeft="@drawable/ic_image_password"
+        android:minHeight="48dp"
+        android:padding="10dp"
+        android:background="@drawable/edittext_background"
+        android:textColor="#000000"
+        android:fontFamily="sans-serif-light"/>
+
+
+    <EditText
+        android:id="@+id/edtS_Phone"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:hint="Số điện thoại"
+        android:drawableLeft="@drawable/ic_image_telephone"
+        android:minHeight="48dp"
+        android:padding="10dp"
+        android:background="@drawable/edittext_background"
+        android:textColor="#000000"
+        android:fontFamily="sans-serif-light"/>
+
+
+    <Button
+        android:backgroundTint="#5FA778"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:layout_marginHorizontal="50dp"
+        android:text="ĐĂNG KÝ"
+        android:onClick="submit"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-light"
+        />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:gravity="center"
+        android:textColor="#EFF5F5"
+        android:text="Bạn đã có tài khoản?"
+        android:textSize="20dp" />
+
+    <Button
+        android:id="@+id/btnS_Dangnhap"
+        android:backgroundTint="#5FA778"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:layout_marginHorizontal="50dp"
+        android:text="ĐĂNG NHẬP"
+        android:textColor="#FFFFFF"
+        android:onClick="login"
+        />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:gravity="center"
+        android:textColor="#EFF5F5"
+        android:text="Bạn không muốn tiếp tục?"
+        android:textSize="20dp" />
+
+    <Button
+        android:onClick="xulythoat_signup"
+        android:id="@+id/btnS_Thoat"
+        android:backgroundTint="#5FA778"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:layout_marginHorizontal="50dp"
+        android:text="THOÁT"
+        tools:ignore="OnClick"
+        android:textColor="#FFFFFF"
+        android:fontFamily="sans-serif-light"/>
+
+</LinearLayout>
