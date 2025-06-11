@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/logosignup"
+    tools:context=".activity.LoginActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:layout_width="340dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="10dp"
+            android:src="@drawable/logo" />
+
+        <EditText
+            android:id="@+id/edtL_Email"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:drawableLeft="@drawable/ic_image_acount"
+            android:drawablePadding="20dp"
+            android:ems="15"
+            android:hint="Email"
+            android:padding="10dp"
+            android:textSize="20dp"
+            android:background="@drawable/edittext_background"
+            android:textColor="#000000"
+            android:fontFamily="sans-serif-light">
+        </EditText>
+
+        <EditText
+            android:id="@+id/edtL_Pass"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:drawableLeft="@drawable/ic_image_password"
+            android:drawablePadding="20dp"
+            android:ems="15"
+            android:hint="Mật khẩu"
+            android:inputType="textPassword"
+            android:textSize="20dp"
+            android:padding="10dp"
+            android:background="@drawable/edittext_background"
+            android:textColor="#000000"
+            android:fontFamily="sans-serif-light" />
+
+        <Button
+            android:id="@+id/btnL_Dangnhap"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:backgroundTint="#5FA778"
+            android:text="ĐĂNG NHẬP"
+            android:textSize="16dp"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-light"/>
+
+        <TextView
+            android:id="@+id/tvQuenmatkhau"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"
+            android:text="Quên mật khẩu?"
+            android:textColor="#FFFFFF"
+            android:textSize="20dp"
+            android:fontFamily="sans-serif-light"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="30dp"
+            android:gravity="center"
+            android:text="CHÀO MỪNG"
+            android:textColor="#FFFFFF"
+            android:textSize="35dp"
+            android:fontFamily="sans-serif-light"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:text="Chưa có tài khoản?"
+            android:textColor="#FFFFFF"
+            android:textSize="20dp"
+            android:fontFamily="sans-serif-light"/>
+
+        <Button
+            android:id="@+id/btnL_Dangky"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="30dp"
+            android:backgroundTint="#5FA778"
+            android:text="ĐĂNG KÝ"
+            android:textSize="16dp"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-light"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:gravity="center"
+            android:text="Bạn không muốn tiếp tục?"
+            android:textColor="#FFFFFF"
+            android:textSize="20dp"
+            android:fontFamily="sans-serif-light"/>
+
+        <Button
+            android:id="@+id/btnL_Thoat"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#5FA778"
+            android:onClick="xulythoat_login"
+            android:text="THOÁT ỨNG DỤNG"
+            android:textSize="16dp"
+            android:textColor="#FFFFFF"
+            tools:ignore="OnClick"
+            android:fontFamily="sans-serif-light"/>
+
+    </LinearLayout>
+
+</RelativeLayout>

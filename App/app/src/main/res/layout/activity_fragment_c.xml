@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#5FA778"
+    android:padding="20dp"
+    tools:context=".activity.FragmentC">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="Về Ứng Dụng Đặt Tour Du Lịch Của Chúng Tôi"
+        android:textColor="#F55050"
+        android:textSize="30dp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/edtS_Email"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/cauchuyen"
+        android:hint="Chuyện Của Chúng Tôi - Mang Trải Nghiệm Du Lịch Đến Bạn"
+        android:textSize="20sp"
+        android:minHeight="48dp"
+        />
+
+    <EditText
+
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/tuyendung"
+        android:hint="Tham Gia Đội Ngũ Du Lịch Của Chúng Tôi - Cơ Hội Nghề Nghiệp"
+        android:textSize="20sp"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:textSize="20sp"
+        android:hint="Khám Phá Các Tour Du Lịch Toàn Cầu"
+        android:drawableLeft="@drawable/xuatkhau"
+        android:minHeight="48dp" />
+
+</LinearLayout>

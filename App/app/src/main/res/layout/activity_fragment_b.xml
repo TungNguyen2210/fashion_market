@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#5FA778"
+    android:padding="20dp"
+    tools:context=".activity.FragmentB">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:text="Ứng dụng Đặt Tour Du Lịch"
+        android:textColor="#F55050"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:textSize="20dp"
+        android:hint="Khám phá các xu hướng du lịch mới nhất"
+        android:minHeight="48dp" />
+
+
+    <EditText
+        android:id="@+id/edtS_Email"
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textSize="20sp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/diachi"
+        android:hint="Địa chỉ: 123 Nguyễn Tất Thành, Thành phố HCM"
+        android:minHeight="48dp"
+        />
+
+    <EditText
+
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textSize="20sp"
+        android:textColorHint="@color/black"
+        android:drawableLeft="@drawable/lienhe"
+        android:hint="Số điện thoại: 0123 456 7890"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textColorHint="@color/black"
+        android:textSize="20sp"
+        android:hint="Hỗ trợ khách hàng: support@example.com"
+        android:minHeight="48dp" />
+
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:textColorHint="@color/black"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textSize="20sp"
+        android:drawableLeft="@drawable/goimua"
+        android:hint="Đường dây nóng đặt tour: 1800545457 (Nhấn 1)"
+        android:minHeight="48dp" />
+
+    <EditText
+        android:drawablePadding="20dp"
+        android:textColorHint="@color/black"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:textSize="20sp"
+        android:drawableLeft="@drawable/khieunai"
+        android:hint="Dịch vụ hỗ trợ khách hàng: 1800545457 (Nhấn 2)"
+        android:minHeight="48dp" />
+
+</LinearLayout>
