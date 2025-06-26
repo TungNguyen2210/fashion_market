@@ -14,8 +14,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.example.travel.R;
+import com.example.tech.R;
+//import com.example.travel.R;
 import com.example.travel.SERVER;
 import com.example.travel.activity.GioHang;
 import com.example.travel.model.Product;

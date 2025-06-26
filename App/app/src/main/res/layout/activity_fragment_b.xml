@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="Ứng dụng Đặt Tour Du Lịch"
+        android:text="Ứng dụng đặt quần áo "
         android:textColor="#F55050"
         android:textSize="30sp"
         android:textStyle="bold" />
@@ -25,7 +25,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:textSize="20dp"
-        android:hint="Khám phá các xu hướng du lịch mới nhất"
+        android:hint="Khám phá các xu hướng thời trang mới nhất"
         android:minHeight="48dp" />
 
 
@@ -38,7 +38,7 @@
         android:textSize="20sp"
         android:textColorHint="@color/black"
         android:drawableLeft="@drawable/diachi"
-        android:hint="Địa chỉ: 123 Nguyễn Tất Thành, Thành phố HCM"
+        android:hint="Địa chỉ: 97 Man Thiện , Hiệp Phú, Thành phố HCM"
         android:minHeight="48dp"
         />
 
@@ -73,7 +73,7 @@
         android:layout_marginBottom="20dp"
         android:textSize="20sp"
         android:drawableLeft="@drawable/goimua"
-        android:hint="Đường dây nóng đặt tour: 1800545457 (Nhấn 1)"
+        android:hint="Đường dây nóng đặt quần áo: 1800545457 (Nhấn 1)"
         android:minHeight="48dp" />
 
     <EditText

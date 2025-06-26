@@ -8,8 +8,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.example.travel.R;
+import com.example.tech.R;
+//import com.example.travel.R;
 import com.example.travel.SERVER;
 
 import org.json.JSONException;

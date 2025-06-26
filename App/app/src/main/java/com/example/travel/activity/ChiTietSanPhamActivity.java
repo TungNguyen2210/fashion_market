@@ -19,7 +19,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.example.travel.R;
+import com.example.tech.R;
+//import com.example.travel.R;
 import com.example.travel.SERVER;
 import com.example.travel.adapter.ReviewAdapter;
 import com.example.travel.model.Review;
@@ -253,7 +254,7 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
                 // Xử lý khi gửi request thành công
                 String responseData = response.body().string();
                 reloadData();
-               // Toast.makeText(ChiTietSanPhamActivity.this, "Đánh giá thành công", Toast.LENGTH_SHORT).show();
+                // Toast.makeText(ChiTietSanPhamActivity.this, "Đánh giá thành công", Toast.LENGTH_SHORT).show();
                 if(responseData == "Đánh giá đã được lưu thành công.")
                 {
                     runOnUiThread(new Runnable() {

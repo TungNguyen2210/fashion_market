@@ -8,7 +8,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.travel.R;
+import com.example.tech.R;
+//import com.example.travel.R;
 import com.example.travel.model.Review;
 
 import java.util.List;

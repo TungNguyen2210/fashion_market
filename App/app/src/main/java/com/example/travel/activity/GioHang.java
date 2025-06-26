@@ -14,8 +14,8 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.example.travel.R;
+import com.example.tech.R;
+//import com.example.travel.R;
 import com.example.travel.adapter.CartAdapter;
 import com.example.travel.model.Product;
 import com.google.gson.Gson;
