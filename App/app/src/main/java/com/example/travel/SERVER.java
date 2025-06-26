@@ -2,7 +2,9 @@ package com.example.travel;
 
 
 public class SERVER {
-    public static String serverip = "http://172.21.112.1:3100";
+//    public static String serverip = "http://172.21.112.1:3100";
+public static String serverip = "http://10.0.2.2:3100";
+
     public static String chudepath = serverip + "/api/category/search";
     public static String laysanphampath = serverip + "/api/product/search";
     public static String imagepath = serverip + "/api/hinhanh/";

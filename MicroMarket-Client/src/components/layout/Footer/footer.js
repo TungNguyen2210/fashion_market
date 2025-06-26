@@ -32,8 +32,8 @@ function _Footer() {
                 </Col>
                 <Col span={5} className="footer">
                     <strong style={{ color: "#FFFFFF", fontSize: 20, cursor: "pointer" }}>Địa chỉ</strong>
-                    <p style={{ marginTop: 20, color: "#FFFFFF", fontWeight: 400, fontSize: 14, cursor: "pointer" }}>Chi nhánh 1: 59 Đỗ Quang, Phường Trung Hoà, Quận 12, TP.Hồ Chí Minh</p>
-                    <p style={{ marginTop: 20, color: "#FFFFFF", fontWeight: 400, fontSize: 14, cursor: "pointer" }}>Chi nhánh 2: 94E-94F Đường Láng, Phường Ngã Tư Sở, Quận 1, TP.Hồ Chí Minh</p>
+                    <p style={{ marginTop: 20, color: "#FFFFFF", fontWeight: 400, fontSize: 14, cursor: "pointer" }}>Chi nhánh 1: 97 Man Thiện ,Hiệp Phú , Thành phố Thủ Đức,TP.Hồ Chí Minh </p>
+                    <p style={{ marginTop: 20, color: "#FFFFFF", fontWeight: 400, fontSize: 14, cursor: "pointer" }}>Chi nhánh 2: Đa Kao, Quận 1, TP.Hồ Chí Minh</p>
 
                 </Col>
                 <Col span={4} style={{marginLeft: 15}}>
@@ -43,7 +43,7 @@ function _Footer() {
                             <SocialIcon url="https://www.youtube.com/" style={{ height: 35, width: 35, cursor: "pointer" }} />
                         </Col>
                         <Col span={6}>
-                            <SocialIcon url="https://www.facebook.com/share/FtJZ8hMNwqS3YBRg/?mibextid=LQQJ4d" style={{ height: 35, width: 35, cursor: "pointer" }} />
+                            <SocialIcon url="https://www.facebook.com/betuncutefomaque.ec.o.ec?locale=vi_VN" style={{ height: 35, width: 35, cursor: "pointer" }} />
                         </Col>
                         <Col span={6}>
                             <SocialIcon url="https://www.instagram.com/qhuy.n_/?fbclid=IwAR2f4MgLZzSJMeUpgws1CWdjJVw0w5ooEieEn8f5E3EarifbFswHG934qsI" style={{ height: 35, width: 35, cursor: "pointer" }} />
@@ -57,7 +57,7 @@ function _Footer() {
             </Row>
             <div style={{ textAlign: 'center' }}>
                 <Divider style={{ padding: 0 }} />
-                <p style={{ color: "#FFFFFF", fontSize: 13 }}>Copyright@ 2024 Created by FiveStore</p>
+                <p style={{ color: "#FFFFFF", fontSize: 13 }}> ThanhTung </p>
                 <p style={{ color: "#FFFFFF", fontSize: 13 }}>Điện thoại: (+84) 354522975 - (+84) 912150371</p>
             </div>
         </Footer>

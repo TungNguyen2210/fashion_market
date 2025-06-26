@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="Kết Nối Với Ứng Dụng Đặt Tour Du Lịch Của Chúng Tôi"
+        android:text="Kết Nối Với Ứng Dụng Thời Trang Của Chúng Tôi"
         android:textColor="#F55050"
         android:textSize="30sp"
         android:textStyle="bold" />
@@ -26,7 +26,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:drawableLeft="@drawable/facebook"
-        android:hint="Facebook: Ứng Dụng Đặt Tour Du Lịch"
+        android:hint="Facebook: Ứng Dụng Đặt Quần Áo "
         android:textSize="20sp"
         android:minHeight="48dp"
         />
@@ -38,7 +38,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:drawableLeft="@drawable/instagram"
-        android:hint="Instagram: @tourbookingapp"
+        android:hint="Instagram: @Fashionapp"
         android:textSize="20sp"
         android:minHeight="48dp" />
 
@@ -49,7 +49,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:textSize="20sp"
-        android:hint="YouTube: Tour Booking Official"
+        android:hint="YouTube: Fashion Stars Official"
         android:drawableLeft="@drawable/youtube"
         android:minHeight="48dp" />
 
@@ -61,7 +61,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
         android:drawableLeft="@drawable/gmail"
-        android:hint="Email: contact@tourbookingapp.com"
+        android:hint="Email: contact@Fashionapp.com"
         android:textSize="20sp"
         android:minHeight="48dp" />
 
@@ -72,7 +72,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
         android:drawableLeft="@drawable/tiktok"
-        android:hint="Tiktok: @tourbookingapp"
+        android:hint="Tiktok: @fashionapp"
         android:textSize="20sp"
         android:minHeight="48dp" />
 

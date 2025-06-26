@@ -13,7 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="Về Ứng Dụng Đặt Tour Du Lịch Của Chúng Tôi"
+        android:text="Về Ứng Dụng Thời Trang Của Chúng Tôi"
         android:textColor="#F55050"
         android:textSize="30dp"
         android:textStyle="bold" />
@@ -26,7 +26,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:drawableLeft="@drawable/cauchuyen"
-        android:hint="Chuyện Của Chúng Tôi - Mang Trải Nghiệm Du Lịch Đến Bạn"
+        android:hint="Chuyện Của Chúng Tôi - Mang Trải Nghiệm Thời Trang Đến Bạn"
         android:textSize="20sp"
         android:minHeight="48dp"
         />
@@ -39,7 +39,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:drawableLeft="@drawable/tuyendung"
-        android:hint="Tham Gia Đội Ngũ Du Lịch Của Chúng Tôi - Cơ Hội Nghề Nghiệp"
+        android:hint="Bắt kịp xu hướng thời trang với giá hấp dẫn"
         android:textSize="20sp"
         android:minHeight="48dp" />
 
@@ -50,7 +50,7 @@
         android:layout_marginBottom="20dp"
         android:textColorHint="@color/black"
         android:textSize="20sp"
-        android:hint="Khám Phá Các Tour Du Lịch Toàn Cầu"
+        android:hint="Khám Phá Các Tin Tức Thời Trang Toàn Cầu"
         android:drawableLeft="@drawable/xuatkhau"
         android:minHeight="48dp" />
 
