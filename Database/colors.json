@@ -1,0 +1,43 @@
+[{
+  "_id": {
+    "$oid": "65da1222cb029c0c3886433f"
+  },
+  "name": "Màu xanh",
+  "description": "#1c78fa",
+  "image": "http://localhost:3100/uploads\\1708790306181-Color_circle_(hue-sat).png",
+  "createdAt": {
+    "$date": "2024-02-24T15:58:26.192Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T15:58:26.192Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "65da1233cb029c0c38864343"
+  },
+  "name": "màu trắng",
+  "description": "#ffffff",
+  "image": "http://localhost:3100/uploads\\1708790323515-Color_circle_(hue-sat).png",
+  "createdAt": {
+    "$date": "2024-02-24T15:58:43.524Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T15:58:43.524Z"
+  },
+  "__v": 0
+},{
+  "_id": {
+    "$oid": "65da1240cb029c0c38864347"
+  },
+  "name": "Màu đỏ",
+  "description": "#ff0000",
+  "image": "http://localhost:3100/uploads\\1708790336012-Color_circle_(hue-sat).png",
+  "createdAt": {
+    "$date": "2024-02-24T15:58:56.024Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T15:58:56.024Z"
+  },
+  "__v": 0
+}]

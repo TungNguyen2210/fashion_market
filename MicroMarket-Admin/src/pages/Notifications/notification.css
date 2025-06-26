@@ -1,0 +1,57 @@
+.dialog__notification{
+    max-width: 100%;
+    background-color: #ffffff;
+    border-radius: 10px;
+    -webkit-box-shadow: 0 1px 20px 0 rgba(69,90,100,.08);
+    box-shadow: 0 1px 20px 0 rgba(69,90,100,.08);
+    justify-content: center;
+}
+
+#container__notification{
+    margin: 20px 20px 0px 20px;
+    height: auto;
+}
+
+.ck-rounded-corners .ck.ck-editor__main>.ck-editor__editable, .ck.ck-editor__main>.ck-editor__editable.ck-rounded-corners{
+    max-height: 300px;
+}
+
+.item-mail{
+    box-shadow: 0px 0px 0px 0px;
+    background: white;
+    color: rgb(0, 0, 0);
+}
+
+
+.site-layout-background-content{
+    border-left: 0.1px solid #ebe9f1;
+}
+
+.button-hover{
+    color: white;
+    background: rgb(236, 128, 128);
+    border-color: rgb(236, 128, 128);
+}
+
+.button-hover:hover{
+    border-color: rgb(236, 128, 128);
+}
+
+.notification-content{
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; 
+    max-height: 27px;
+    margin: 0 0 1em 0;
+    overflow: hidden; 
+}
+
+.ant-pagination-item{
+    border-radius: 10px;
+}
+
+.ant-pagination-prev .ant-pagination-item-link, .ant-pagination-next .ant-pagination-item-link{
+    border-radius: 10px;
+}
+  
+

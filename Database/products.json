@@ -1,0 +1,168 @@
+[{
+  "_id": {
+    "$oid": "6512f813a5d61e07c6ee553d"
+  },
+  "name": "Chân váy vạt chéo",
+  "price": 40000,
+  "promotion": 39000,
+  "quantity": 5,
+  "description": "<div>\n</div><strong>Chất liệu:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">vải tuýp si</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Kiểu dáng:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">chân váy thiết kế vạt chéo, cạp đính đá</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Sản phẩm kết hợp:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;áo đen H482 - áo trắng H503</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Thông tin người mẫu:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</span><div>\n</div>",
+  "image": "http://localhost:3100/uploads\\1708750941230-h482bf4j012401_p699k_h505bf2c012410_p549k__6__a0accbdf4d264b31bcfc302a971910c1.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708750941230-h482bf4j012401_p699k_h505bf2c012410_p549k__6__a0accbdf4d264b31bcfc302a971910c1.jpg"
+  ],
+  "color": [],
+  "category": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "createdAt": {
+    "$date": "2023-09-26T15:26:11.689Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-25T17:07:22.297Z"
+  },
+  "__v": 0,
+  "url_book": "url"
+},{
+  "_id": {
+    "$oid": "6512f83ea5d61e07c6ee5543"
+  },
+  "name": "Áo khoác vạt sóng đính đá",
+  "price": 50000,
+  "promotion": 40000,
+  "quantity": 9,
+  "description": "<div style=\"box-sizing: border-box; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"><strong>Chất liệu:&nbsp;</strong>vải tafta<br style=\"box-sizing: inherit; margin: 0px; padding: 0px;\"><strong>Kiểu dáng:&nbsp;</strong>áo khoác&nbsp;thiết kế vạt sóng, đính đá</div><div style=\"box-sizing: border-box; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"><strong>Sản phẩm kết hợp:</strong>&nbsp;chân váy trắng H493 - chân váy đen H492<br style=\"box-sizing: inherit; margin: 0px; padding: 0px;\"><strong>Thông tin người mẫu:</strong>&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</div><div><br></div>",
+  "image": "http://localhost:3100/uploads\\1708750967379-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708750967379-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg"
+  ],
+  "color": [],
+  "category": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "createdAt": {
+    "$date": "2023-09-26T15:26:54.948Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-25T17:07:22.295Z"
+  },
+  "__v": 0,
+  "url_book": "url"
+},{
+  "_id": {
+    "$oid": "6512f8a6a5d61e07c6ee555e"
+  },
+  "name": "Chân váy dáng chữ A",
+  "price": 20000,
+  "promotion": 18000,
+  "quantity": 0,
+  "description": "<div>\n</div><strong>Chất liệu:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">vải tuýp si</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Kiểu dáng:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">chân váy thiết kế dáng chữ A, tone màu nâu trơn</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Sản phẩm kết hợp:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;áo H480</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Thông tin người mẫu:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</span><div>\n</div>",
+  "image": "http://localhost:3100/uploads\\1708750994409-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708750994409-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg"
+  ],
+  "color": [],
+  "category": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "createdAt": {
+    "$date": "2023-09-26T15:28:38.962Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T05:03:14.505Z"
+  },
+  "__v": 0,
+  "url_book": "url"
+},{
+  "_id": {
+    "$oid": "6512f8cfa5d61e07c6ee5564"
+  },
+  "name": "Váy tiệc tay bồng",
+  "price": 33000,
+  "promotion": 26000,
+  "quantity": 0,
+  "description": "<div>\n</div><strong>Chất liệu:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">vải tafta</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Kiểu dáng:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">váy midi thiết kế dáng chữ A, tay bồng, cúp ngực</span><div><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"></div><strong>Thông tin người mẫu:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</span><div>\n</div>",
+  "image": "http://localhost:3100/uploads\\1708751019948-h495bf3d112401_p999k__4__91777a0ffefd496796698080b1f33015_master.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708751019948-h495bf3d112401_p999k__4__91777a0ffefd496796698080b1f33015_master.jpg"
+  ],
+  "color": [],
+  "category": {
+    "$oid": "643cd89a79b4192efedda4ee"
+  },
+  "createdAt": {
+    "$date": "2023-09-26T15:29:19.098Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T05:03:40.037Z"
+  },
+  "__v": 0,
+  "url_book": "url",
+  "supplier": {
+    "$oid": "65d97af9bc3e36f1fda8c1a5"
+  }
+},{
+  "_id": {
+    "$oid": "6512f948a5d61e07c6ee5584"
+  },
+  "name": "Chân váy dáng chữ A",
+  "price": 20000,
+  "promotion": 14800,
+  "quantity": 0,
+  "description": "<div style=\"box-sizing: border-box; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"><strong>Chất liệu:&nbsp;</strong>vải tổng hợp cao cấp<br style=\"box-sizing: inherit; margin: 0px; padding: 0px;\"><strong>Kiểu dáng:&nbsp;</strong>áo sơ mi thiết kể cổ bẻ, đính nơ, phối nẹp phía trước</div><div style=\"box-sizing: border-box; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\"><strong>Sản phẩm kết hợp:</strong>&nbsp;chân váy H504<br style=\"box-sizing: inherit; margin: 0px; padding: 0px;\"><strong>Thông tin người mẫu:</strong>&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</div><div><br></div>",
+  "image": "http://localhost:3100/uploads\\1708751053643-h503bf1a012410_p499k_h504bf2c012401_p549k__5__dc3de86da3e643e0b23f58ee85596cf9_master.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708751053643-h503bf1a012410_p499k_h504bf2c012401_p549k__5__dc3de86da3e643e0b23f58ee85596cf9_master.jpg"
+  ],
+  "color": [],
+  "category": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "createdAt": {
+    "$date": "2023-09-26T15:31:20.236Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-24T05:04:13.696Z"
+  },
+  "__v": 0,
+  "supplier": {
+    "$oid": "65d97af9bc3e36f1fda8c1a5"
+  },
+  "url_book": "url"
+},{
+  "_id": {
+    "$oid": "65d97e2ccb029c0c388642cb"
+  },
+  "name": "Chân váy vạt chéo",
+  "price": 20000,
+  "promotion": 10000,
+  "quantity": 19,
+  "description": "<div><strong>Chất liệu:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">vải tuýp si</span><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\">​<strong>Kiểu dáng:&nbsp;</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">chân váy thiết kế vạt chéo, cạp đính đá</span><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\">​<strong>Sản phẩm kết hợp:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;áo đen H482 - áo trắng H503</span><br style=\"box-sizing: inherit; margin: 0px; padding: 0px; color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;\">​<strong>Thông tin người mẫu:</strong><span style=\"color: rgb(34, 34, 34); font-family: Montserrat, Arial, sans-serif; font-size: 14px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;\">&nbsp;cao 1m60, nặng 50kg, số đo 84 - 60 - 90&nbsp;mặc sản phẩm size S</span><br><br><br></div>",
+  "image": "http://localhost:3100/uploads\\1708752428115-anh.jpg",
+  "slide": [
+    "http://localhost:3100/uploads\\1708752428115-anh.jpg"
+  ],
+  "color": [
+    "#1c78fa",
+    "#ffffff"
+  ],
+  "category": {
+    "$oid": "643cd88879b4192efedda4e6"
+  },
+  "supplier": {
+    "$oid": "65d97af9bc3e36f1fda8c1a5"
+  },
+  "inventory": {
+    "quantityOnHand": 0,
+    "_id": {
+      "$oid": "65d97e2ccb029c0c388642cc"
+    }
+  },
+  "createdAt": {
+    "$date": "2024-02-24T05:27:08.170Z"
+  },
+  "updatedAt": {
+    "$date": "2024-02-25T16:46:14.468Z"
+  },
+  "__v": 1
+}]
