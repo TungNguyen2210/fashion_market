@@ -14,6 +14,7 @@ import com.example.tech.R;
 //import com.example.travel.R;
 
 
+import com.example.tech.activity.FragmentB;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 
@@ -40,16 +41,16 @@ public class MainActivity extends AppCompatActivity {
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int id = item.getItemId();
                 switch (id) {
-                    case R.id.mnuHome:
+                    case R.id.nav_home:
                         fragment = new FragmentA();
                         break;
-                    case R.id.mnuDashboard:
-                       fragment = new FragmentB();
+                    case R.id.nav_product:
+                        fragment = new FragmentB();
                         break;
-                    case R.id.mnuNotifications:
+                    case R.id.nav_notification:
                         fragment = new FragmentC();
                         break;
-                    case R.id.mnuSuppervíor:
+                    case R.id.nav_profile:
                       fragment = new FragmentD();
                         break;
                 }

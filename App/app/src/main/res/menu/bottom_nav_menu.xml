@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/mnuHome"
-        android:icon="@drawable/ic_baseline_home_24"
-        android:title="Home" />
+        android:id="@+id/nav_home"
+        android:icon="@android:drawable/ic_menu_compass"
+        android:title="Trang chủ" />
     <item
-        android:id="@+id/mnuDashboard"
-        android:icon="@drawable/ic_baseline_dashboard_24"
-        android:title="Dashboard" />
+        android:id="@+id/nav_product"
+        android:icon="@android:drawable/ic_menu_slideshow"
+        android:title="Đơn hàng" />
     <item
-        android:id="@+id/mnuNotifications"
-        android:icon="@drawable/ic_baseline_notifications_24"
-        android:title="Notifications" />
+        android:id="@+id/nav_notification"
+        android:icon="@android:drawable/ic_popup_reminder"
+        android:title="Tin tức" />
     <item
-        android:id="@+id/mnuSuppervíor"
-        android:icon="@drawable/ic_baseline_supervisor_account_24"
-        android:title="Friends" />
+        android:id="@+id/nav_profile"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="Cá nhân" />
 </menu>

@@ -1,9 +1,8 @@
 package com.example.travel.activity;
 
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,157 +13,127 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.example.tech.R;
-//import com.example.travel.R;
-import com.example.travel.adapter.CartAdapter;
-import com.example.travel.model.Product;
+import com.example.tech.adapter.CartAdapter;
+import com.example.tech.model.Product;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import com.paypal.android.sdk.payments.PayPalConfiguration;
-import com.paypal.android.sdk.payments.PayPalPayment;
-import com.paypal.android.sdk.payments.PayPalService;
-import com.paypal.android.sdk.payments.PaymentActivity;
-import com.paypal.android.sdk.payments.PaymentConfirmation;
-
 public class GioHang extends AppCompatActivity {
 
+    private static final String TAG = "GioHang";
     private ListView lvcart;
+    private TextView tvTotalMoney, tvEmptyCart;
+    private Button btnContinueShopping, btnClearCart;
+    private Toolbar toolbar;
+
     private ArrayList<Product> cartItems;
     private CartAdapter cartAdapter;
-
-    private static final int PAYPAL_REQUEST_CODE = 123;
-
-    private static PayPalConfiguration paypalConfig = new PayPalConfiguration()
-            .environment(PayPalConfiguration.ENVIRONMENT_SANDBOX) // Thay thế bằng ENVIRONMENT_PRODUCTION trong trường hợp sản phẩm thực tế.
-            .clientId("AeyFK0Tomu06wnDGB4dmS3LMICoI_YezaWZBdHy6upiZ3S1YBDbmeJdKEQG2hXKnNf-XYcCE2lOgpVd2");
-
-    private Button btnPayPal;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gio_hang);
+
+        // Ánh xạ các view
         anhxa();
 
-        // Retrieve the selected product details from the intent
+        // Thiết lập toolbar
+        setupToolbar();
+
+        // Tải danh sách giỏ hàng từ SharedPreferences
+        loadCartItems();
+
+        // Xử lý sản phẩm mới từ intent nếu có
+        handleNewProductFromIntent();
+
+        // Cập nhật ListView giỏ hàng
+        updateCartListView();
+
+        // Lưu danh sách giỏ hàng vào SharedPreferences
+        saveCartItems();
+
+        // Tính và hiển thị tổng tiền
+        updateTotalPrice();
+
+        // Thiết lập sự kiện cho các nút
+        setupButtonListeners();
+    }
+
+    private void setupToolbar() {
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Giỏ Hàng");
+
+            toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onBackPressed();
+                }
+            });
+        }
+    }
+
+    private void setupButtonListeners() {
+        // Thiết lập sự kiện cho nút tiếp tục mua sắm
+        btnContinueShopping.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish(); // Quay lại màn hình trước đó
+            }
+        });
+
+        // Thiết lập sự kiện cho nút xóa giỏ hàng
+        btnClearCart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                clearCart();
+            }
+        });
+    }
+
+    private void handleNewProductFromIntent() {
         Intent intent = getIntent();
+        if (intent == null) return;
+
+        String id = intent.getStringExtra("id");
         String name = intent.getStringExtra("name");
         String price = intent.getStringExtra("price");
         String imageUrl = intent.getStringExtra("img");
-        String id = intent.getStringExtra("id");
 
-        // Create a new Product object with the retrieved details
-        Product selectedProduct = new Product(name, price, imageUrl);
+        // Kiểm tra có thông tin sản phẩm mới hay không
+        if (name != null && price != null) {
+            Log.d(TAG, "Nhận sản phẩm mới: " + name + " - " + price);
 
-        // Load the existing cart items from SharedPreferences
-        loadCartItems();
+            // Tạo đối tượng Product mới
+            Product selectedProduct = new Product(id, name, price, imageUrl, 1);
 
-        // Check if selectedProduct has data
-        // Check if selectedProduct has data and is not null
-        if (selectedProduct.getName() != null && selectedProduct.getPrice() != null) {
-            // Check if the product already exists in the cart
+            // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
             boolean productExists = false;
             for (Product cartItem : cartItems) {
-                if (cartItem.getName().equals(selectedProduct.getName())) {
-                    // Increase the quantity if the product already exists
+                if (cartItem.getId() != null && cartItem.getId().equals(id)) {
+                    // Tăng số lượng nếu sản phẩm đã tồn tại
                     int quantity = cartItem.getQuantity();
                     cartItem.setQuantity(quantity + 1);
                     productExists = true;
+                    Log.d(TAG, "Sản phẩm đã tồn tại, tăng số lượng lên " + (quantity + 1));
                     break;
                 }
             }
 
-            // If the product does not exist, add it to the cart
+            // Nếu sản phẩm chưa có trong giỏ hàng, thêm mới
             if (!productExists) {
-                selectedProduct.setQuantity(1);
                 cartItems.add(selectedProduct);
+                Log.d(TAG, "Thêm sản phẩm mới vào giỏ hàng");
             }
         }
-
-
-        // Update the cart list view
-        updateCartListView();
-
-        // Save the updated cart items to SharedPreferences
-        saveCartItems();
-
-        // Calculate and display the total price
-        int totalPrice = calculateTotalPrice();
-        updateTotalPrice(totalPrice);
-
-        btnPayPal = findViewById(R.id.btnPayPal);
-        btnPayPal.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                makePayPalPayment();
-            }
-        });
-
-    }
-
-    private void makePayPalPayment() {
-        int totalPrice = calculateTotalPrice();
-        PayPalPayment payment = new PayPalPayment(new BigDecimal(String.valueOf(totalPrice)), "USD", "Payment Description",
-                PayPalPayment.PAYMENT_INTENT_SALE);
-
-        Intent intent = new Intent(this, PaymentActivity.class);
-        //putting the paypal configuration to the intent from the configuration we have created above.
-        intent.putExtra(PayPalService.EXTRA_PAYPAL_CONFIGURATION, paypalConfig);
-        // Putting paypal payment to the intent on below line.
-        intent.putExtra(PaymentActivity.EXTRA_PAYMENT, payment);
-        // Starting the intent activity for result
-        // the request code will be used on the method onActivityResult
-        startActivityForResult(intent, PAYPAL_REQUEST_CODE);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        // If the result is from paypal request code
-        if (requestCode == PAYPAL_REQUEST_CODE) {
-            // If the result is OK i.e. user has not canceled the payment
-            if (resultCode == Activity.RESULT_OK) {
-                // Getting the payment confirmation
-                PaymentConfirmation confirm = data.getParcelableExtra(PaymentActivity.EXTRA_RESULT_CONFIRMATION);
-                // if confirmation is not null
-                if (confirm != null) {
-                    try {
-                        // Getting the payment details
-                        String paymentDetails = confirm.toJSONObject().toString(4);
-                        // on below line we are extracting json response and displaying it in a text view.
-                        JSONObject payObj = new JSONObject(paymentDetails);
-                        String payID = payObj.getJSONObject("response").getString("id");
-                        String state = payObj.getJSONObject("response").getString("state");
-                        // on below line displaying a toast message with the payment status
-                        Toast.makeText(this, "Payment : " + state + " with payment id is : " + payID, Toast.LENGTH_SHORT).show();
-                    } catch (JSONException e) {
-                        // handling json exception on below line
-                        Log.e("Error", "an extremely unlikely failure occurred: ", e);
-                    }
-                }
-            } else if (resultCode == Activity.RESULT_CANCELED) {
-                // on below line we are displaying a toast message as user cancelled the payment.
-                Toast.makeText(this, "User cancelled the payment..", Toast.LENGTH_SHORT).show();
-            } else if (resultCode == PaymentActivity.RESULT_EXTRAS_INVALID) {
-                // on below line displaying toast message for invalid payment config.
-                Toast.makeText(this, "Invalid payment config was submitted..", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        stopService(new Intent(this, PayPalService.class));
-        super.onDestroy();
     }
 
     private int calculateTotalPrice() {
@@ -173,8 +142,16 @@ public class GioHang extends AppCompatActivity {
             String price = product.getPrice();
             int quantity = product.getQuantity();
             if (price != null) {
-                int numericPrice = Integer.parseInt(price.replaceAll("[\\D]", ""));
-                totalPrice += numericPrice * quantity;
+                try {
+                    // Loại bỏ các ký tự không phải số
+                    String numericPrice = price.replaceAll("[^\\d]", "");
+                    if (!numericPrice.isEmpty()) {
+                        int priceValue = Integer.parseInt(numericPrice);
+                        totalPrice += priceValue * quantity;
+                    }
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "Lỗi chuyển đổi giá: " + price, e);
+                }
             }
         }
         return totalPrice;
@@ -182,6 +159,11 @@ public class GioHang extends AppCompatActivity {
 
     private void anhxa() {
         lvcart = findViewById(R.id.lvcart);
+        tvTotalMoney = findViewById(R.id.tvtotalmoney);
+        tvEmptyCart = findViewById(R.id.tvEmptyCart);
+        btnContinueShopping = findViewById(R.id.btnContinueShopping);
+        btnClearCart = findViewById(R.id.btnClearCart);
+        toolbar = findViewById(R.id.toolbar); // Chắc chắn ID này tồn tại trong layout của bạn
     }
 
     private void loadCartItems() {
@@ -192,14 +174,48 @@ public class GioHang extends AppCompatActivity {
             Gson gson = new Gson();
             Type type = new TypeToken<ArrayList<Product>>() {}.getType();
             cartItems = gson.fromJson(jsonCart, type);
-        } else {
+        }
+
+        if (cartItems == null) {
             cartItems = new ArrayList<>();
+        }
+
+        // Đồng bộ với biến static cartItems nếu có
+        if (Product.cartItems != null && !Product.cartItems.isEmpty()) {
+            // Nếu có sản phẩm trong cartItems static, thêm hoặc cập nhật chúng vào cartItems local
+            for (Product staticProduct : Product.cartItems) {
+                boolean found = false;
+                for (int i = 0; i < cartItems.size(); i++) {
+                    Product localProduct = cartItems.get(i);
+                    if (staticProduct.getId() != null && staticProduct.getId().equals(localProduct.getId())) {
+                        // Cập nhật sản phẩm đã tồn tại
+                        cartItems.set(i, staticProduct);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    // Thêm sản phẩm mới
+                    cartItems.add(staticProduct);
+                }
+            }
+
+            // Xóa danh sách static để tránh trùng lặp
+            Product.cartItems.clear();
         }
     }
 
     private void updateCartListView() {
-        cartAdapter = new CartAdapter(this, cartItems);
-        lvcart.setAdapter(cartAdapter);
+        if (cartItems.isEmpty()) {
+            lvcart.setVisibility(View.GONE);
+            tvEmptyCart.setVisibility(View.VISIBLE);
+        } else {
+            lvcart.setVisibility(View.VISIBLE);
+            tvEmptyCart.setVisibility(View.GONE);
+
+            cartAdapter = new CartAdapter(this, cartItems);
+            lvcart.setAdapter(cartAdapter);
+        }
     }
 
     private void saveCartItems() {
@@ -211,9 +227,56 @@ public class GioHang extends AppCompatActivity {
         editor.apply();
     }
 
-    public void updateTotalPrice(int totalPrice) {
-        TextView tvTotalMoney = findViewById(R.id.tvtotalmoney);
-        tvTotalMoney.setText(String.format(Locale.getDefault(), "%,dđ", totalPrice));
+    public void updateTotalPrice() {
+        int totalPrice = calculateTotalPrice();
+        NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
+        tvTotalMoney.setText(formatter.format(totalPrice) + "đ");
     }
 
+    public void updateProductQuantity(int position, int newQuantity) {
+        if (position >= 0 && position < cartItems.size()) {
+            if (newQuantity <= 0) {
+                // Xóa sản phẩm nếu số lượng <= 0
+                cartItems.remove(position);
+                Toast.makeText(this, "Đã xóa sản phẩm khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
+            } else {
+                // Cập nhật số lượng sản phẩm
+                cartItems.get(position).setQuantity(newQuantity);
+            }
+
+            // Cập nhật ListView và lưu thay đổi
+            cartAdapter.notifyDataSetChanged();
+            saveCartItems();
+            updateTotalPrice();
+
+            // Kiểm tra nếu giỏ hàng trống
+            if (cartItems.isEmpty()) {
+                updateCartListView();
+            }
+        }
+    }
+
+    public void removeProduct(int position) {
+        if (position >= 0 && position < cartItems.size()) {
+            cartItems.remove(position);
+            cartAdapter.notifyDataSetChanged();
+            saveCartItems();
+            updateTotalPrice();
+
+            // Kiểm tra nếu giỏ hàng trống
+            if (cartItems.isEmpty()) {
+                updateCartListView();
+            }
+
+            Toast.makeText(this, "Đã xóa sản phẩm khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void clearCart() {
+        cartItems.clear();
+        saveCartItems();
+        updateCartListView();
+        updateTotalPrice();
+        Toast.makeText(this, "Đã xóa tất cả sản phẩm khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
+    }
 }
