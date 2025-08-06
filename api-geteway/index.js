@@ -11,6 +11,7 @@ app.use(express.static('public'));
 const multer = require('multer');
 
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 
 const PORT = process.env.PORT || _CONST.PORT;
@@ -548,6 +549,41 @@ app.delete("/api/order/:id", async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
+//Thêm phần đánh giá sản phẩm
+
+app.post("/api/order/:id/rating", async (req, res) => {
+    try {
+        const response = await axios.post(`http://localhost:3300/api/order/${req.params.id}/rating`, req.body, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get("/api/reviews/:productId", async (req, res) => {
+    try {
+        
+        const response = await axios.get(`http://localhost:3300/api/order/reviews/${req.params.productId}`, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        console.log("Trong api gateway, lấy đánh giá sản phẩm ", req.params.productId);
+        res.json(response.data);
+    } catch (error) {
+        console.error("Lỗi lấy đánh giá sản phẩm trong api gateway ", error);
+        res.status(error.response?.status || 500).send(error.response?.data || "Gateway error");
+    }
+});
+
+
+
 
 /* ========== API PRODUCT ============ */
 

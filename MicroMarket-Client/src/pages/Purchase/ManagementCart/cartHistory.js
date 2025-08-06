@@ -1,7 +1,9 @@
 import {
   Breadcrumb, Card, Form,
   Input,
-  Select, Spin, Table, Tag, Typography, notification
+  Select, Spin, Table, Tag, Typography, notification,
+
+  Modal, Button, Rate
 } from "antd";
 import moment from "moment";
 import React, { useEffect, useState } from "react";
@@ -9,7 +11,6 @@ import { useHistory, useParams } from "react-router-dom";
 import axiosClient from "../../../apis/axiosClient";
 import eventApi from "../../../apis/eventApi";
 import productApi from "../../../apis/productApi";
-
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -27,12 +28,78 @@ const CartHistory = () => {
   const [lengthForm, setLengthForm] = useState();
   const [form] = Form.useForm();
   const [template_feedback, setTemplateFeedback] = useState();
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [comment, setComment] = useState("");
+
+
+
+
   let { id } = useParams();
   const history = useHistory();
 
   const hideModal = () => {
     setVisible(false);
   };
+
+
+  const showModal = (order) => {
+    setSelectedOrder(order);
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+    setSelectedOrder(null);
+  };
+  const handleRatingSubmit = async () => {
+    try {
+      if (!ratingValue) {
+        notification.error({
+          message: "Lỗi",
+          description: "Vui lòng chọn số sao đánh giá.",
+        });
+        return;
+      }
+
+      const payload = {
+        rating: ratingValue,
+        comment: comment || "",
+      };
+
+      await axiosClient.post(`/order/${selectedOrder._id}/rating`, payload);
+
+      notification.success({
+        message: "Thành công",
+        description: "Cảm ơn bạn đã đánh giá đơn hàng!",
+      });
+
+
+      // Cập nhật trạng thái đánh giá trong orderList
+      setOrderList((prev) => ({
+        ...prev,
+        data: prev.data.map((order) =>
+          order._id === selectedOrder._id
+            ? { ...order, rated: true, rating: ratingValue, comment }
+            : order
+        ),
+      }));
+
+
+      handleModalClose();
+      setRatingValue(0);
+      setComment("");
+    } catch (error) {
+      notification.error({
+        message: "Lỗi",
+        description: "Không thể gửi đánh giá. Vui lòng thử lại.",
+      });
+    }
+  };
+
+
 
   const handleJointEvent = async (id) => {
     try {
@@ -277,6 +344,26 @@ const CartHistory = () => {
         <span>{moment(createdAt).format("DD/MM/YYYY HH:mm")}</span>
       ),
     },
+
+    {
+      title: "Đánh giá",
+      key: "action",
+      render: (text, record) => {
+        const isDelivered = record.status === "final";
+        const isRated = record.rated === true;
+
+        return isDelivered && !isRated ? (
+          <Button type="primary" onClick={() => showModal(record)}>
+            Đánh giá
+          </Button>
+        ) : isRated ? (
+          <Tag color="green">Đã đánh giá</Tag>
+        ) : null;
+      },
+    }
+
+
+
   ];
 
   useEffect(() => {
@@ -297,7 +384,7 @@ const CartHistory = () => {
   return (
     <div>
       <Spin spinning={false}>
-      <Card className="container_details">
+        <Card className="container_details">
           <div className="product_detail">
             <div style={{ marginLeft: 5, marginBottom: 10, marginTop: 10 }}>
               <Breadcrumb>
@@ -310,21 +397,79 @@ const CartHistory = () => {
               </Breadcrumb>
             </div>
             <hr></hr>
-        <div className="container" style={{ marginBottom: 30 }}>
-          {/* <h1 style={{ fontSize: 30, marginTop: 25, paddingBottom: 10 }}>
+            <div className="container" style={{ marginBottom: 30 }}>
+              {/* <h1 style={{ fontSize: 30, marginTop: 25, paddingBottom: 10 }}>
             Quản lý đơn hàng
           </h1> */}
-          <br></br>
-          <Card>
-            <Table
-              columns={columns}
-              dataSource={orderList.data}
-              rowKey="_id"
-              pagination={{ position: ["bottomCenter"] }}
-            />
-          </Card>
-        </div>
-        </div>
+              <br></br>
+              <Card>
+                <Table
+                  columns={columns}
+                  dataSource={orderList.data}
+                  rowKey="_id"
+                  pagination={{ position: ["bottomCenter"] }}
+                />
+
+                <Modal
+                  title="Đánh giá đơn hàng"
+                  visible={isModalVisible}
+                  onCancel={handleModalClose}
+                  footer={[
+                    <Button key="cancel" onClick={handleModalClose}>
+                      Hủy
+                    </Button>,
+                    <Button key="submit" type="primary" onClick={handleRatingSubmit}>
+                      Gửi đánh giá
+                    </Button>,
+                  ]}
+                >
+                  {selectedOrder && (
+                    <div>
+                      {/* <p><strong>Địa chỉ:</strong> {selectedOrder.address}</p>
+    <p><strong>Hình thức thanh toán:</strong> {selectedOrder.billing}</p>
+    <p><strong>Tổng đơn hàng:</strong> {selectedOrder.orderTotal.toLocaleString("vi", {
+      style: "currency",
+      currency: "VND",
+    })}</p>
+    <p><strong>Trạng thái:</strong> {selectedOrder.status}</p>    
+    <p><strong>Ngày đặt:</strong> {moment(selectedOrder.createdAt).format(DATE_TIME_FORMAT)}</p> */}
+                      <div>
+                        <strong>Sản phẩm:</strong>
+                        <ul>
+                          {selectedOrder.products.map((item, index) => (
+                            <li key={index}>
+                              Tên sản phẩm: {item.product?.name || "Không có tên"}<br />
+                              Số lượng: {item.quantity}<br />
+                              Giá: {item.price.toLocaleString("vi", {
+                                style: "currency",
+                                currency: "VND",
+                              })}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <hr />
+                      <div style={{ marginTop: 16 }}>
+                        <strong>Đánh giá đơn hàng:</strong>
+                        <div>
+                          <Rate onChange={setRatingValue} value={ratingValue} />
+                        </div>
+                        <TextArea
+                          rows={4}
+                          style={{ marginTop: 12 }}
+                          placeholder="Viết nhận xét (không bắt buộc)..."
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                </Modal>
+
+              </Card>
+            </div>
+          </div>
         </Card>
       </Spin>
     </div>

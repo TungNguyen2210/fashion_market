@@ -49,7 +49,13 @@ const productApi = {
         }
         const url = '/category/products/' + id;
         return axiosClient.post(url, data);
-    }
+    },
+    //Thêm phần đánh giá sản phẩm
+    getProductReviews(productId) {
+    const url = `/reviews/${productId}`;
+    return axiosClient.get(url);
+},
+
 
 }
 

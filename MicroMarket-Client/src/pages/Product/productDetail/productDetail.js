@@ -21,6 +21,9 @@ const ProductDetail = () => {
   const history = useHistory();
   const [colorProduct, setColorProduct] = useState("");
   const [selectedColor, setSelectedColor] = useState(null);
+  //Thêm phần hiển thị các đánh giá sản phẩm
+  const [productRatings, setProductRatings] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
 
 
   const addCart = (product) => {
@@ -115,6 +118,21 @@ const ProductDetail = () => {
           setAvgRating(item.avgRating);
           console.log(((reviewsCount[4] || 0) / reviews.length) * 100);
         });
+        //Hiển thị phần đánh giá sản phẩm
+        await productApi.getProductReviews(id).then((response) => {
+          const reviews = response.data || [];
+          setProductRatings(reviews);
+
+          if (reviews.length > 0) {
+            const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+            const avg = total / reviews.length;
+            setAverageRating(avg);
+          } else {
+            setAverageRating(0);
+          }
+        });
+
+
         await productApi.getRecommendProduct(id).then((item) => {
           setRecommend(item?.recommendations);
         });
@@ -207,7 +225,7 @@ const ProductDetail = () => {
                   </div>
 
                   <div className="color-product">
-                  <span style={{marginRight: 10}}> Màu trang phục:</span> 
+                    <span style={{ marginRight: 10 }}> Màu trang phục:</span>
                     {productDetail?.color?.map((color) => (
                       <span
                         key={color}
@@ -219,7 +237,7 @@ const ProductDetail = () => {
                     ))}
                   </div>
                   <div className="product-sizes">
-                    <span style={{marginRight: 10}}>Kích thước trang phục:</span> 
+                    <span style={{ marginRight: 10 }}>Kích thước trang phục:</span>
                     {productDetail?.sizes?.map((size) => (
                       <span
                         key={size}
@@ -261,6 +279,40 @@ const ProductDetail = () => {
                 className="describe_detail_description"
                 dangerouslySetInnerHTML={{ __html: productDetail.description }}
               ></div>
+
+              <hr />
+              <div className="product-reviews" style={{ marginTop: 30 }}>
+                <h3 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  Đánh giá từ người dùng
+                  {productRatings.length > 0 && (
+                    <>
+                      <Rate disabled allowHalf value={averageRating} />
+                      <span style={{ fontSize: 14 }}>
+                        {averageRating.toFixed(1)} / 5
+                      </span>
+                    </>
+                  )}
+                </h3>
+
+
+                {productRatings.length === 0 ? (
+                  <p>Chưa có đánh giá nào cho sản phẩm này.</p>
+                ) : (
+                  productRatings.map((review, index) => (
+                    <Card key={index} style={{ marginBottom: 10 }}>
+                      <Rate disabled defaultValue={review.rating} />
+                      <p style={{ marginTop: 5, marginBottom: 5 }}>
+                        <strong>{review.customer}</strong>: {review.comment}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#888" }}>
+                        {new Date(review.createdAt).toLocaleString("vi-VN")}
+                      </p>
+
+                    </Card>
+                  ))
+                )}
+              </div>
+
             </div>
             <hr />
             <div className="price" style={{ marginTop: 20, fontSize: 20 }}>

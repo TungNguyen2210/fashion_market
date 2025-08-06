@@ -188,12 +188,78 @@ const orderController = {
         try {
             const decodedToken = jwt.verify(req.headers.authorization, _const.JWT_ACCESS_KEY);
             const orders = await OrderModel.find({ user: decodedToken.user._id })
-                .populate('products.product'); // Chỉ lấy tên và giá sản phẩm
+                .populate('products.product') // Lấy tên và giá sản phẩm
+                .populate("user", "username");    // Lấy tên người dùng
             res.status(200).json({ data: orders });
         } catch (err) {
             res.status(401).send('Unauthorized');
         }
+    },
+    //Thêm phần đánh giá sản phẩm
+    rateOrder: async (req, res) => {
+        try {
+            const { rating, comment } = req.body;
+            const orderId = req.params.id;
+
+            if (!rating || rating < 1 || rating > 5) {
+                return res.status(400).json({ message: "Số sao đánh giá phải từ 1 đến 5." });
+            }
+
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ message: "Đơn hàng không tồn tại." });
+            }
+
+            if (order.rated) {
+                return res.status(400).json({ message: "Đơn hàng này đã được đánh giá." });
+            }
+
+            order.rating = rating;
+            order.comment = comment || "";
+            order.rated = true;
+
+            await order.save();
+            res.status(200).json({ message: "Đánh giá đơn hàng thành công." });
+        } catch (error) {
+            console.error("Lỗi máy chủ khi đánh giá đơn hàng:", error);
+            res.status(500).json({ message: "Lỗi máy chủ khi đánh giá đơn hàng." });
+        }
+    },
+
+    getReviewsByProductId: async (req, res) => {
+        try {
+            const { productId } = req.params;
+            console.log("Fetching reviews for product:", productId);
+
+            
+            const orders = await OrderModel.find({ rated: true })
+                .populate("user", "username") // Lấy tên user
+                .populate("products.product", "_id"); // Lấy product Id
+
+            // Lấy đánh giá theo product ID
+            const reviews = orders
+                .filter(order =>
+                    order.products.some(p => p.product?._id?.toString() === productId)
+                )
+                .map(order => ({
+                    rating: order.rating,
+                    comment: order.comment,
+                    customer: order.user?.username || "Khách hàng",
+                    createdAt: order.updatedAt,
+                }))
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // sắp xếp theo ngày tạo
+            
+            console.log(reviews);
+
+            res.status(200).json({ data: reviews });
+        } catch (error) {
+            console.error("Error fetching product reviews:", error);
+            res.status(500).json({ message: "Internal server error" });
+        }
     }
+
+
 }
 
 module.exports = orderController;
