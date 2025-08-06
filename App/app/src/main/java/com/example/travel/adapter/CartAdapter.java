@@ -113,7 +113,7 @@ public class CartAdapter extends ArrayAdapter<Product> {
 
         // Notify the activity to update the total price
         if (context instanceof GioHang) {
-            ((GioHang) context).updateTotalPrice(totalPrice);
+            ((GioHang) context).updateTotalPrice();
         }
     }
     private void saveCartItems() {

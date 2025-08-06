@@ -10,6 +10,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+
+        maven {
+            url "https://cardinalcommerceprod.jfrog.io/artifactory/android"
+        }
+        maven {
+            url "https://cardinalcommerce.bintray.com/android"
+        }
     }
 }
 rootProject.name = "AppTrangSuc"

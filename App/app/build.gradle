@@ -7,7 +7,7 @@ android {
     defaultConfig {
         applicationId "com.example.apptrangsuc"
         minSdk 28
-        targetSdk 32
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 
@@ -45,10 +45,27 @@ dependencies {
     implementation "com.github.akarnokd:rxjava3-retrofit-adapter:3.0.0"
 
     // voley + picaso
-    implementation 'com.squareup.picasso:picasso:2.71828'
+    implementation 'com.squareup.picasso:picasso:2.8'
+
     implementation 'com.android.volley:volley:1.2.1'
-    // menu = navigation drawer
-    implementation 'com.google.android.material:material:1.4.0'
-    implementation 'com.paypal.sdk:paypal-android-sdk:2.14.2'
+
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+
+    // OkHttp cho client HTTP và logging
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+
+    // ViewModel và LiveData
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.5.1'
+    implementation 'androidx.lifecycle:lifecycle-livedata:2.5.1'
+
+    // Glide cho load hình ảnh
+    implementation 'com.github.bumptech.glide:glide:4.14.2'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.14.2'
+
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
 
 }

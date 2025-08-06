@@ -31,7 +31,7 @@ public class ChuDeAdapter extends RecyclerView.Adapter<KHUNGNHIN_CHUDE> {
     @NonNull
     @Override
     public KHUNGNHIN_CHUDE onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.iteam_chude, parent, false);
+        View view = LayoutInflater.from(context).inflate(R.layout.item_chude, parent, false);
         return new KHUNGNHIN_CHUDE(view);
     }
 
@@ -68,7 +68,6 @@ class KHUNGNHIN_CHUDE extends RecyclerView.ViewHolder {
 
     public KHUNGNHIN_CHUDE(@NonNull View itemView) {
         super(itemView);
-        imgChude = itemView.findViewById(R.id.imgChude);
         tvTenChude = itemView.findViewById(R.id.tvChude);
     }
 }

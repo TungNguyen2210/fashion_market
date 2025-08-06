@@ -14,6 +14,8 @@ public static String serverip = "http://10.0.2.2:3100";
     public static String danhsachdanhgia = serverip + "/api/laydanhgiasanpham.php";
     public static String login = serverip + "/api/auth/login";
     public static String signUp = serverip + "/api/auth/register";
+    public static String sanpham = serverip + "/api/product";
+
 
 
 }

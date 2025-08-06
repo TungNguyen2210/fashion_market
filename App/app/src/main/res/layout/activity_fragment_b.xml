@@ -1,90 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#5FA778"
-    android:padding="20dp"
+    android:background="@color/white"
     tools:context=".activity.FragmentB">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="Ứng dụng đặt quần áo "
-        android:textColor="#F55050"
-        android:textSize="30sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:drawablePadding="20dp"
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textColorHint="@color/black"
-        android:textSize="20dp"
-        android:hint="Khám phá các xu hướng thời trang mới nhất"
-        android:minHeight="48dp" />
+        android:background="@color/white"
+        app:elevation="0dp">
 
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/teal_700"
+            app:titleTextColor="@color/white">
 
-    <EditText
-        android:id="@+id/edtS_Email"
-        android:drawablePadding="20dp"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Đơn hàng của tôi"
+                android:textColor="@color/white"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </androidx.appcompat.widget.Toolbar>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshOrders"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textSize="20sp"
-        android:textColorHint="@color/black"
-        android:drawableLeft="@drawable/diachi"
-        android:hint="Địa chỉ: 97 Man Thiện , Hiệp Phú, Thành phố HCM"
-        android:minHeight="48dp"
-        />
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <EditText
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
-        android:drawablePadding="20dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textSize="20sp"
-        android:textColorHint="@color/black"
-        android:drawableLeft="@drawable/lienhe"
-        android:hint="Số điện thoại: 0123 456 7890"
-        android:minHeight="48dp" />
+            <!-- Trạng thái rỗng -->
+            <LinearLayout
+                android:id="@+id/emptyOrdersLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
 
-    <EditText
-        android:drawablePadding="20dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textColorHint="@color/black"
-        android:textSize="20sp"
-        android:hint="Hỗ trợ khách hàng: support@example.com"
-        android:minHeight="48dp" />
+                <ImageView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:src="@drawable/ic_shopping_bag"
+                    app:tint="@color/teal_700" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Bạn chưa có đơn hàng nào"
+                    android:textColor="#000000"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-    <EditText
-        android:drawablePadding="20dp"
-        android:textColorHint="@color/black"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textSize="20sp"
-        android:drawableLeft="@drawable/goimua"
-        android:hint="Đường dây nóng đặt quần áo: 1800545457 (Nhấn 1)"
-        android:minHeight="48dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="32dp"
+                    android:text="Hãy mua sắm và đặt hàng để xem đơn hàng của bạn tại đây"
+                    android:textColor="#757575"
+                    android:textSize="14sp" />
 
-    <EditText
-        android:drawablePadding="20dp"
-        android:textColorHint="@color/black"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:textSize="20sp"
-        android:drawableLeft="@drawable/khieunai"
-        android:hint="Dịch vụ hỗ trợ khách hàng: 1800545457 (Nhấn 2)"
-        android:minHeight="48dp" />
+                <Button
+                    android:id="@+id/btnStartShopping"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:backgroundTint="@color/teal_700"
+                    android:text="Mua sắm ngay"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white" />
+            </LinearLayout>
 
-</LinearLayout>
+            <!-- Danh sách đơn hàng -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewOrders"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingVertical="8dp" />
+
+            <!-- Trạng thái loading -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="16dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
