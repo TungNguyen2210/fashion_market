@@ -22,7 +22,6 @@ const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
 const { TextArea } = Input;
 
 const FinalPay = () => {
-
     const [productDetail, setProductDetail] = useState([]);
     const [userData, setUserData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -87,8 +86,6 @@ const FinalPay = () => {
         form.resetFields();
         history.push("/cart");
     }
-
-
 
     const listEvent = () => {
         setLoading(true);
@@ -189,55 +186,39 @@ const FinalPay = () => {
     };
 
     const handleFinal = () => {
-        history.push("/")
+        history.push("/home")
+    }
+
+    const handleViewOrders = () => {
+        history.push("/cart-history");
     }
 
     useEffect(() => {
-        (async () => {
+        // Kiểm tra xem người dùng đã hoàn thành đặt hàng chưa
+        const orderComplete = localStorage.getItem('orderComplete');
+        if (orderComplete) {
             try {
-                await productApi.getDetailProduct(id).then((item) => {
-                    setProductDetail(item);
-                });
-                const response = await userApi.getProfile();
-                console.log(response);
-                form.setFieldsValue({
-                    name: response.user.username,
-                    email: response.user.email,
-                    phone: response.user.phone,
-                });
-                const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                const transformedData = cart.map(({ _id: product, quantity, price }) => ({ product, quantity, price }));
-                let totalPrice = 0;
-
-                for (let i = 0; i < transformedData.length; i++) {
-                    let product = transformedData[i];
-                    let price = product.price * product.quantity;
-                    totalPrice += price;
-                }
-
-                setOrderTotal(totalPrice);
-                setProductDetail(transformedData)
-                console.log(transformedData);
-                setUserData(response.user);
-                setLoading(false);
-
-
+                const orderData = JSON.parse(orderComplete);
+                // Có thể sử dụng orderData nếu cần hiển thị chi tiết
             } catch (error) {
-                console.log('Failed to fetch event detail:' + error);
+                console.error('Error parsing order data:', error);
             }
-        })();
+            // Xóa thông tin đơn hàng đã hoàn thành sau khi sử dụng
+            localStorage.removeItem('orderComplete');
+        }
+        
+        setLoading(false);
         window.scrollTo(0, 0);
-    }, [])
+    }, []);
 
     return (
-        <div class="py-5">
-            <Spin spinning={false} >
-                <Card className="container" >
+        <div className="py-5">
+            <Spin spinning={loading}>
+                <Card className="container">
                     <div className="product_detail">
-
                         <div style={{ marginLeft: 5, marginBottom: 10, marginTop: 10 }}>
                             <Breadcrumb>
-                                <Breadcrumb.Item href="">
+                                <Breadcrumb.Item href="/">
                                     <HomeOutlined />
                                 </Breadcrumb.Item>
                                 <Breadcrumb.Item href="">
@@ -266,10 +247,18 @@ const FinalPay = () => {
                             <Result
                                 status="success"
                                 title="Đặt hàng thành công!"
-                                subTitle="Bạn có thể xem lịch sử đặt hàng ở quản lý đơn hàng."
+                                subTitle={
+                                    <>
+                                        <p>Đơn hàng của bạn đã được đặt thành công.</p>
+                                        <p>Thông tin chi tiết đã được gửi vào email của bạn.</p>
+                                    </>
+                                }
                                 extra={[
-                                    <Button type="primary" key="console" onClick={() => handleFinal()}>
-                                        Hoàn thành
+                                    <Button type="primary" key="orders" onClick={handleViewOrders}>
+                                        Xem đơn hàng của tôi
+                                    </Button>,
+                                    <Button key="console" onClick={handleFinal}>
+                                        Tiếp tục mua sắm
                                     </Button>,
                                 ]}
                             />
@@ -277,7 +266,7 @@ const FinalPay = () => {
                     </div>
                 </Card>
             </Spin>
-        </div >
+        </div>
     );
 };
 

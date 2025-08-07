@@ -118,7 +118,6 @@ hr {
 
 .policy {
     margin: 20px 16px 0 16px;
-   
 }
 
 .payment_progress{
@@ -136,4 +135,61 @@ hr {
 .ant-input[disabled] {
     color: #707070!important;
     background-color: rgb(86, 181, 236);
+}
+
+/* Thêm CSS cho bảng chi tiết đơn hàng */
+.order-table {
+    margin: 20px 0;
+}
+
+.order-table h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+
+.order-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.order-table th, 
+.order-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.order-table th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
+
+.order-table tr:last-child {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.payment-details {
+    margin: 20px 0;
+}
+
+.order-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.order-items-table th,
+.order-items-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.order-items-table th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
+
+.order-items-table .total-row {
+    font-weight: bold;
+    background-color: #f9f9f9;
 }

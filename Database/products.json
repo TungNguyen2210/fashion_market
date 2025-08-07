@@ -11,7 +11,46 @@
   "slide": [
     "http://localhost:3100/uploads\\1708750941230-h482bf4j012401_p699k_h505bf2c012410_p549k__6__a0accbdf4d264b31bcfc302a971910c1.jpg"
   ],
-  "color": [],
+  "color": ["#000000", "#ffffff"],
+  "sizes": ["S", "M", "L"],
+  "variants": [
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-S-000000",
+      "color": "#000000",
+      "size": "S",
+      "quantity": 2
+    },
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-M-000000",
+      "color": "#000000",
+      "size": "M",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-L-000000",
+      "color": "#000000",
+      "size": "L",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-S-ffffff",
+      "color": "#ffffff",
+      "size": "S",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-M-ffffff",
+      "color": "#ffffff",
+      "size": "M",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f813a5d61e07c6ee553d-L-ffffff",
+      "color": "#ffffff",
+      "size": "L",
+      "quantity": 0
+    }
+  ],
   "category": {
     "$oid": "643cd88879b4192efedda4e6"
   },
@@ -23,7 +62,8 @@
   },
   "__v": 0,
   "url_book": "url"
-},{
+},
+{
   "_id": {
     "$oid": "6512f83ea5d61e07c6ee5543"
   },
@@ -36,7 +76,58 @@
   "slide": [
     "http://localhost:3100/uploads\\1708750967379-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg"
   ],
-  "color": [],
+  "color": ["#000000", "#ff0000"],
+  "sizes": ["S", "M", "L", "XL"],
+  "variants": [
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-S-000000",
+      "color": "#000000",
+      "size": "S",
+      "quantity": 2
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-M-000000",
+      "color": "#000000",
+      "size": "M",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-L-000000",
+      "color": "#000000",
+      "size": "L",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-XL-000000",
+      "color": "#000000",
+      "size": "XL",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-S-ff0000",
+      "color": "#ff0000",
+      "size": "S",
+      "quantity": 2
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-M-ff0000",
+      "color": "#ff0000",
+      "size": "M",
+      "quantity": 2
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-L-ff0000",
+      "color": "#ff0000",
+      "size": "L",
+      "quantity": 1
+    },
+    {
+      "variantId": "6512f83ea5d61e07c6ee5543-XL-ff0000",
+      "color": "#ff0000",
+      "size": "XL",
+      "quantity": 0
+    }
+  ],
   "category": {
     "$oid": "643cd88879b4192efedda4e6"
   },
@@ -48,7 +139,8 @@
   },
   "__v": 0,
   "url_book": "url"
-},{
+},
+{
   "_id": {
     "$oid": "6512f8a6a5d61e07c6ee555e"
   },
@@ -61,7 +153,28 @@
   "slide": [
     "http://localhost:3100/uploads\\1708750994409-h491bf4a712410_p649k_h493bf2c012410_p449k__6__4b6ce1a924d14897be882968d6337964_master.jpg"
   ],
-  "color": [],
+  "color": ["#a52a2a"],
+  "sizes": ["S", "M", "L"],
+  "variants": [
+    {
+      "variantId": "6512f8a6a5d61e07c6ee555e-S-a52a2a",
+      "color": "#a52a2a",
+      "size": "S",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8a6a5d61e07c6ee555e-M-a52a2a",
+      "color": "#a52a2a",
+      "size": "M",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8a6a5d61e07c6ee555e-L-a52a2a",
+      "color": "#a52a2a",
+      "size": "L",
+      "quantity": 0
+    }
+  ],
   "category": {
     "$oid": "643cd88879b4192efedda4e6"
   },
@@ -73,7 +186,8 @@
   },
   "__v": 0,
   "url_book": "url"
-},{
+},
+{
   "_id": {
     "$oid": "6512f8cfa5d61e07c6ee5564"
   },
@@ -86,7 +200,46 @@
   "slide": [
     "http://localhost:3100/uploads\\1708751019948-h495bf3d112401_p999k__4__91777a0ffefd496796698080b1f33015_master.jpg"
   ],
-  "color": [],
+  "color": ["#ff69b4", "#000000"],
+  "sizes": ["S", "M", "L"],
+  "variants": [
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-S-ff69b4",
+      "color": "#ff69b4",
+      "size": "S",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-M-ff69b4",
+      "color": "#ff69b4",
+      "size": "M",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-L-ff69b4",
+      "color": "#ff69b4",
+      "size": "L",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-S-000000",
+      "color": "#000000",
+      "size": "S",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-M-000000",
+      "color": "#000000",
+      "size": "M",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f8cfa5d61e07c6ee5564-L-000000",
+      "color": "#000000",
+      "size": "L",
+      "quantity": 0
+    }
+  ],
   "category": {
     "$oid": "643cd89a79b4192efedda4ee"
   },
@@ -101,7 +254,8 @@
   "supplier": {
     "$oid": "65d97af9bc3e36f1fda8c1a5"
   }
-},{
+},
+{
   "_id": {
     "$oid": "6512f948a5d61e07c6ee5584"
   },
@@ -114,7 +268,28 @@
   "slide": [
     "http://localhost:3100/uploads\\1708751053643-h503bf1a012410_p499k_h504bf2c012401_p549k__5__dc3de86da3e643e0b23f58ee85596cf9_master.jpg"
   ],
-  "color": [],
+  "color": ["#000000"],
+  "sizes": ["S", "M", "L"],
+  "variants": [
+    {
+      "variantId": "6512f948a5d61e07c6ee5584-S-000000",
+      "color": "#000000",
+      "size": "S",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f948a5d61e07c6ee5584-M-000000",
+      "color": "#000000",
+      "size": "M",
+      "quantity": 0
+    },
+    {
+      "variantId": "6512f948a5d61e07c6ee5584-L-000000",
+      "color": "#000000",
+      "size": "L",
+      "quantity": 0
+    }
+  ],
   "category": {
     "$oid": "643cd88879b4192efedda4e6"
   },
@@ -129,7 +304,8 @@
     "$oid": "65d97af9bc3e36f1fda8c1a5"
   },
   "url_book": "url"
-},{
+},
+{
   "_id": {
     "$oid": "65d97e2ccb029c0c388642cb"
   },
@@ -145,6 +321,57 @@
   "color": [
     "#1c78fa",
     "#ffffff"
+  ],
+  "sizes": ["S", "M", "L", "XL"],
+  "variants": [
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-S-1c78fa",
+      "color": "#1c78fa",
+      "size": "S",
+      "quantity": 3
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-M-1c78fa",
+      "color": "#1c78fa",
+      "size": "M",
+      "quantity": 2
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-L-1c78fa",
+      "color": "#1c78fa",
+      "size": "L",
+      "quantity": 2
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-XL-1c78fa",
+      "color": "#1c78fa",
+      "size": "XL",
+      "quantity": 0
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-S-ffffff",
+      "color": "#ffffff",
+      "size": "S",
+      "quantity": 4
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-M-ffffff",
+      "color": "#ffffff",
+      "size": "M",
+      "quantity": 3
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-L-ffffff",
+      "color": "#ffffff",
+      "size": "L",
+      "quantity": 3
+    },
+    {
+      "variantId": "65d97e2ccb029c0c388642cb-XL-ffffff",
+      "color": "#ffffff",
+      "size": "XL",
+      "quantity": 2
+    }
   ],
   "category": {
     "$oid": "643cd88879b4192efedda4e6"
