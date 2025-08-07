@@ -1,6 +1,26 @@
 const mongoose = require('mongoose');
 const mongoosePaginate = require('mongoose-paginate-v2');
 
+// Thêm schema cho ProductVariant
+const VariantSchema = new mongoose.Schema({
+  variantId: {
+    type: String,
+    required: true
+  },
+  color: {
+    type: String,
+    required: true
+  },
+  size: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: Number,
+    default: 0
+  }
+});
+
 const InventorySchema = new mongoose.Schema({
   quantityOnHand: {
     type: Number,
@@ -10,6 +30,8 @@ const InventorySchema = new mongoose.Schema({
     type: Date,
     default: null  
   },
+  // Thêm mảng variants vào inventory nếu bạn muốn giữ cấu trúc hiện tại
+  variantStock: [VariantSchema]
 });
 
 
@@ -56,7 +78,9 @@ const ProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier' 
   },
-  inventory: InventorySchema, 
+  inventory: InventorySchema,
+  
+  variants: [VariantSchema]
  
 }, { timestamps: true }, { collection: 'product' });
 

@@ -13,6 +13,7 @@ import service8 from "../../assets/image/service/service8.png";
 import service9 from "../../assets/image/service/service9.png";
 import "../Home/home.css";
 
+
 import {
   BackTop,
   Card,
@@ -25,6 +26,7 @@ import Paragraph from "antd/lib/typography/Paragraph";
 import { useHistory } from "react-router-dom";
 import { numberWithCommas } from "../../utils/common";
 
+
 const Home = () => {
   const [eventListHome, setEventListHome] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,25 +38,31 @@ const Home = () => {
     localStorage.getItem("countdownDate") || initialCountdownDate
   );
 
+
   const [timeLeft, setTimeLeft] = useState(
     countdownDate - new Date().getTime()
   );
 
+
   const history = useHistory();
+
 
   const handleReadMore = (id) => {
     console.log(id);
     history.push("product-detail/" + id);
   };
 
+
   const handleCategoryDetails = (id) => {
     console.log(id);
-    history.push("product-list/" + id);
+    history.push("product-list");
   };
+
 
   const onLoad = () => {
     setVisible(false);
   };
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,6 +72,7 @@ const Home = () => {
         const categoryResponse = await productApi.getCategory({ limit: 5, page: 1 });
         const fetchedCategories = categoryResponse.data.docs;
         setCategories(fetchedCategories);
+
 
         if (fetchedCategories && fetchedCategories.length > 0) {
           const productsPromises = fetchedCategories.map(async (category) => {
@@ -83,6 +92,7 @@ const Home = () => {
             }
           });
 
+
           const allCategorizedProducts = await Promise.all(productsPromises);
           setCategorizedProducts(allCategorizedProducts.filter(cp => cp.products && cp.products.length > 0));
         }
@@ -96,20 +106,25 @@ const Home = () => {
       }
     };
 
+
     fetchData();
+
 
     localStorage.setItem("countdownDate", countdownDate.toString());
     const interval = setInterval(() => {
       const newTimeLeft = parseInt(localStorage.getItem("countdownDate"), 10) - new Date().getTime();
       setTimeLeft(newTimeLeft);
 
+
       if (newTimeLeft <= 0) {
         clearInterval(interval);
       }
     }, 1000);
 
+
     return () => clearInterval(interval);
   }, []);
+
 
   return (
     <Spin spinning={loading}>
@@ -153,6 +168,7 @@ const Home = () => {
             </Col>
           </Row>
         </div>
+
 
         {categorizedProducts.map((categoryGroup) => (
           <div className="category-section container" key={categoryGroup.categoryId} style={{ marginTop: 30, marginBottom: 30 }}>
@@ -203,6 +219,15 @@ const Home = () => {
                             </span>
                           )}
                         </div>
+                        
+                        {/* Thêm phần hiển thị trạng thái tồn kho */}
+                        <div className="stock-status-container">
+                          {item.quantity > 0 ? (
+                            <span className="stock-status in-stock">Còn hàng</span>
+                          ) : (
+                            <span className="stock-status out-of-stock">Hết hàng</span>
+                          )}
+                        </div>
                       </div>
                       {item.price && item.promotion < item.price && (
                         <div className="badge">
@@ -217,6 +242,7 @@ const Home = () => {
             </div>
           </div>
         ))}
+
 
         <div className="image-one">
           <div className="heading_slogan">
@@ -285,9 +311,11 @@ const Home = () => {
         </div>
       </div>
 
+
       <BackTop style={{ textAlign: "right" }} />
     </Spin>
   );
 };
+
 
 export default Home;
