@@ -140,6 +140,13 @@ const PromotionManagement = lazy(() => {
         .then(([moduleExports]) => moduleExports);
 });
 
+const ShippingList = lazy(() => {
+    return Promise.all([
+        import('../pages/ShippingList/shippingList'),
+        new Promise(resolve => setTimeout(resolve, 0))
+    ])
+        .then(([moduleExports]) => moduleExports);
+});
 
 const RouterURL = withRouter(({ location }) => {
 
@@ -227,7 +234,7 @@ const RouterURL = withRouter(({ location }) => {
                             <Suspense fallback={<LoadingScreen />}>
                                 <ColorList />
                             </Suspense>
-                        </PrivateRoute>                  
+                        </PrivateRoute>
                         <PrivateRoute exact path="/order-details/:id">
                             <Suspense fallback={<LoadingScreen />}>
                                 <OrderDetail />
@@ -237,13 +244,18 @@ const RouterURL = withRouter(({ location }) => {
                             <Suspense fallback={<LoadingScreen />}>
                                 <SupplierList />
                             </Suspense>
-                        </PrivateRoute>   
+                        </PrivateRoute>
+                        <PrivateRoute exact path="/shipping">
+                            <Suspense fallback={<LoadingScreen />}>
+                                <ShippingList />
+                            </Suspense>
+                        </PrivateRoute>
                         <PrivateRoute exact path="/promotion-management">
                             <Suspense fallback={<LoadingScreen />}>
                                 <PromotionManagement />
                             </Suspense>
-                        </PrivateRoute>   
-                         
+                        </PrivateRoute>
+
                     </Content>
                     <Footer />
                 </Layout>
@@ -310,6 +322,9 @@ const RouterURL = withRouter(({ location }) => {
                         <DefaultContainer />
                     </Route>
                     <Route exact path="/order-list">
+                        <DefaultContainer />
+                    </Route>
+                    <Route exact path="/shipping">
                         <DefaultContainer />
                     </Route>
                     <Route exact path="/order-details/:id">
