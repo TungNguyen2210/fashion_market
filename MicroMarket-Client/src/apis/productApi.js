@@ -10,37 +10,30 @@ const productApi = {
         const url = '/product/search';
         return axiosClient.post(url, data);
     },
-
     getDetailProduct(id) {
         const url = '/product/' + id;
         return axiosClient.get(url);
     },
-
     getProductCategory(id){
         const url = '/category/products/' + id;
         return axiosClient.post(url);
     },
-
     getNews(){
         const url = '/news/search';
         return axiosClient.post(url);
     },
-
     getNewDetail(id){
         const url = '/news/' + id;
         return axiosClient.get(url);
     },
-
     getRecommendProduct(id) {
         const url = '/product/recommend/' + id;
         return axiosClient.get(url);
     },
-
     getOrderByUser(){
         const url = '/order/user';
         return axiosClient.get(url);
     },
-
     getCategory(data) {
         if (!data.page || !data.limit) {
             data.limit = 10;
@@ -49,7 +42,6 @@ const productApi = {
         const url = '/category/search';
         return axiosClient.post(url, data);
     },
-
     getProductsByCategory(data, id){
         if (!data.page || !data.limit) {
             data.limit = 10;
@@ -57,31 +49,8 @@ const productApi = {
         }
         const url = '/category/products/' + id;
         return axiosClient.post(url, data);
-    },
-
-    //Thêm phần đánh giá sản phẩm
-    getProductReviews(productId) {
-        const url = `/reviews/${productId}`;
-        return axiosClient.get(url);
-    },
-
-    // Thêm phương thức để lấy tất cả biến thể của sản phẩm
-    getAllVariants(productId) {
-        const url = `/product/${productId}/variants`;
-        return axiosClient.get(url);
-    },
-
-    // Thêm phương thức để kiểm tra tồn kho biến thể
-    checkVariantStock(productId, color, size, quantity) {
-        const url = '/product/check-variant-stock';
-        return axiosClient.post(url, { productId, color, size, quantity });
-    },
-
-    // Thêm phương thức để tạo đánh giá sản phẩm
-    createReview(productId, reviewData) {
-        const url = `/reviews/${productId}`;
-        return axiosClient.post(url, reviewData);
     }
-};
+
+}
 
 export default productApi;

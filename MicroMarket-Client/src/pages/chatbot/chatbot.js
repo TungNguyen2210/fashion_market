@@ -49,7 +49,7 @@ const Chatbox = () => {
 
     const systemMessage = {
       role: "system",
-      content: "Bạn là một trợ lý ảo thân thiện. Hãy luôn trả lời bằng tiếng Việt."
+      content: "Explain all concept like i am 10 year old"
     }
 
     const apiRequestBody = {
