@@ -1,5 +1,6 @@
 import {
     DeleteOutlined,
+    PlusOutlined,
     DownloadOutlined,
     EditOutlined,
     EyeOutlined,
@@ -47,6 +48,17 @@ const OrderList = () => {
     const [id, setId] = useState();
 
     const history = useHistory();
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
 
     const handleOkUser = async (values) => {
         setLoading(true);
@@ -129,6 +141,8 @@ const OrderList = () => {
                 setTotalList(res.totalDocs)
                 setOrder(res.data.docs);
                 setLoading(false);
+                const sortedData = res.data.docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                setOrder(sortedData);
             });
             ;
         } catch (error) {
@@ -248,6 +262,13 @@ const OrderList = () => {
             ),
         },
         {
+            title: 'Ngày đặt hàng',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            render: (text) => <span>{formatDate(text)}</span>, // Format date
+            sorter: (a, b) => new Date(b.createdAt) - new Date(a.createdAt), // Enable sorting in table
+        },
+        {
             title: 'Mô tả',
             dataIndex: 'description',
             key: 'description',
@@ -288,6 +309,17 @@ const OrderList = () => {
                                 >
                                     Xóa
                                 </Button>
+
+                                <Button
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    style={{ width: 150, borderRadius: 15, height: 30, backgroundColor: '#1890ff', color: '#fff' }}
+                                    disabled={record.status !== 'pending'}                 // ⛔ chỉ cho pending
+                                    onClick={() => history.push(`/shipping?createFor=${record._id}`)}
+                                >
+                                    Tạo vận đơn
+                                </Button>
+
                             </Popconfirm>
                         </div>
                     </Row>
@@ -316,11 +348,11 @@ const OrderList = () => {
             "Ngày tạo": item.createdAt,
             "Ngày cập nhật": item.updatedAt
         }));
-    
+
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Sản phẩm');
-    
+
         XLSX.writeFile(wb, 'danh_sach_san_pham.xlsx');
     };
 

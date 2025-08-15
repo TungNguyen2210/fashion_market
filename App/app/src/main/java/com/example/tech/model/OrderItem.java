@@ -1,35 +1,29 @@
 package com.example.tech.model;
 
-public class OrderItem {
+import java.io.Serializable;
+
+public class OrderItem implements Serializable {
     private String id;
     private String productId;
-    private int quantity;
-    private int price;
-    private int originalPrice;
     private String productName;
     private String productImage;
+    private int quantity;
+    private int price;
+    private boolean rated;
+    private Integer rating;
+    private String comment;
+    private String size;
+    private String color;
+    private String variantId;
+    private String displayName;
+    private boolean needLoadDetails; // Thêm trường mới này
 
     public OrderItem() {
+        // Constructor mặc định
     }
 
-    public OrderItem(String id, String productId, int quantity, int price) {
-        this.id = id;
-        this.productId = productId;
-        this.quantity = quantity;
-        this.price = price;
-        this.originalPrice = price;
-    }
+    // Getter và Setter cho các thuộc tính
 
-    // Constructor mới có giá gốc
-    public OrderItem(String id, String productId, int quantity, int originalPrice, int price) {
-        this.id = id;
-        this.productId = productId;
-        this.quantity = quantity;
-        this.originalPrice = originalPrice;
-        this.price = price;
-    }
-
-    // Getters và Setters
     public String getId() {
         return id;
     }
@@ -44,30 +38,6 @@ public class OrderItem {
 
     public void setProductId(String productId) {
         this.productId = productId;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public int getPrice() {
-        return price;
-    }
-
-    public void setPrice(int price) {
-        this.price = price;
-    }
-
-    public int getOriginalPrice() {
-        return originalPrice;
-    }
-
-    public void setOriginalPrice(int originalPrice) {
-        this.originalPrice = originalPrice;
     }
 
     public String getProductName() {
@@ -86,19 +56,88 @@ public class OrderItem {
         this.productImage = productImage;
     }
 
-    // Tính tổng tiền cho sản phẩm này
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public void setPrice(int price) {
+        this.price = price;
+    }
+
+    public boolean isRated() {
+        return rated;
+    }
+
+    public void setRated(boolean rated) {
+        this.rated = rated;
+    }
+
+    public Integer getRating() {
+        return rating;
+    }
+
+    public void setRating(Integer rating) {
+        this.rating = rating;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
+    }
+
+    public String getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(String variantId) {
+        this.variantId = variantId;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public boolean isNeedLoadDetails() {
+        return needLoadDetails;
+    }
+
+    public void setNeedLoadDetails(boolean needLoadDetails) {
+        this.needLoadDetails = needLoadDetails;
+    }
+
+    // Phương thức tiện ích để tính tổng giá
     public int getTotalPrice() {
         return price * quantity;
-    }
-
-    // Kiểm tra sản phẩm có đang giảm giá không
-    public boolean isDiscounted() {
-        return originalPrice > price && price > 0;
-    }
-
-    // Tính phần trăm giảm giá
-    public int getDiscountPercentage() {
-        if (originalPrice <= 0) return 0;
-        return (int) (100 - ((float)price / originalPrice * 100));
     }
 }

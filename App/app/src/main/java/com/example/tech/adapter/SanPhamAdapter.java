@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.tech.R;
@@ -126,103 +127,38 @@ public class SanPhamAdapter extends RecyclerView.Adapter<KHUNGNHIN_SanPham> impl
             }
         });
 
-        // Thêm sự kiện cho nút "MUA HÀNG"
-        holder.btnAddToCart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showQuantityDialog(sp);
-            }
-        });
-    }
+        // Thay đổi nút "MUA HÀNG" thành "Còn hàng" hoặc "Hết hàng"
+        boolean isInStock = hasTotalStock(sp);
 
-    // Phương thức để hiển thị dialog chọn số lượng
-    private void showQuantityDialog(SanPham product) {
-        // Tạo dialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        View view = LayoutInflater.from(context).inflate(R.layout.quantity_dialog, null);
-        builder.setView(view);
+        if (isInStock) {
+            holder.btnAddToCart.setText("CÒN HÀNG");
+            holder.btnAddToCart.setTextColor(ContextCompat.getColor(context, R.color.teal_700));
 
-        // Ánh xạ các view trong dialog
-        TextView tvProductName = view.findViewById(R.id.tvProductName);
-        TextView tvProductPrice = view.findViewById(R.id.tvProductPrice);
-        TextView tvQuantity = view.findViewById(R.id.tvQuantity);
-        Button btnDecrease = view.findViewById(R.id.btnDecrease);
-        Button btnIncrease = view.findViewById(R.id.btnIncrease);
-        Button btnCancel = view.findViewById(R.id.btnCancel);
-        Button btnAddToCart = view.findViewById(R.id.btnAddToCart);
-
-        // Thiết lập giá trị ban đầu
-        tvProductName.setText(product.getTensanpham());
-        tvProductPrice.setText("Giá: " + formatPrice(product.getGiasanpham()));
-
-        final int[] quantity = {1};
-        tvQuantity.setText(String.valueOf(quantity[0]));
-
-        // Xử lý sự kiện click nút giảm
-        btnDecrease.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (quantity[0] > 1) {
-                    quantity[0]--;
-                    tvQuantity.setText(String.valueOf(quantity[0]));
-                }
-            }
-        });
-
-        // Xử lý sự kiện click nút tăng
-        btnIncrease.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                quantity[0]++;
-                tvQuantity.setText(String.valueOf(quantity[0]));
-            }
-        });
-
-        // Tạo dialog
-        AlertDialog dialog = builder.create();
-
-        // Xử lý sự kiện click nút hủy
-        btnCancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-            }
-        });
-
-        // Xử lý sự kiện click nút thêm vào giỏ hàng
-        btnAddToCart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                addToCart(product, quantity[0]);
-                dialog.dismiss();
-            }
-        });
-
-        // Hiển thị dialog
-        dialog.show();
-    }
-
-    // Phương thức để thêm sản phẩm vào giỏ hàng
-    private void addToCart(SanPham product, int quantity) {
-        try {
-            // Tạo intent để chuyển dữ liệu sang GioHang Activity
-            Intent intent = new Intent(context, GioHang.class);
-            intent.putExtra("id", product.getIdsanpham());
-            intent.putExtra("name", product.getTensanpham());
-            intent.putExtra("price", String.valueOf(product.getGiasanpham()));
-            intent.putExtra("img", product.getHinhsanpham());
-            intent.putExtra("quantity", quantity); // Thêm số lượng vào intent
-            intent.putExtra("original_price", String.valueOf(product.getGiagoc())); // Thêm giá gốc
-
-            // Hiển thị thông báo
-            Toast.makeText(context, "Đã thêm " + quantity + " " + product.getTensanpham() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
-
-            // Khởi chạy Activity GioHang
-            context.startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(context, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Lỗi thêm vào giỏ hàng: " + e.getMessage(), e);
+            // Vô hiệu hóa chức năng mua hàng từ nút trạng thái tồn kho
+            holder.btnAddToCart.setOnClickListener(null);
+        } else {
+            holder.btnAddToCart.setText("HẾT HÀNG");
+            holder.btnAddToCart.setTextColor(ContextCompat.getColor(context, R.color.design_default_color_error));
+            holder.btnAddToCart.setEnabled(false);
         }
+    }
+
+    // Kiểm tra xem sản phẩm có tồn kho không (kiểm tra tổng số lượng các biến thể)
+    private boolean hasTotalStock(SanPham product) {
+        if (product.variants != null && !product.variants.isEmpty()) {
+            int totalStock = 0;
+            for (SanPham.ProductVariant variant : product.variants) {
+                totalStock += variant.getQuantity();
+            }
+            return totalStock > 0;
+        }
+
+        // Nếu không có thông tin variants, kiểm tra xem có thuộc tính inventory không
+        if (product.inventory != null && product.inventory.quantityOnHand > 0) {
+            return true;
+        }
+
+        return false;
     }
 
     // Phương thức định dạng giá tiền
@@ -278,7 +214,7 @@ class KHUNGNHIN_SanPham extends RecyclerView.ViewHolder {
     TextView tvgia;
     TextView tvGiaGoc;
     TextView tvDiscountBadge;
-    Button btnAddToCart;
+    TextView btnAddToCart;
 
     public KHUNGNHIN_SanPham(@NonNull View itemView) {
         super(itemView);

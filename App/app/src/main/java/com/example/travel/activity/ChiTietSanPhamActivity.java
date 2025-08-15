@@ -5,9 +5,14 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.Html;
@@ -31,10 +36,12 @@ import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
 import com.example.tech.R;
 import com.example.tech.SERVER;
-import com.example.tech.activity.GioHang;
 import com.example.tech.adapter.ReviewAdapter;
 import com.example.tech.model.Product;
 import com.example.tech.model.Review;
+import com.example.tech.model.SanPham;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -42,13 +49,20 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.text.NumberFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -63,12 +77,22 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
     private TextView tvtensp, tvgiasp, tvmotasp;
     private Button btnmua;
     private ProgressBar loadingIndicator;
-    private RatingBar ratingBar;
-    private EditText edtDanhGia;
-    private Button btnGuiDanhGia;
-    private TextView tvKetQuaDanhGia;
-    private TextView tvReviewsHeader;
-    private float userRating = 0;
+
+    // Thêm các biến mới
+    private TextView tvOriginalPrice, tvPromotionPrice;
+    private ChipGroup sizeChipGroup, colorChipGroup;
+    private int originalPrice, promotionPrice;
+    private List<String> availableSizes = new ArrayList<>();
+    private List<String> availableColors = new ArrayList<>();
+    private String selectedSize = "";
+    private String selectedColor = "";
+    private Map<String, String> colorMap = new HashMap<>();
+
+    // Biến cho chức năng chọn số lượng
+    private Button btnDecreaseQuantity, btnIncreaseQuantity;
+    private TextView tvQuantity, tvStockStatus;
+    private int selectedQuantity = 1;
+    private int availableQuantity = 0;
 
     private String id;
     private String img;
@@ -76,9 +100,19 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
     private String name;
     private String mota;
 
+    // Biến cho phần đánh giá
+    private RecyclerView rvReviews;
+    private RatingBar ratingBarAverage;
+    private TextView tvRatingAverage, tvTotalRatingCount, tvNoReviews;
     private List<Review> reviewList = new ArrayList<>();
     private ReviewAdapter reviewAdapter;
-    private RecyclerView rvReviews;
+
+    // Biến cho danh sách biến thể sản phẩm
+    private List<SanPham.ProductVariant> productVariants = new ArrayList<>();
+
+    // Biến hiển thị khung đăng nhập
+    private View loginPromptView;
+    private Button btnShowLogin;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,20 +124,34 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
 
         loadingIndicator.setVisibility(View.VISIBLE);
 
-        // Thêm listener cho RatingBar
-        ratingBar.setOnRatingBarChangeListener(new RatingBar.OnRatingBarChangeListener() {
-            @Override
-            public void onRatingChanged(RatingBar ratingBar, float rating, boolean fromUser) {
-                userRating = rating;
-            }
-        });
+        initializeColors();
+
+        // Thiết lập giá trị mặc định cho số lượng
+        tvQuantity.setText("1");
 
         getProductDataFromIntent();
-        displayProductInfo();
+        fetchProductDetails();
         setupBuyButton();
-        setupReviewButton();
-        setupReviewsRecyclerView();
-        getDanhGiaSanPham(id);
+
+        // Khởi tạo RecyclerView và adapter cho đánh giá
+        setupReviewSection();
+
+        // Hiển thị trạng thái ban đầu của phần đánh giá
+        showEmptyReviewState();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Khi quay lại từ màn hình đăng nhập, kiểm tra và làm mới dữ liệu đánh giá
+        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+        if (!TextUtils.isEmpty(sharedPreferences.getString("token", ""))) {
+            // Nếu đã đăng nhập, tải lại đánh giá
+            if (!TextUtils.isEmpty(id)) {
+                getDanhGiaSanPham(id);
+            }
+        }
     }
 
     private void setupToolbar() {
@@ -141,37 +189,222 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
         }
     }
 
-    private void displayProductInfo() {
-        // Hiển thị tên sản phẩm
-        tvtensp.setText(name);
-
-        // Định dạng và hiển thị giá tiền
-        NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
-        tvgiasp.setText(formatter.format(price) + " VND");
-
-        // Xử lý và hiển thị mô tả sản phẩm
-        if (!TextUtils.isEmpty(mota)) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                tvmotasp.setText(Html.fromHtml(mota, Html.FROM_HTML_MODE_LEGACY));
-            } else {
-                tvmotasp.setText(Html.fromHtml(mota));
-            }
-        } else {
-            tvmotasp.setText("Không có mô tả cho sản phẩm này.");
-        }
-
-        // Hiển thị hình ảnh sản phẩm
-        loadProductImage();
+    // Khởi tạo dữ liệu màu trực tiếp
+    private void initializeColors() {
+        colorMap.put("Màu xanh", "#1c78fa");
+        colorMap.put("Màu trắng", "#ffffff");
+        colorMap.put("Màu đỏ", "#ff0000");
+        colorMap.put("Màu đen", "#000000");
+        colorMap.put("Màu vàng", "#ffeb3b");
+        colorMap.put("Màu xanh lá", "#4caf50");
     }
 
-    private void loadProductImage() {
-        if (TextUtils.isEmpty(img)) {
+    // Phương thức lấy chi tiết sản phẩm
+    private void fetchProductDetails() {
+        if (TextUtils.isEmpty(id)) {
+            Toast.makeText(this, "Không có thông tin sản phẩm", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        OkHttpClient client = new OkHttpClient();
+        String url = SERVER.serverip + "/api/product/" + id;
+
+        Log.d(TAG, "Fetching product from: " + url);
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Error fetching product details: " + e.getMessage());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadingIndicator.setVisibility(View.GONE);
+                        Toast.makeText(ChiTietSanPhamActivity.this, "Không thể tải thông tin sản phẩm", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                final String responseData = response.body().string();
+                Log.d(TAG, "Product details response: " + responseData);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (responseData.trim().startsWith("{") && responseData.trim().endsWith("}")) {
+                                JSONObject jsonObject = new JSONObject(responseData);
+                                if (jsonObject.has("product")) {
+                                    final JSONObject productObj = jsonObject.getJSONObject("product");
+
+                                    // Lấy danh sách kích thước
+                                    final List<String> sizes = new ArrayList<>();
+                                    if (productObj.has("sizes")) {
+                                        JSONArray sizesArray = productObj.getJSONArray("sizes");
+                                        for (int i = 0; i < sizesArray.length(); i++) {
+                                            sizes.add(sizesArray.getString(i));
+                                        }
+                                    }
+
+                                    // Lấy danh sách màu sắc
+                                    final List<String> colors = new ArrayList<>();
+                                    if (productObj.has("color")) {
+                                        JSONArray colorsArray = productObj.getJSONArray("color");
+                                        for (int i = 0; i < colorsArray.length(); i++) {
+                                            colors.add(colorsArray.getString(i));
+                                        }
+                                    }
+
+                                    // Lấy danh sách biến thể sản phẩm
+                                    if (productObj.has("variants")) {
+                                        JSONArray variantsArray = productObj.getJSONArray("variants");
+                                        for (int i = 0; i < variantsArray.length(); i++) {
+                                            JSONObject variantObj = variantsArray.getJSONObject(i);
+                                            String variantId = variantObj.getString("_id");
+                                            String variantColor = variantObj.getString("color");
+                                            String variantSize = variantObj.getString("size");
+                                            int variantQuantity = variantObj.getInt("quantity");
+
+                                            SanPham.ProductVariant variant = new SanPham.ProductVariant(
+                                                    variantId, variantColor, variantSize, variantQuantity);
+                                            productVariants.add(variant);
+                                        }
+                                    }
+
+                                    // Lấy giá và giá khuyến mãi
+                                    final int price = productObj.getInt("price");
+                                    final int promo = productObj.has("promotion") ? productObj.getInt("promotion") : price;
+
+                                    // Lưu giá gốc và giá khuyến mãi
+                                    originalPrice = price;
+                                    promotionPrice = promo;
+
+                                    // Cập nhật thông tin sản phẩm
+                                    displayProductInfo(productObj);
+
+                                    // Cập nhật danh sách kích thước và màu sắc
+                                    availableSizes = sizes;
+                                    availableColors = colors;
+
+                                    // Hiển thị kích thước và màu sắc
+                                    setupSizeSelection();
+                                    setupColorSelection();
+
+                                    // Lấy đánh giá sản phẩm
+                                    getDanhGiaSanPham(id);
+                                } else {
+                                    Toast.makeText(ChiTietSanPhamActivity.this, "Dữ liệu sản phẩm không hợp lệ", Toast.LENGTH_SHORT).show();
+                                }
+                            } else {
+                                // Phản hồi không phải là JSON hợp lệ
+                                Toast.makeText(ChiTietSanPhamActivity.this, "Phản hồi từ server không hợp lệ", Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "Invalid JSON response: " + responseData);
+                            }
+                        } catch (JSONException e) {
+                            Log.e(TAG, "JSON parsing error: " + e.getMessage());
+                            Toast.makeText(ChiTietSanPhamActivity.this, "Lỗi xử lý dữ liệu sản phẩm", Toast.LENGTH_SHORT).show();
+                        } finally {
+                            loadingIndicator.setVisibility(View.GONE);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Phương thức cập nhật để hiển thị thông tin sản phẩm
+    private void displayProductInfo(JSONObject productObj) {
+        try {
+            // Hiển thị tên sản phẩm
+            String productName = productObj.getString("name");
+            tvtensp.setText(productName);
+
+            // Định dạng và hiển thị giá tiền
+            NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
+
+            // Hiển thị giá gốc và giá khuyến mãi
+            if (originalPrice > promotionPrice) {
+                tvOriginalPrice.setVisibility(View.VISIBLE);
+                tvOriginalPrice.setText(formatter.format(originalPrice) + " VND");
+                tvOriginalPrice.setPaintFlags(tvOriginalPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                tvPromotionPrice.setText(formatter.format(promotionPrice) + " VND");
+                tvgiasp.setVisibility(View.GONE);
+            } else {
+                tvOriginalPrice.setVisibility(View.GONE);
+                tvPromotionPrice.setText(formatter.format(originalPrice) + " VND");
+                tvgiasp.setVisibility(View.GONE);
+            }
+
+            // Xử lý và hiển thị mô tả sản phẩm
+            String productDesc = productObj.getString("description");
+            if (!TextUtils.isEmpty(productDesc)) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    tvmotasp.setText(Html.fromHtml(productDesc, Html.FROM_HTML_MODE_LEGACY));
+                } else {
+                    tvmotasp.setText(Html.fromHtml(productDesc));
+                }
+            } else {
+                tvmotasp.setText("Không có mô tả cho sản phẩm này.");
+            }
+
+            // Hiển thị hình ảnh sản phẩm
+            String imageUrl = productObj.getString("image");
+            loadProductImageWithUrl(imageUrl);
+
+            // Lấy tổng số lượng sản phẩm có sẵn (trước khi chọn biến thể)
+            int totalQuantity = 0;
+            if (productObj.has("inventory") && !productObj.isNull("inventory")) {
+                JSONObject inventoryObj = productObj.getJSONObject("inventory");
+                totalQuantity = inventoryObj.getInt("quantityOnHand");
+            } else if (!productVariants.isEmpty()) {
+                for (SanPham.ProductVariant variant : productVariants) {
+                    totalQuantity += variant.getQuantity();
+                }
+            }
+
+            availableQuantity = totalQuantity;
+            updateStockStatus(availableQuantity);
+
+        } catch (JSONException e) {
+            Log.e(TAG, "Error displaying product info: " + e.getMessage());
+        }
+    }
+
+    // Cập nhật hiển thị trạng thái kho hàng
+    private void updateStockStatus(int quantity) {
+        if (quantity > 0) {
+            tvStockStatus.setText("Còn " + quantity + " sản phẩm");
+            tvStockStatus.setTextColor(Color.parseColor("#4CAF50"));  // Màu xanh lá
+            btnmua.setEnabled(true);
+            btnmua.setText("Thêm vào giỏ hàng");
+        } else {
+            tvStockStatus.setText("Hết hàng");
+            tvStockStatus.setTextColor(Color.RED);
+            btnmua.setEnabled(false);
+            btnmua.setText("Hết hàng");
+        }
+
+        // Thiết lập lại số lượng đã chọn
+        selectedQuantity = 1;
+        tvQuantity.setText("1");
+
+        // Thiết lập lại các nút tăng/giảm số lượng
+        setupQuantitySelection();
+    }
+
+    // Phương thức cập nhật để tải hình ảnh
+    private void loadProductImageWithUrl(String imageUrl) {
+        if (TextUtils.isEmpty(imageUrl)) {
             imgchitiet.setImageResource(R.drawable.placeholder_image);
             loadingIndicator.setVisibility(View.GONE);
             return;
         }
 
-        String imageUrl = img;
         if (!imageUrl.startsWith("http")) {
             imageUrl = SERVER.imagepath + imageUrl;
         }
@@ -205,6 +438,145 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
                 .into(imgchitiet);
     }
 
+    // Thiết lập chọn kích thước
+    private void setupSizeSelection() {
+        sizeChipGroup.removeAllViews();
+
+        if (availableSizes.isEmpty()) {
+            TextView noSizeText = new TextView(this);
+            noSizeText.setText("Không có kích thước");
+            noSizeText.setTextColor(Color.GRAY);
+            sizeChipGroup.addView(noSizeText);
+            return;
+        }
+
+        for (String size : availableSizes) {
+            final String sizeValue = size;
+            Chip chip = new Chip(this);
+            chip.setText(sizeValue);
+            chip.setCheckable(true);
+            chip.setClickable(true);
+
+            chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    selectedSize = sizeValue;
+                    Toast.makeText(ChiTietSanPhamActivity.this, "Đã chọn size: " + sizeValue, Toast.LENGTH_SHORT).show();
+                    updateAvailableQuantityBasedOnSelection();
+                } else if (selectedSize.equals(sizeValue)) {
+                    selectedSize = "";
+                }
+            });
+
+            sizeChipGroup.addView(chip);
+        }
+    }
+
+    // Thiết lập chọn màu sắc
+    private void setupColorSelection() {
+        colorChipGroup.removeAllViews();
+
+        if (availableColors.isEmpty()) {
+            TextView noColorText = new TextView(this);
+            noColorText.setText("Không có màu sắc");
+            noColorText.setTextColor(Color.GRAY);
+            colorChipGroup.addView(noColorText);
+            return;
+        }
+
+        for (String colorHex : availableColors) {
+            final String colorCode = colorHex;
+            final String colorName = findColorName(colorCode);
+
+            Chip chip = new Chip(this);
+            chip.setText(colorName);
+            chip.setCheckable(true);
+            chip.setClickable(true);
+
+            try {
+                // Đặt màu nền cho chip
+                chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor(colorCode)));
+                // Đặt màu chữ tùy thuộc vào màu nền để đảm bảo độ tương phản
+                int textColor = isColorDark(Color.parseColor(colorCode)) ? Color.WHITE : Color.BLACK;
+                chip.setTextColor(textColor);
+            } catch (Exception e) {
+                Log.e(TAG, "Invalid color format: " + colorCode);
+                chip.setChipBackgroundColor(ColorStateList.valueOf(Color.LTGRAY));
+            }
+
+            chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    selectedColor = colorCode;
+                    Toast.makeText(ChiTietSanPhamActivity.this, "Đã chọn màu: " + colorName, Toast.LENGTH_SHORT).show();
+                    updateAvailableQuantityBasedOnSelection();
+                } else if (selectedColor.equals(colorCode)) {
+                    selectedColor = "";
+                }
+            });
+
+            colorChipGroup.addView(chip);
+        }
+    }
+
+    // Phương thức mới: Cập nhật số lượng có sẵn dựa trên size và màu đã chọn
+    private void updateAvailableQuantityBasedOnSelection() {
+        // Nếu chưa chọn cả size và color, thì không cập nhật
+        if (TextUtils.isEmpty(selectedSize) || TextUtils.isEmpty(selectedColor)) {
+            return;
+        }
+
+        // Tìm biến thể phù hợp với size và color đã chọn
+        for (SanPham.ProductVariant variant : productVariants) {
+            if (variant.getSize().equals(selectedSize) && variant.getColor().equals(selectedColor)) {
+                // Cập nhật số lượng có sẵn
+                availableQuantity = variant.getQuantity();
+                updateStockStatus(availableQuantity);
+                return;
+            }
+        }
+
+        // Nếu không tìm thấy biến thể phù hợp, đặt số lượng = 0
+        availableQuantity = 0;
+        updateStockStatus(availableQuantity);
+    }
+
+    // Tìm tên màu từ mã màu hex
+    private String findColorName(String colorHex) {
+        for (Map.Entry<String, String> entry : colorMap.entrySet()) {
+            if (entry.getValue().equalsIgnoreCase(colorHex)) {
+                return entry.getKey();
+            }
+        }
+        return "Màu " + colorHex;
+    }
+
+    // Kiểm tra màu sắc tối hay sáng để chọn màu chữ phù hợp
+    private boolean isColorDark(int color) {
+        double darkness = 1 - (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) / 255;
+        return darkness >= 0.5;
+    }
+
+    // Thiết lập chọn số lượng
+    private void setupQuantitySelection() {
+        // Thiết lập các nút tăng/giảm số lượng
+        btnDecreaseQuantity.setOnClickListener(v -> {
+            if (selectedQuantity > 1) {
+                selectedQuantity--;
+                tvQuantity.setText(String.valueOf(selectedQuantity));
+            }
+        });
+
+        btnIncreaseQuantity.setOnClickListener(v -> {
+            if (selectedQuantity < availableQuantity) {
+                selectedQuantity++;
+                tvQuantity.setText(String.valueOf(selectedQuantity));
+            } else {
+                Toast.makeText(ChiTietSanPhamActivity.this,
+                        "Số lượng không được vượt quá " + availableQuantity,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void setupBuyButton() {
         btnmua.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -214,23 +586,32 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
         });
     }
 
-    private void setupReviewButton() {
-        btnGuiDanhGia.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-             //   sendDanhGiaToServer();
-            }
-        });
-    }
-
-    private void setupReviewsRecyclerView() {
-        reviewAdapter = new ReviewAdapter(reviewList);
-        rvReviews.setLayoutManager(new LinearLayoutManager(this));
-        rvReviews.setAdapter(reviewAdapter);
-    }
-
+    // Cập nhật phương thức addToCart để thêm size, màu và số lượng
     private void addToCart() {
         try {
+            // Kiểm tra xem đã chọn kích thước và màu sắc chưa
+            if (!availableSizes.isEmpty() && TextUtils.isEmpty(selectedSize)) {
+                Toast.makeText(this, "Vui lòng chọn kích thước", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!availableColors.isEmpty() && TextUtils.isEmpty(selectedColor)) {
+                Toast.makeText(this, "Vui lòng chọn màu sắc", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Kiểm tra số lượng còn đủ không
+            if (availableQuantity <= 0) {
+                Toast.makeText(this, "Sản phẩm đã hết hàng", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (selectedQuantity > availableQuantity) {
+                Toast.makeText(this, "Số lượng không đủ. Chỉ còn " + availableQuantity + " sản phẩm",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             // Kiểm tra xem đã có danh sách giỏ hàng chưa
             if (Product.cartItems == null) {
                 Product.cartItems = new ArrayList<>();
@@ -238,15 +619,29 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
 
             // Lấy thông tin sản phẩm
             String nameProduct = tvtensp.getText().toString();
-            String priceProduct = tvgiasp.getText().toString();
+            String originalPriceStr = String.valueOf(originalPrice);
+            String promotionPriceStr = String.valueOf(promotionPrice);
+
+            // Tạo ID duy nhất cho sản phẩm với size và màu cụ thể
+            String uniqueId = id + (selectedSize.isEmpty() ? "" : "-" + selectedSize)
+                    + (selectedColor.isEmpty() ? "" : "-" + selectedColor);
 
             // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
             boolean isExist = false;
             for (int i = 0; i < Product.cartItems.size(); i++) {
-                if (Product.cartItems.get(i).getId().equals(id)) {
+                // Kiểm tra ID, size và màu
+                if (Product.cartItems.get(i).getId().equals(uniqueId)) {
                     // Tăng số lượng nếu sản phẩm đã tồn tại
                     int currentQuantity = Product.cartItems.get(i).getQuantity();
-                    Product.cartItems.get(i).setQuantity(currentQuantity + 1);
+                    int newQuantity = currentQuantity + selectedQuantity;
+
+                    // Kiểm tra xem số lượng mới có vượt quá số lượng có sẵn không
+                    if (newQuantity > availableQuantity) {
+                        Toast.makeText(this, "Số lượng vượt quá số lượng có sẵn", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    Product.cartItems.get(i).setQuantity(newQuantity);
                     isExist = true;
                     break;
                 }
@@ -254,11 +649,24 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
 
             // Nếu sản phẩm chưa có trong giỏ hàng, thêm mới
             if (!isExist) {
-                Product newItem = new Product(id, nameProduct, priceProduct, img, 1);
+                Product newItem;
+
+                // Kiểm tra xem có giảm giá không
+                if (promotionPrice > 0 && originalPrice > promotionPrice) {
+                    // Có giảm giá - truyền cả giá gốc và giá khuyến mãi
+                    newItem = new Product(uniqueId, nameProduct, originalPriceStr, promotionPriceStr,
+                            img, selectedQuantity, selectedSize, selectedColor);
+                } else {
+                    // Không có giảm giá - chỉ truyền giá gốc
+                    newItem = new Product(uniqueId, nameProduct, originalPriceStr, img,
+                            selectedQuantity, selectedSize, selectedColor);
+                }
+
                 Product.cartItems.add(newItem);
             }
 
-            Toast.makeText(this, "Đã thêm " + nameProduct + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Đã thêm " + selectedQuantity + " " + nameProduct + " vào giỏ hàng",
+                    Toast.LENGTH_SHORT).show();
 
             // Chuyển đến màn hình giỏ hàng
             Intent intent = new Intent(ChiTietSanPhamActivity.this, GioHang.class);
@@ -270,186 +678,337 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
         }
     }
 
+    private void setupReviewSection() {
+        // Khởi tạo RecyclerView và adapter
+        reviewAdapter = new ReviewAdapter(reviewList);
+        rvReviews.setLayoutManager(new LinearLayoutManager(this));
+        rvReviews.setAdapter(reviewAdapter);
+    }
+
+    /**
+     * Hàm chính để lấy đánh giá sản phẩm
+     */
     private void getDanhGiaSanPham(String idSanPham) {
-        if (TextUtils.isEmpty(idSanPham)) {
-            tvReviewsHeader.setText("Không có đánh giá nào");
+        // Xóa dữ liệu đánh giá cũ
+        reviewList.clear();
+
+        // Lấy token từ shared preferences
+        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+        String token = sharedPreferences.getString("token", "");
+        String userIdFromPrefs = sharedPreferences.getString("userId", "");
+
+        Log.d(TAG, "Token from SharedPreferences: " + (token.isEmpty() ? "Empty" : "Available"));
+        Log.d(TAG, "User ID from SharedPreferences: " + (userIdFromPrefs.isEmpty() ? "Empty" : userIdFromPrefs));
+
+        // Kiểm tra xem người dùng đã đăng nhập chưa
+        if (token.isEmpty()) {
+            Log.d(TAG, "User is not logged in, showing login message");
+            runOnUiThread(() -> {
+                // Hiển thị gợi ý đăng nhập
+                if (loginPromptView != null) {
+                    loginPromptView.setVisibility(View.VISIBLE);
+                }
+                showEmptyReviewState();
+            });
             return;
         }
 
-        // Tạo OkHttpClient
-        OkHttpClient client = new OkHttpClient();
+        // Format token với prefix "Bearer " nếu cần thiết
+        final String authToken;
+        if (!token.startsWith("Bearer ")) {
+            authToken = "Bearer " + token;
+        } else {
+            authToken = token;
+        }
 
-        // Tạo GET request
-        String url = SERVER.danhsachdanhgia + "?idsanpham=" + idSanPham;
-        Request request = new Request.Builder()
-                .url(url)
+        // In log token để debug (che một phần token)
+        String maskedToken = authToken.length() > 20
+                ? authToken.substring(0, 10) + "..." + authToken.substring(authToken.length() - 5)
+                : authToken;
+        Log.d(TAG, "Using authorization token: " + maskedToken);
+
+        // Tạo OkHttpClient với timeout
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
 
-        // Gửi request bất đồng bộ
+        // Thử API trực tiếp trước (dựa trên logs, API này có thể dễ truy cập hơn)
+        tryApiWithToken(client, idSanPham, authToken, true);
+    }
+
+    /**
+     * Thử gọi API với token
+     * @param client OkHttpClient để gửi request
+     * @param idSanPham ID sản phẩm
+     * @param authToken Token xác thực với prefix Bearer
+     * @param isDirectApi true nếu gọi API trực tiếp, false nếu qua API Gateway
+     */
+    private void tryApiWithToken(OkHttpClient client, String idSanPham, String authToken, boolean isDirectApi) {
+        // Xác định URL API dựa trên loại API
+        String url;
+        if (isDirectApi) {
+            // URL API trực tiếp
+            url = SERVER.directReviewApi + idSanPham;
+        } else {
+            // URL API qua Gateway
+            url = SERVER.gatewayReviewApi + idSanPham;
+        }
+
+        Log.d(TAG, "Trying " + (isDirectApi ? "direct API" : "API Gateway") + ": " + url);
+
+        // Tạo request với token xác thực
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", authToken)
+                .build();
+
+        // In ra headers để debug
+        Headers headers = request.headers();
+        Log.d(TAG, "Request headers:");
+        for (int i = 0; i < headers.size(); i++) {
+            Log.d(TAG, headers.name(i) + ": " + headers.value(i));
+        }
+
+        // Gửi request
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                Log.e(TAG, "Error getting reviews: " + e.getMessage());
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ChiTietSanPhamActivity.this, "Không thể tải đánh giá", Toast.LENGTH_SHORT).show();
-                        tvReviewsHeader.setText("Không thể tải đánh giá");
-                    }
-                });
+                Log.e(TAG, (isDirectApi ? "Direct API" : "API Gateway") + " call failed: " + e.getMessage());
+
+                if (isDirectApi) {
+                    // Nếu API trực tiếp thất bại, thử API Gateway
+                    tryApiWithToken(client, idSanPham, authToken, false);
+                } else {
+                    // Nếu cả hai đều thất bại, hiển thị thông báo lỗi
+                    runOnUiThread(() -> {
+                        Toast.makeText(ChiTietSanPhamActivity.this,
+                                "Không thể kết nối đến máy chủ đánh giá", Toast.LENGTH_SHORT).show();
+                        showEmptyReviewState();
+                    });
+                }
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                final String responseData = response.body().string();
+                int statusCode = response.code();
+                String responseData = response.body().string();
 
-                try {
-                    JSONObject jsonObject = new JSONObject(responseData);
-                    Log.d(TAG, "Review response: " + responseData);
+                Log.d(TAG, (isDirectApi ? "Direct API" : "API Gateway") + " response code: " + statusCode);
+                Log.d(TAG, (isDirectApi ? "Direct API" : "API Gateway") + " response: " + responseData);
 
-                    boolean success = jsonObject.getBoolean("success");
-                    if (success) {
-                        final JSONArray danhGiaArray = jsonObject.getJSONArray("data");
+                if (statusCode == 200) {
+                    // Xử lý dữ liệu thành công
+                    parseReviewsResponse(responseData);
+                } else if (statusCode == 401 || statusCode == 403) {
+                    Log.e(TAG, "Authentication failed with status: " + statusCode);
 
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    reviewList.clear();
+                    // Kiểm tra xem token có thể đã hết hạn
+                    checkTokenExpiration(responseData);
 
-                                    for (int i = 0; i < danhGiaArray.length(); i++) {
-                                        JSONObject danhGiaObject = danhGiaArray.getJSONObject(i);
-
-                                        String noidung = danhGiaObject.getString("noidung");
-                                        String diemdanhgia = danhGiaObject.getString("diemdanhgia");
-                                        String username = danhGiaObject.getString("username");
-                                        String thoigian = danhGiaObject.getString("thoigian");
-
-                                        Review review = new Review(noidung, diemdanhgia, username, thoigian);
-                                        reviewList.add(review);
-                                    }
-
-                                    if (reviewList.isEmpty()) {
-                                        tvReviewsHeader.setText("Chưa có đánh giá nào");
-                                    } else {
-                                        tvReviewsHeader.setText("Đánh giá (" + reviewList.size() + ")");
-                                    }
-
-                                    reviewAdapter.notifyDataSetChanged();
-
-                                } catch (JSONException e) {
-                                    Log.e(TAG, "JSON parsing error: " + e.getMessage());
-                                    tvReviewsHeader.setText("Lỗi xử lý dữ liệu đánh giá");
-                                }
-                            }
-                        });
+                    if (isDirectApi) {
+                        // Nếu API trực tiếp không thành công với token hiện tại, thử API Gateway
+                        tryApiWithToken(client, idSanPham, authToken, false);
                     } else {
-                        final String message = jsonObject.getString("message");
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(ChiTietSanPhamActivity.this, message, Toast.LENGTH_SHORT).show();
-                                tvReviewsHeader.setText("Không có đánh giá nào");
+                        // Cả hai API đều trả về lỗi xác thực, thông báo cho người dùng
+                        runOnUiThread(() -> {
+                            Toast.makeText(ChiTietSanPhamActivity.this,
+                                    "Phiên làm việc đã hết hạn, vui lòng đăng nhập lại",
+                                    Toast.LENGTH_LONG).show();
+                            if (loginPromptView != null) {
+                                loginPromptView.setVisibility(View.VISIBLE);
                             }
+                            showEmptyReviewState();
                         });
                     }
-                } catch (JSONException e) {
-                    Log.e(TAG, "JSON parse error: " + e.getMessage());
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(ChiTietSanPhamActivity.this, "Lỗi xử lý dữ liệu", Toast.LENGTH_SHORT).show();
-                            tvReviewsHeader.setText("Không thể tải đánh giá");
-                        }
-                    });
+                } else {
+                    // Các lỗi khác
+                    Log.e(TAG, "Server error (" + statusCode + "): " + responseData);
+
+                    if (isDirectApi) {
+                        // Nếu API trực tiếp thất bại, thử API Gateway
+                        tryApiWithToken(client, idSanPham, authToken, false);
+                    } else {
+                        // Nếu cả hai đều thất bại, hiển thị thông báo lỗi
+                        runOnUiThread(() -> {
+                            Toast.makeText(ChiTietSanPhamActivity.this,
+                                    "Không thể tải đánh giá sản phẩm", Toast.LENGTH_SHORT).show();
+                            showEmptyReviewState();
+                        });
+                    }
                 }
             }
         });
     }
 
-    /*
-    private void sendDanhGiaToServer() {
-        edtDanhGia = findViewById(R.id.edtDanhGia);
-        String danhGia = edtDanhGia.getText().toString().trim();
-        String diemDanhGia = String.valueOf((int)ratingBar.getRating());
+    /**
+     * Kiểm tra xem token có hết hạn không dựa vào phản hồi
+     */
+    private void checkTokenExpiration(String response) {
+        try {
+            // Phản hồi có thể chứa thông tin về lỗi token
+            JSONObject errorObj = new JSONObject(response);
+            if (errorObj.has("message")) {
+                String errorMessage = errorObj.getString("message");
+                if (errorMessage.toLowerCase().contains("expired") ||
+                        errorMessage.toLowerCase().contains("jwt") ||
+                        errorMessage.toLowerCase().contains("token")) {
 
-        // Kiểm tra xem dữ liệu đánh giá có hợp lệ hay không
-        if (danhGia.isEmpty()) {
-            tvKetQuaDanhGia.setText("Vui lòng nhập đánh giá");
-            return;
-        }
+                    // Xóa token hết hạn
+                    SharedPreferences.Editor editor = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE).edit();
+                    editor.remove("token");
+                    editor.apply();
 
-        // Kiểm tra xem người dùng đã chọn số sao chưa
-        if (ratingBar.getRating() == 0) {
-            tvKetQuaDanhGia.setText("Vui lòng chọn số sao đánh giá (1-5)");
-            return;
-        }
-
-        SharedPreferences preferences = getSharedPreferences("username", Context.MODE_PRIVATE);
-
-        String responseData = preferences.getString("username", "");
-
-        // Tạo OkHttpClient
-        OkHttpClient client = new OkHttpClient();
-
-        // Tạo POST request body
-        RequestBody requestBody = new FormBody.Builder()
-                .add("idsanpham", id)
-                .add("noidung", danhGia)
-                .add("diemdanhgia", diemDanhGia)
-                .add("username", responseData)
-                .build();
-
-        String url = SERVER.danhgiasanpham;
-
-        // Tạo POST request
-        Request request = new Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
-
-        // Gửi request bất đồng bộ
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                // Xử lý khi gửi request thất bại
-                Log.e("ChiTietSanPhamActivity", "Error occurred while sending the review.", e);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        tvKetQuaDanhGia.setText("Lỗi khi gửi đánh giá");
-                    }
-                });
+                    Log.d(TAG, "Token appears to be expired or invalid, cleared from preferences");
+                }
             }
+        } catch (JSONException e) {
+            // Response không phải JSON, có thể là HTML hoặc text thông thường
+            Log.d(TAG, "Could not parse error response as JSON");
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                // Xử lý khi gửi request thành công
-                String responseData = response.body().string();
+            // Nếu response là "Access Denied", rất có thể là lỗi xác thực
+            if (response.toLowerCase().contains("access denied") ||
+                    response.toLowerCase().contains("unauthorized")) {
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        // Xóa nội dung đánh giá và reset RatingBar sau khi gửi thành công
-                        edtDanhGia.setText("");
-                        ratingBar.setRating(0);
+                // Xóa token
+                SharedPreferences.Editor editor = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE).edit();
+                editor.remove("token");
+                editor.apply();
 
-                        Toast.makeText(ChiTietSanPhamActivity.this, "Đánh giá thành công", Toast.LENGTH_SHORT).show();
-                        tvKetQuaDanhGia.setText("Đánh giá thành công");
-
-                        // Tải lại dữ liệu đánh giá
-                        reloadData();
-                    }
-                });
+                Log.d(TAG, "Token appears to be invalid due to 'Access Denied' response, cleared from preferences");
             }
-        });
+        }
     }
 
-    */
-    private void reloadData() {
-        reviewList.clear();
+
+    /**
+     * Phân tích dữ liệu đánh giá từ response JSON
+     */
+    private void parseReviewsResponse(String responseData) {
+        try {
+            JSONObject jsonObject = new JSONObject(responseData);
+
+            if (jsonObject.has("data")) {
+                JSONArray reviewsArray = jsonObject.getJSONArray("data");
+                float totalRating = 0;
+
+                // Nếu không có đánh giá nào
+                if (reviewsArray.length() == 0) {
+                    runOnUiThread(() -> showEmptyReviewState());
+                    return;
+                }
+
+                // Duyệt qua tất cả các đánh giá
+                reviewList.clear();  // Xóa dữ liệu cũ trước khi thêm mới
+
+                for (int i = 0; i < reviewsArray.length(); i++) {
+                    JSONObject reviewObj = reviewsArray.getJSONObject(i);
+
+                    int rating = reviewObj.has("rating") ? reviewObj.getInt("rating") : 0;
+                    String comment = reviewObj.has("comment") ? reviewObj.getString("comment") : "";
+                    String customer = reviewObj.has("customer") ? reviewObj.getString("customer") : "Khách hàng ẩn danh";
+                    String createdAt = reviewObj.has("createdAt") ? reviewObj.getString("createdAt") : "";
+
+                    totalRating += rating;
+
+                    // Định dạng lại thời gian
+                    String formattedDate = formatDateTime(createdAt);
+
+                    // Tạo đối tượng Review mới
+                    Review review = new Review(comment, String.valueOf(rating), customer, formattedDate);
+                    reviewList.add(review);
+
+                    Log.d(TAG, "Added review: " + customer + " - " + rating + " stars - " + formattedDate);
+                }
+
+                final float averageRating = reviewsArray.length() > 0 ? totalRating / reviewsArray.length() : 0;
+                final int reviewCount = reviewsArray.length();
+
+                runOnUiThread(() -> {
+                    // Ẩn thông báo đăng nhập nếu đang hiển thị
+                    if (loginPromptView != null) {
+                        loginPromptView.setVisibility(View.GONE);
+                    }
+
+                    // Cập nhật UI
+                    updateReviewUI(averageRating, reviewCount);
+                });
+            } else {
+                // Không có dữ liệu đánh giá
+                Log.d(TAG, "No review data found in response");
+                runOnUiThread(() -> showEmptyReviewState());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "JSON parsing error: " + e.getMessage());
+            runOnUiThread(() -> showEmptyReviewState());
+        }
+    }
+
+    // Cập nhật giao diện với dữ liệu đánh giá
+    private void updateReviewUI(float averageRating, int reviewCount) {
+        // Cập nhật thông tin đánh giá trung bình
+        tvRatingAverage.setText(String.format("%.1f", averageRating));
+        ratingBarAverage.setRating(averageRating);
+        tvTotalRatingCount.setText(reviewCount + " đánh giá");
+
+        // Cập nhật danh sách đánh giá
         reviewAdapter.notifyDataSetChanged();
-        getDanhGiaSanPham(id);
+
+        // Hiển thị/ẩn TextView "Không có đánh giá"
+        if (reviewList.isEmpty()) {
+            if (tvNoReviews != null) {
+                tvNoReviews.setVisibility(View.VISIBLE);
+            }
+            rvReviews.setVisibility(View.GONE);
+        } else {
+            if (tvNoReviews != null) {
+                tvNoReviews.setVisibility(View.GONE);
+            }
+            rvReviews.setVisibility(View.VISIBLE);
+        }
+    }
+
+    // Hiển thị trạng thái không có đánh giá
+    private void showEmptyReviewState() {
+        tvRatingAverage.setText("0.0");
+        ratingBarAverage.setRating(0);
+        tvTotalRatingCount.setText("Chưa có đánh giá nào");
+
+        if (tvNoReviews != null) {
+            tvNoReviews.setVisibility(View.VISIBLE);
+        }
+
+        rvReviews.setVisibility(View.GONE);
+    }
+
+    // Phương thức định dạng thời gian
+    private String formatDateTime(String dateTimeString) {
+        try {
+            // Kiểm tra định dạng ISO 8601
+            SimpleDateFormat inputFormat;
+            if (dateTimeString.contains("T")) {
+                // Định dạng ISO 8601 với 'T' và có thể có mili giây
+                if (dateTimeString.contains(".")) {
+                    inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
+                } else {
+                    inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+                }
+            } else {
+                // Định dạng đơn giản không có 'T'
+                inputFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            }
+
+            // Định dạng đầu ra theo format mong muốn: HH:mm:ss d/M/yyyy
+            SimpleDateFormat outputFormat = new SimpleDateFormat("HH:mm:ss d/M/yyyy", Locale.getDefault());
+
+            Date date = inputFormat.parse(dateTimeString);
+            return outputFormat.format(date);
+        } catch (ParseException e) {
+            Log.e(TAG, "Error parsing date: " + e.getMessage() + " for string: " + dateTimeString);
+            // Nếu không thể parse, trả về nguyên chuỗi
+            return dateTimeString;
+        }
     }
 
     private void Anhxa() {
@@ -461,15 +1020,26 @@ public class ChiTietSanPhamActivity extends AppCompatActivity {
         btnmua = findViewById(R.id.btnmua);
         loadingIndicator = findViewById(R.id.loadingIndicator);
 
-       /*
-        // Ánh xạ các view đánh giá
-        edtDanhGia = findViewById(R.id.edtDanhGia);
-        btnGuiDanhGia = findViewById(R.id.btnGuiDanhGia);
-        tvKetQuaDanhGia = findViewById(R.id.tvKetQuaDanhGia);
-        ratingBar = findViewById(R.id.ratingBar);
-        rvReviews = findViewById(R.id.rvReviews);
-        tvReviewsHeader = findViewById(R.id.tvReviewsHeader);
+        tvOriginalPrice = findViewById(R.id.tvOriginalPrice);
+        tvPromotionPrice = findViewById(R.id.tvPromotionPrice);
 
-        */
+        // Ánh xạ cho size và màu
+        sizeChipGroup = findViewById(R.id.sizeChipGroup);
+        colorChipGroup = findViewById(R.id.colorChipGroup);
+
+        // Ánh xạ cho phần chọn số lượng
+        btnDecreaseQuantity = findViewById(R.id.btnDecreaseQuantity);
+        btnIncreaseQuantity = findViewById(R.id.btnIncreaseQuantity);
+        tvQuantity = findViewById(R.id.tvQuantity);
+        tvStockStatus = findViewById(R.id.tvStockStatus);
+
+        // Ánh xạ các phần tử cho đánh giá
+        rvReviews = findViewById(R.id.rvReviews);
+        ratingBarAverage = findViewById(R.id.ratingBarAverage);
+        tvRatingAverage = findViewById(R.id.tvRatingAverage);
+        tvTotalRatingCount = findViewById(R.id.tvTotalRatingCount);
+        tvNoReviews = findViewById(R.id.tvNoReviews);
+
+
     }
 }

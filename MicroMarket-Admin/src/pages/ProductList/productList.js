@@ -25,7 +25,9 @@ import {
     Tag,
     Upload,
     message,
-    notification
+    notification,
+    Divider,
+    Card
 } from 'antd';
 import React, { useEffect, useState } from 'react';
 import SunEditor from 'suneditor-react';
@@ -58,11 +60,87 @@ const ProductList = () => {
     const [visible, setVisible] = useState(false);
     const [images, setImages] = useState([]);
     const [supplier, setSupplier] = useState([]);
+    
+    // Thêm state mới để quản lý các biến thể sản phẩm
+    const [variants, setVariants] = useState([]);
+    const [selectedColors, setSelectedColors] = useState([]);
+    const [selectedSizes, setSelectedSizes] = useState([]);
 
+    // Hàm tạo variantId từ productId, size và color
+    const generateVariantId = (productId, size, color) => {
+        return `${productId}-${size}-${color.replace('#', '')}`;
+    };
+
+    // Xử lý khi chọn màu sắc mới
+    const handleColorChange = (colors) => {
+        setSelectedColors(colors);
+        updateVariants(colors, selectedSizes);
+    };
+
+    // Xử lý khi chọn kích thước mới
+    const handleSizeChange = (sizes) => {
+        setSelectedSizes(sizes);
+        updateVariants(selectedColors, sizes);
+    };
+
+    // Cập nhật danh sách biến thể dựa trên màu sắc và kích thước đã chọn
+    const updateVariants = (colors, sizes) => {
+        if (!colors.length || !sizes.length) {
+            setVariants([]);
+            return;
+        }
+
+        // Tạo danh sách biến thể từ tổ hợp màu sắc và kích thước
+        let newVariants = [];
+        colors.forEach(color => {
+            sizes.forEach(size => {
+                // Tìm biến thể đã tồn tại để giữ lại số lượng
+                const existingVariant = variants.find(v => v.color === color && v.size === size);
+                
+                newVariants.push({
+                    color: color,
+                    size: size,
+                    quantity: existingVariant ? existingVariant.quantity : 0
+                });
+            });
+        });
+        
+        setVariants(newVariants);
+    };
+
+    // Xử lý thay đổi số lượng cho một biến thể cụ thể
+    const handleVariantQuantityChange = (color, size, quantity) => {
+        const newVariants = variants.map(variant => {
+            if (variant.color === color && variant.size === size) {
+                return { ...variant, quantity: parseInt(quantity, 10) || 0 };
+            }
+            return variant;
+        });
+        
+        setVariants(newVariants);
+        
+        // Tính toán tổng số lượng sản phẩm
+        const totalQuantity = newVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
+        
+        // Không cần set field quantity nữa vì đã bỏ trường này
+    };
 
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
+            // Tạo một ID tạm thời để sử dụng cho variantId
+            const tempProductId = Date.now().toString();
+            
+            // Tạo danh sách biến thể với variantId được tạo từ id tạm thời, size và color
+            const productVariants = variants.map(variant => ({
+                variantId: generateVariantId(tempProductId, variant.size, variant.color),
+                color: variant.color,
+                size: variant.size,
+                quantity: parseInt(variant.quantity, 10) 
+            }));
+            
+            // Tính tổng số lượng từ các biến thể
+            const totalQuantity = productVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
 
             const categoryList = {
                 "name": values.name,
@@ -72,12 +150,11 @@ const ProductList = () => {
                 "category": values.category,
                 "image": file,
                 "promotion": values.promotion,
-                "quantity": values.quantity,
                 "color": values.colors,
                 "slide": images,
                 "supplier": values.supplier,
-                "sizes": values.sizes
-
+                "sizes": values.sizes,
+                "variants": productVariants 
             };
 
             return axiosClient.post("/product", categoryList).then(response => {
@@ -92,6 +169,9 @@ const ProductList = () => {
                         description: 'Tạo sản phẩm thành công',
                     });
                     setImages([]);
+                    setVariants([]);
+                    setSelectedColors([]);
+                    setSelectedSizes([]);
                     setOpenModalCreate(false);
                     handleProductList();
                 }
@@ -103,7 +183,6 @@ const ProductList = () => {
         }
     };
 
-
     const handleImageUpload = async (info) => {
         const image = info.file;
         const formData = new FormData();
@@ -113,7 +192,7 @@ const ProductList = () => {
             const response = await uploadFileApi.uploadFile(image).then(response => {
                 const imageUrl = response;
                 console.log(imageUrl);
-                // Lưu trữ URL hình ảnh trong trạng thái của thành phần
+           
                 setImages(prevImages => [...prevImages, imageUrl]);
 
                 console.log(images);
@@ -134,10 +213,19 @@ const ProductList = () => {
         setLoading(false);
     }
 
-
     const handleUpdateProduct = async (values) => {
         setLoading(true);
         try {
+            // Tạo danh sách biến thể với variantId
+            const productVariants = variants.map(variant => ({
+                variantId: generateVariantId(id, variant.size, variant.color),
+                color: variant.color,
+                size: variant.size,
+                quantity: parseInt(variant.quantity, 10)
+            }));
+            
+            // Tính tổng số lượng từ các biến thể
+            const totalQuantity = productVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
 
             const categoryList = {
                 "name": values.name,
@@ -146,10 +234,10 @@ const ProductList = () => {
                 "category": values.category,
                 "image": file || values.image,
                 "promotion": values.promotion,
-                "quantity": values.quantity,
                 "color": values.colors,
                 "supplier": values.supplier,
-                "sizes": values.sizes
+                "sizes": values.sizes,
+                "variants": productVariants 
             };
 
             return axiosClient.put("/product/" + id, categoryList).then(response => {
@@ -174,7 +262,6 @@ const ProductList = () => {
         }
     };
 
-
     const handleCancel = (type) => {
         if (type === "create") {
             setOpenModalCreate(false);
@@ -191,7 +278,6 @@ const ProductList = () => {
                 setProduct(res.data.docs);
                 setLoading(false);
             });
-            ;
         } catch (error) {
             console.log('Failed to fetch product list:' + error);
         };
@@ -229,8 +315,6 @@ const ProductList = () => {
         }
     }
 
-
-
     const handleProductEdit = (id) => {
         setOpenModalUpdate(true);
         (async () => {
@@ -238,16 +322,33 @@ const ProductList = () => {
                 const response = await productApi.getDetailProduct(id);
                 console.log(response);
                 setId(id);
+                
+                // Lưu màu sắc và kích thước từ sản phẩm
+                setSelectedColors(response.product.color || []);
+                setSelectedSizes(response.product.sizes || []);
+                
+                // Lưu các biến thể từ sản phẩm
+                if (response.product.variants && response.product.variants.length > 0) {
+                    setVariants(response.product.variants.map(v => ({
+                        color: v.color,
+                        size: v.size,
+                        quantity: v.quantity
+                    })));
+                } else {
+                    // Nếu chưa có biến thể, tạo biến thể từ màu sắc và kích thước
+                    updateVariants(response.product.color || [], response.product.sizes || []);
+                }
+
                 form2.setFieldsValue({
                     name: response.product.name,
                     price: response.product.price,
                     category: response?.product.category?._id,
-                    quantity: response.product.quantity,
                     promotion: response.product.promotion,
                     colors: response.product.color,
                     supplier: response?.product.supplier,
                     sizes: response?.product.sizes
                 });
+                
                 console.log(form2);
                 setDescription(response.product.description);
                 setLoading(false);
@@ -290,11 +391,6 @@ const ProductList = () => {
             dataIndex: 'name',
             key: 'name',
             render: (text) => <a>{text}</a>,
-        },
-        {
-            title: 'Số lượng',
-            dataIndex: 'quantity',
-            key: 'quantity',
         },
         {
             title: 'Giá gốc',
@@ -397,7 +493,6 @@ const ProductList = () => {
         });
     };
 
-
     useEffect(() => {
         (async () => {
             try {
@@ -421,13 +516,9 @@ const ProductList = () => {
                     setLoading(false);
                 });
 
-
                 await supplierApi.getAllSuppliers({ page: 1, limit: 10000 }).then((res) => {
                     setSupplier(res.data.docs);
                 });
-
-
-                ;
             } catch (error) {
                 console.log('Failed to fetch event list:' + error);
             }
@@ -450,6 +541,70 @@ const ProductList = () => {
         XLSX.utils.book_append_sheet(wb, ws, 'Sản phẩm');
 
         XLSX.writeFile(wb, 'danh_sach_san_pham.xlsx');
+    };
+
+    // Render bảng biến thể sản phẩm chỉ khi đã chọn màu sắc và kích thước
+    const renderVariantsTable = () => {
+        if (!selectedColors.length || !selectedSizes.length) {
+            return (
+                <Card title="Biến thể sản phẩm" style={{ marginTop: 16 }}>
+                    <p>Vui lòng chọn màu sắc và kích thước để tạo biến thể sản phẩm</p>
+                </Card>
+            );
+        }
+        
+        return (
+            <Card title="Biến thể sản phẩm" style={{ marginTop: 16 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Màu sắc</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Kích thước</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Số lượng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {variants.map((variant, index) => (
+                            <tr key={index}>
+                                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                                    <div style={{ 
+                                        backgroundColor: variant.color, 
+                                        width: '20px', 
+                                        height: '20px', 
+                                        margin: '0 auto',
+                                        border: '1px solid #ddd'
+                                    }} />
+                                </td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                                    {variant.size}
+                                </td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                                    <Input
+                                        type="number"
+                                        value={variant.quantity}
+                                        onChange={(e) => handleVariantQuantityChange(
+                                            variant.color, 
+                                            variant.size, 
+                                            e.target.value
+                                        )}
+                                        min={0}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </Card>
+        );
+    };
+
+    // Reset lại state khi mở modal tạo mới sản phẩm
+    const handleOpenCreate = () => {
+        setVisible(true);
+        setSelectedColors([]);
+        setSelectedSizes([]);
+        setVariants([]);
+        form.resetFields();
     };
 
     return (
@@ -486,9 +641,8 @@ const ProductList = () => {
                                     <Col span="6">
                                         <Row justify="end">
                                             <Space>
-                                                <Button onClick={handleOpen} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo sản phẩm</Button>
+                                                <Button onClick={handleOpenCreate} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo sản phẩm</Button>
                                                 <Button onClick={exportToExcel} icon={<DownloadOutlined />} style={{ marginLeft: 10 }}>Xuất Excel</Button>
-
                                             </Space>
                                         </Row>
                                     </Col>
@@ -548,20 +702,6 @@ const ProductList = () => {
                         </Form.Item>
 
                         <Form.Item
-                            name="quantity"
-                            label="Số lượng"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập số lượng!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <Input placeholder="Số lượng" type="number" />
-                        </Form.Item>
-
-                        <Form.Item
                             name="price"
                             label="Giá gốc"
                             rules={[
@@ -603,6 +743,7 @@ const ProductList = () => {
                             <Select
                                 mode="multiple"
                                 placeholder="Chọn màu"
+                                onChange={handleColorChange}
                             >
                                 {newsList.map((color) => (
                                     <Select.Option key={color.description} value={color?.description}>
@@ -626,15 +767,20 @@ const ProductList = () => {
                             <Select
                                 mode="multiple"
                                 placeholder="Chọn size"
+                                onChange={handleSizeChange}
                             >
                                 <Select.Option key="S" value="S">S</Select.Option>
                                 <Select.Option key="M" value="M">M</Select.Option>
                                 <Select.Option key="L" value="L">L</Select.Option>
                                 <Select.Option key="XL" value="XL">XL</Select.Option>
                                 <Select.Option key="XXL" value="XXL">XXL</Select.Option>
-                              
                             </Select>
                         </Form.Item>
+
+                        {/* Bảng biến thể sản phẩm chỉ hiện khi đã chọn màu sắc và kích thước */}
+                        {renderVariantsTable()}
+
+                        <Divider />
 
                         <Form.Item
                             name="image"
@@ -668,7 +814,6 @@ const ProductList = () => {
                                 <Button icon={<UploadOutlined />}>Tải lên</Button>
                             </Upload>
                         </Form.Item>
-
 
                         <Form.Item
                             name="category"
@@ -729,7 +874,6 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-
                             <SunEditor
                                 lang="en"
                                 placeholder="Content"
@@ -738,7 +882,7 @@ const ProductList = () => {
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-                                        // ['paragraphStyle', 'blockquote'],
+                                     
                                         [
                                             "bold",
                                             "underline",
@@ -752,18 +896,14 @@ const ProductList = () => {
                                         ["outdent", "indent"],
 
                                         ["table", "horizontalRule", "link", "image", "video"],
-                                        // ['math'] //You must add the 'katex' library at options to use the 'math' plugin.
-                                        // ['imageGallery'], // You must add the "imageGalleryUrl".
-                                        // ["fullScreen", "showBlocks", "codeView"],
+                                 
                                         ["preview", "print"],
                                         ["removeFormat"]
 
-                                        // ['save', 'template'],
-                                        // '/', Line break
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,
-                                    ], // Or Array of button list, eg. [['font', 'align'], ['image']]
+                                    ], 
                                     defaultTag: "div",
                                     minHeight: "500px",
                                     showPathLabel: false,
@@ -780,7 +920,6 @@ const ProductList = () => {
 
                     </Form>
                 </Drawer>
-
 
                 <Drawer
                     title="Chỉnh sửa sản phẩm"
@@ -878,6 +1017,7 @@ const ProductList = () => {
                             <Select
                                 mode="multiple"
                                 placeholder="Chọn màu"
+                                onChange={handleColorChange}
                             >
                                 {newsList.map((color) => (
                                     <Select.Option key={color.description} value={color?.description}>
@@ -901,41 +1041,29 @@ const ProductList = () => {
                             <Select
                                 mode="multiple"
                                 placeholder="Chọn size"
+                                onChange={handleSizeChange}
                             >
                                 <Select.Option key="S" value="S">S</Select.Option>
                                 <Select.Option key="M" value="M">M</Select.Option>
                                 <Select.Option key="L" value="L">L</Select.Option>
                                 <Select.Option key="XL" value="XL">XL</Select.Option>
                                 <Select.Option key="XXL" value="XXL">XXL</Select.Option>
-                              
                             </Select>
                         </Form.Item>
 
+                        {/* Bảng biến thể sản phẩm */}
+                        {renderVariantsTable()}
+                        
+                        <Divider />
+                        
                         <Form.Item
                             name="image"
-                            label="Ảnh sản phẩm"
+                            label="Ảnh"
                             style={{ marginBottom: 10 }}
                         >
                             <input type="file" onChange={handleChangeImage}
                                 id="avatar" name="file"
                                 accept="image/png, image/jpeg" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="images"
-                            label="Hình ảnh slide"
-                            style={{ marginBottom: 10 }}
-                        >
-                            <Upload
-                                name="images"
-                                listType="picture-card"
-                                showUploadList={true}
-                                beforeUpload={() => false}
-                                onChange={handleImageUpload}
-                                multiple
-                            >
-                                <Button icon={<UploadOutlined />}>Tải lên</Button>
-                            </Upload>
                         </Form.Item>
 
                         <Form.Item
@@ -954,8 +1082,8 @@ const ProductList = () => {
                             }>
                                 {category.map((item, index) => {
                                     return (
-                                        <Option value={item?._id} key={index} >
-                                            {item?.name}
+                                        <Option value={item._id} key={index} >
+                                            {item.name}
                                         </Option>
                                     )
                                 })}
@@ -997,17 +1125,16 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-
                             <SunEditor
                                 lang="en"
                                 placeholder="Content"
-                                onChange={handleChange}
                                 setContents={description}
+                                onChange={handleChange}
                                 setOptions={{
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-                                        // ['paragraphStyle', 'blockquote'],
+                                     
                                         [
                                             "bold",
                                             "underline",
@@ -1021,18 +1148,14 @@ const ProductList = () => {
                                         ["outdent", "indent"],
 
                                         ["table", "horizontalRule", "link", "image", "video"],
-                                        // ['math'] //You must add the 'katex' library at options to use the 'math' plugin.
-                                        // ['imageGallery'], // You must add the "imageGalleryUrl".
-                                        // ["fullScreen", "showBlocks", "codeView"],
+                                 
                                         ["preview", "print"],
                                         ["removeFormat"]
 
-                                        // ['save', 'template'],
-                                        // '/', Line break
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,
-                                    ], // Or Array of button list, eg. [['font', 'align'], ['image']]
+                                    ], 
                                     defaultTag: "div",
                                     minHeight: "500px",
                                     showPathLabel: false,

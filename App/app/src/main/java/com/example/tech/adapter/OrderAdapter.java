@@ -26,6 +26,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.ViewHolder> 
     private Context context;
     private List<Order> orderList;
     private OnOrderItemClickListener listener;
+    private OrderProductAdapter.OnProductClickListener productClickListener;
 
     public interface OnOrderItemClickListener {
         void onOrderItemClick(Order order);
@@ -35,6 +36,10 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.ViewHolder> 
         this.context = context;
         this.orderList = orderList;
         this.listener = listener;
+    }
+
+    public void setProductClickListener(OrderProductAdapter.OnProductClickListener productClickListener) {
+        this.productClickListener = productClickListener;
     }
 
     @NonNull
@@ -142,8 +147,27 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.ViewHolder> 
             }
         }
 
+        // Kiểm tra xem đơn hàng đã giao chưa
+        boolean isOrderDelivered = "final".equalsIgnoreCase(order.getStatus()) ||
+                "delivered".equalsIgnoreCase(order.getStatus());
+
         // Thiết lập adapter cho danh sách sản phẩm
-        OrderProductAdapter productAdapter = new OrderProductAdapter(context, order.getProducts());
+        OrderProductAdapter productAdapter = new OrderProductAdapter(
+                context,
+                order.getProducts(),
+                productClickListener != null ? productClickListener : new OrderProductAdapter.OnProductClickListener() {
+                    @Override
+                    public void onProductClick(OrderItem product) {
+                        // Xử lý mặc định khi click vào sản phẩm (nếu cần)
+                    }
+
+                    @Override
+                    public void onRateProductClick(OrderItem product) {
+                        // Xử lý mặc định khi click vào nút đánh giá (nếu cần)
+                    }
+                },
+                isOrderDelivered);
+
         holder.rvOrderProducts.setLayoutManager(new LinearLayoutManager(context));
         holder.rvOrderProducts.setAdapter(productAdapter);
 

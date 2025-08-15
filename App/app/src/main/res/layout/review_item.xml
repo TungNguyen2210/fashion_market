@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="8dp"
-    android:layout_marginVertical="4dp"
+    android:layout_margin="4dp"
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp">
 
@@ -17,45 +16,53 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_person"
+                android:contentDescription="Avatar người dùng"
+                app:tint="@color/teal_700" />
 
             <TextView
                 android:id="@+id/tvReviewUsername"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Username"
-                android:textColor="@color/teal_700"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:layout_weight="1"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/black"
+                android:layout_marginStart="8dp"
+                android:text="Username" />
 
             <TextView
-                android:id="@+id/tvReviewRating"
+                android:id="@+id/tvReviewDateTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:text="Rating: 5.0"
-                android:textColor="@android:color/holo_orange_dark"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textSize="12sp"
+                android:textColor="#757575"
+                android:text="01/01/2023 12:00" />
         </LinearLayout>
 
+        <RatingBar
+            android:id="@+id/reviewRatingBar"
+            style="?android:attr/ratingBarStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:isIndicator="true" />
+
         <TextView
-            android:id="@+id/tvReviewContent"
+            android:id="@+id/tvReviewComment"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Review content goes here"
+            android:textSize="14sp"
             android:textColor="@color/black"
-            android:textSize="15sp" />
+            android:text="Nội dung đánh giá" />
 
-        <TextView
-            android:id="@+id/tvReviewTime"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Time"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
-            android:textStyle="italic" />
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

@@ -4,14 +4,10 @@ import {
 } from "@ant-design/icons";
 import {
   Breadcrumb, Button, Card, Col, Divider, Form,
-  InputNumber, Layout, Row,
-  Spin, Statistic, Input, Tag
+  InputNumber, Layout, Row, Spin, Tag, Input, Statistic
 } from "antd";
 import React, { useEffect, useState, useCallback } from "react";
 import { useHistory, useParams } from "react-router-dom";
-import axiosClient from "../../../apis/axiosClient";
-import eventApi from "../../../apis/eventApi";
-import "./cart.css";
 import promotionManagementApi from "../../../apis/promotionManagementApi";
 
 const { Content } = Layout;

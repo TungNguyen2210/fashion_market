@@ -15,7 +15,7 @@ import android.widget.Toast;
 
 import com.example.tech.R;
 import com.example.tech.adapter.CartAdapter;
-import com.example.tech.model.Product;
+import com.example.tech.model.SanPham;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -33,7 +33,7 @@ public class GioHang extends AppCompatActivity {
     private View layoutDiscount;
     private Button btnMua, btnContinueShopping, btnClearCart;
 
-    private ArrayList<Product> cartItems;
+    private ArrayList<SanPham> cartItems;
     private CartAdapter cartAdapter;
 
     @Override
@@ -116,44 +116,59 @@ public class GioHang extends AppCompatActivity {
 
         String id = intent.getStringExtra("id");
         String name = intent.getStringExtra("name");
-        String price = intent.getStringExtra("price"); // Giá gốc
-        String promotionPrice = intent.getStringExtra("promotionPrice"); // Giá khuyến mãi
+        int price = intent.getIntExtra("price", 0); // Giá gốc
+        int promotionPrice = intent.getIntExtra("promotionPrice", price); // Giá khuyến mãi
         String imageUrl = intent.getStringExtra("img");
         String selectedSize = intent.getStringExtra("size");
         String selectedColor = intent.getStringExtra("color");
         int quantity = intent.getIntExtra("quantity", 1); // Mặc định là 1 nếu không có
 
         // Kiểm tra có thông tin sản phẩm mới hay không
-        if (name != null && price != null && id != null) {
+        if (name != null && id != null) {
             Log.d(TAG, "Nhận sản phẩm mới: " + name + " - " + price + " - Số lượng: " + quantity);
 
             // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
             boolean productExists = false;
-            for (Product cartItem : cartItems) {
+            for (SanPham cartItem : cartItems) {
                 // So sánh ID và các thuộc tính đã chọn (size, color) để xác định sản phẩm giống nhau
-                if (cartItem.getId() != null && cartItem.getId().equals(id) &&
-                        ((cartItem.getSelectedSize() == null && selectedSize == null) ||
-                                (cartItem.getSelectedSize() != null && cartItem.getSelectedSize().equals(selectedSize))) &&
-                        ((cartItem.getSelectedColor() == null && selectedColor == null) ||
-                                (cartItem.getSelectedColor() != null && cartItem.getSelectedColor().equals(selectedColor)))) {
+                boolean sameSize = (selectedSize == null && cartItem.getSizes() == null) ||
+                        (selectedSize != null && cartItem.getSizes() != null && cartItem.getSizes().contains(selectedSize));
+                boolean sameColor = (selectedColor == null && cartItem.getColors() == null) ||
+                        (selectedColor != null && cartItem.getColors() != null && cartItem.getColors().contains(selectedColor));
 
-                    // Tăng số lượng nếu sản phẩm đã tồn tại
-                    int currentQuantity = cartItem.getQuantity();
-                    cartItem.setQuantity(currentQuantity + quantity);
-                    productExists = true;
-                    Log.d(TAG, "Sản phẩm đã tồn tại, tăng số lượng lên " + (currentQuantity + quantity));
-                    break;
+                if (cartItem.getIdsanpham() != null && cartItem.getIdsanpham().equals(id) && sameSize && sameColor) {
+                    // Cập nhật số lượng nếu sản phẩm đã tồn tại
+                    SanPham.ProductVariant variant = findVariant(cartItem, selectedColor, selectedSize);
+                    if (variant != null) {
+                        variant.setQuantity(variant.getQuantity() + quantity);
+                        productExists = true;
+                        Log.d(TAG, "Sản phẩm đã tồn tại, tăng số lượng lên " + (variant.getQuantity()));
+                        break;
+                    }
                 }
             }
 
             // Nếu sản phẩm chưa có trong giỏ hàng, thêm mới với số lượng đã chọn
             if (!productExists) {
-                Product selectedProduct;
-                if (promotionPrice != null && !promotionPrice.isEmpty()) {
-                    selectedProduct = new Product(id, name, price, promotionPrice, imageUrl, quantity, selectedSize, selectedColor);
-                } else {
-                    selectedProduct = new Product(id, name, price, imageUrl, quantity, selectedSize, selectedColor);
+                SanPham selectedProduct = new SanPham(id, "", name, price, promotionPrice, imageUrl, "");
+
+                if (selectedSize != null) {
+                    ArrayList<String> sizes = new ArrayList<>();
+                    sizes.add(selectedSize);
+                    selectedProduct.setSizes(sizes);
                 }
+
+                if (selectedColor != null) {
+                    ArrayList<String> colors = new ArrayList<>();
+                    colors.add(selectedColor);
+                    selectedProduct.setColors(colors);
+                }
+
+                SanPham.ProductVariant variant = new SanPham.ProductVariant(id + "-variant", selectedColor, selectedSize, quantity);
+                ArrayList<SanPham.ProductVariant> variants = new ArrayList<>();
+                variants.add(variant);
+                selectedProduct.setVariants(variants);
+
                 cartItems.add(selectedProduct);
                 Log.d(TAG, "Thêm sản phẩm mới vào giỏ hàng với số lượng: " + quantity);
             }
@@ -170,22 +185,38 @@ public class GioHang extends AppCompatActivity {
         }
     }
 
+    // Tìm biến thể phù hợp với màu sắc và kích thước
+    private SanPham.ProductVariant findVariant(SanPham product, String color, String size) {
+        if (product.getVariants() == null) {
+            return null;
+        }
+
+        for (SanPham.ProductVariant variant : product.getVariants()) {
+            boolean colorMatch = (color == null && variant.getColor() == null) ||
+                    (color != null && color.equals(variant.getColor()));
+            boolean sizeMatch = (size == null && variant.getSize() == null) ||
+                    (size != null && size.equals(variant.getSize()));
+
+            if (colorMatch && sizeMatch) {
+                return variant;
+            }
+        }
+
+        return null;
+    }
+
     // Tính giá gốc tổng cộng
     private int calculateOriginalPrice() {
         int totalPrice = 0;
-        for (Product product : cartItems) {
-            String price = product.getPrice();
-            int quantity = product.getQuantity();
-            if (price != null) {
-                try {
-                    // Loại bỏ các ký tự không phải số
-                    String numericPrice = price.replaceAll("[^\\d]", "");
-                    if (!numericPrice.isEmpty()) {
-                        int priceValue = Integer.parseInt(numericPrice);
-                        totalPrice += priceValue * quantity;
-                    }
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "Lỗi chuyển đổi giá: " + price, e);
+        for (SanPham product : cartItems) {
+            if (product.getVariants() != null) {
+                for (SanPham.ProductVariant variant : product.getVariants()) {
+                    totalPrice += product.getGiagoc() * variant.getQuantity();
+                }
+            } else {
+                // Nếu không có biến thể, sử dụng số lượng tồn kho
+                if (product.getInventory() != null) {
+                    totalPrice += product.getGiagoc() * product.getInventory().getQuantityOnHand();
                 }
             }
         }
@@ -195,19 +226,15 @@ public class GioHang extends AppCompatActivity {
     // Tính giá cuối cùng (sau khuyến mãi)
     private int calculateFinalPrice() {
         int totalPrice = 0;
-        for (Product product : cartItems) {
-            String price = product.getDisplayPrice(); // Sử dụng phương thức lấy giá hiển thị
-            int quantity = product.getQuantity();
-            if (price != null) {
-                try {
-                    // Loại bỏ các ký tự không phải số
-                    String numericPrice = price.replaceAll("[^\\d]", "");
-                    if (!numericPrice.isEmpty()) {
-                        int priceValue = Integer.parseInt(numericPrice);
-                        totalPrice += priceValue * quantity;
-                    }
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "Lỗi chuyển đổi giá: " + price, e);
+        for (SanPham product : cartItems) {
+            if (product.getVariants() != null) {
+                for (SanPham.ProductVariant variant : product.getVariants()) {
+                    totalPrice += product.getGiasanpham() * variant.getQuantity();
+                }
+            } else {
+                // Nếu không có biến thể, sử dụng số lượng tồn kho
+                if (product.getInventory() != null) {
+                    totalPrice += product.getGiasanpham() * product.getInventory().getQuantityOnHand();
                 }
             }
         }
@@ -241,42 +268,12 @@ public class GioHang extends AppCompatActivity {
 
         if (!jsonCart.isEmpty()) {
             Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<Product>>() {}.getType();
+            Type type = new TypeToken<ArrayList<SanPham>>() {}.getType();
             cartItems = gson.fromJson(jsonCart, type);
         }
 
         if (cartItems == null) {
             cartItems = new ArrayList<>();
-        }
-
-        // Đồng bộ với biến static cartItems nếu có
-        if (Product.cartItems != null && !Product.cartItems.isEmpty()) {
-            // Nếu có sản phẩm trong cartItems static, thêm hoặc cập nhật chúng vào cartItems local
-            for (Product staticProduct : Product.cartItems) {
-                boolean found = false;
-                for (int i = 0; i < cartItems.size(); i++) {
-                    Product localProduct = cartItems.get(i);
-                    if (staticProduct.getId() != null && staticProduct.getId().equals(localProduct.getId()) &&
-                            ((staticProduct.getSelectedSize() == null && localProduct.getSelectedSize() == null) ||
-                                    (staticProduct.getSelectedSize() != null && staticProduct.getSelectedSize().equals(localProduct.getSelectedSize()))) &&
-                            ((staticProduct.getSelectedColor() == null && localProduct.getSelectedColor() == null) ||
-                                    (staticProduct.getSelectedColor() != null && staticProduct.getSelectedColor().equals(localProduct.getSelectedColor())))) {
-                        // Cập nhật số lượng nếu sản phẩm đã tồn tại
-                        int newQuantity = localProduct.getQuantity() + staticProduct.getQuantity();
-                        localProduct.setQuantity(newQuantity);
-                        cartItems.set(i, localProduct);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    // Thêm sản phẩm mới
-                    cartItems.add(staticProduct);
-                }
-            }
-
-            // Xóa danh sách static để tránh trùng lặp
-            Product.cartItems.clear();
         }
     }
 
@@ -360,60 +357,48 @@ public class GioHang extends AppCompatActivity {
         StringBuilder calculationDetails = new StringBuilder();
         NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
 
-        for (Product product : cartItems) {
+        for (SanPham product : cartItems) {
             try {
-                String displayPrice = product.getDisplayPrice();
-                int priceValue = 0;
+                for (SanPham.ProductVariant variant : product.getVariants()) {
+                    int priceValue = product.getGiasanpham();
+                    int quantity = variant.getQuantity();
+                    int itemTotal = priceValue * quantity;
 
-                // Trích xuất giá trị số từ chuỗi giá
-                String numericPrice = displayPrice.replaceAll("[^\\d]", "");
-                if (!numericPrice.isEmpty()) {
-                    priceValue = Integer.parseInt(numericPrice);
-                }
+                    calculationDetails.append(product.getTensanpham());
 
-                int quantity = product.getQuantity();
-                int itemTotal = priceValue * quantity;
-
-                calculationDetails.append(product.getName());
-
-                // Thêm size và màu sắc nếu có
-                if (product.getSelectedSize() != null || product.getSelectedColor() != null) {
-                    calculationDetails.append(" (");
-                    if (product.getSelectedSize() != null) {
-                        calculationDetails.append("Size: ").append(product.getSelectedSize());
-                        if (product.getSelectedColor() != null) {
-                            calculationDetails.append(", ");
+                    // Thêm size và màu sắc nếu có
+                    if (variant.getSize() != null || variant.getColor() != null) {
+                        calculationDetails.append(" (");
+                        if (variant.getSize() != null) {
+                            calculationDetails.append("Size: ").append(variant.getSize());
+                            if (variant.getColor() != null) {
+                                calculationDetails.append(", ");
+                            }
                         }
-                    }
-                    if (product.getSelectedColor() != null) {
-                        calculationDetails.append("Màu: ").append(product.getSelectedColor());
-                    }
-                    calculationDetails.append(")");
-                }
-
-                calculationDetails.append(" x ").append(quantity);
-
-                // Hiển thị giá sau giảm và giá gốc nếu có giảm giá
-                if (product.hasDiscount()) {
-                    String originalPrice = product.getPrice();
-                    int originalValue = 0;
-
-                    String numericOriginal = originalPrice.replaceAll("[^\\d]", "");
-                    if (!numericOriginal.isEmpty()) {
-                        originalValue = Integer.parseInt(numericOriginal);
+                        if (variant.getColor() != null) {
+                            calculationDetails.append("Màu: ").append(variant.getColor());
+                        }
+                        calculationDetails.append(")");
                     }
 
-                    calculationDetails.append(" x ").append(formatter.format(priceValue)).append("đ")
-                            .append(" (Giá gốc: ").append(formatter.format(originalValue)).append("đ)")
-                            .append(" = ").append(formatter.format(itemTotal)).append("đ")
-                            .append("\n");
-                } else {
-                    calculationDetails.append(" x ").append(formatter.format(priceValue)).append("đ")
-                            .append(" = ").append(formatter.format(itemTotal)).append("đ")
-                            .append("\n");
+                    calculationDetails.append(" x ").append(quantity);
+
+                    // Hiển thị giá sau giảm và giá gốc nếu có giảm giá
+                    if (product.isOnSale()) {
+                        int originalValue = product.getGiagoc();
+
+                        calculationDetails.append(" x ").append(formatter.format(priceValue)).append("đ")
+                                .append(" (Giá gốc: ").append(formatter.format(originalValue)).append("đ)")
+                                .append(" = ").append(formatter.format(itemTotal)).append("đ")
+                                .append("\n");
+                    } else {
+                        calculationDetails.append(" x ").append(formatter.format(priceValue)).append("đ")
+                                .append(" = ").append(formatter.format(itemTotal)).append("đ")
+                                .append("\n");
+                    }
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Lỗi khi tạo chi tiết tính toán cho " + product.getName(), e);
+                Log.e(TAG, "Lỗi khi tạo chi tiết tính toán cho " + product.getTensanpham(), e);
             }
         }
 
@@ -434,13 +419,16 @@ public class GioHang extends AppCompatActivity {
 
     public void updateProductQuantity(int position, int newQuantity) {
         if (position >= 0 && position < cartItems.size()) {
+            SanPham product = cartItems.get(position);
             if (newQuantity <= 0) {
                 // Xóa sản phẩm nếu số lượng <= 0
                 cartItems.remove(position);
                 Toast.makeText(this, "Đã xóa sản phẩm khỏi giỏ hàng", Toast.LENGTH_SHORT).show();
             } else {
                 // Cập nhật số lượng sản phẩm
-                cartItems.get(position).setQuantity(newQuantity);
+                if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                    product.getVariants().get(0).setQuantity(newQuantity);
+                }
             }
 
             // Cập nhật ListView và lưu thay đổi

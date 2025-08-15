@@ -3,6 +3,7 @@ package com.example.tech.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.RatingBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -31,10 +32,17 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     @Override
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
         Review review = reviewList.get(position);
-        holder.tvReviewContent.setText(review.getContent());
-        holder.tvReviewRating.setText("Rating: " + review.getRating());
-        holder.tvReviewUsername.setText("Username: " + review.getUsername());
-        holder.tvReviewTime.setText("Time: " + review.getTime());
+
+        holder.tvUsername.setText(review.getUsername());
+        holder.tvComment.setText(review.getComment());
+        holder.tvDateTime.setText(review.getDateTime());
+
+        try {
+            float rating = Float.parseFloat(review.getRating());
+            holder.ratingBar.setRating(rating);
+        } catch (NumberFormatException e) {
+            holder.ratingBar.setRating(0);
+        }
     }
 
     @Override
@@ -43,18 +51,15 @@ public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewView
     }
 
     public static class ReviewViewHolder extends RecyclerView.ViewHolder {
-        TextView tvReviewContent;
-        TextView tvReviewRating;
-        TextView tvReviewUsername;
-        TextView tvReviewTime;
+        TextView tvUsername, tvComment, tvDateTime;
+        RatingBar ratingBar;
 
         public ReviewViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvReviewContent = itemView.findViewById(R.id.tvReviewContent);
-            tvReviewRating = itemView.findViewById(R.id.tvReviewRating);
-            tvReviewUsername = itemView.findViewById(R.id.tvReviewUsername);
-            tvReviewTime = itemView.findViewById(R.id.tvReviewTime);
+            tvUsername = itemView.findViewById(R.id.tvReviewUsername);
+            tvComment = itemView.findViewById(R.id.tvReviewComment);
+            tvDateTime = itemView.findViewById(R.id.tvReviewDateTime);
+            ratingBar = itemView.findViewById(R.id.reviewRatingBar);
         }
     }
 }
-

@@ -6,9 +6,16 @@ const jwt = require('jsonwebtoken');
 const _const = require('../config/constant');
 
 const calculateCosineSimilarity = (product1, product2) => {
+    // Tính toán tổng số lượng từ variants thay vì sử dụng trường quantity
+    const product1Quantity = product1.variants ? 
+        product1.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
+    
+    const product2Quantity = product2.variants ? 
+        product2.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
+    
     // Chuyển đổi các đặc trưng của sản phẩm thành vector
-    const vector1 = [product1.price, product1.quantity]; // Ví dụ: sử dụng giá và số lượng làm đặc trưng
-    const vector2 = [product2.price, product2.quantity];
+    const vector1 = [product1.price, product1Quantity]; // Sử dụng số lượng từ variants
+    const vector2 = [product2.price, product2Quantity];
   
     // Tính tổng tích của hai vector
     let dotProduct = 0;
@@ -61,7 +68,6 @@ const productController = {
             category,
             image,
             promotion,
-            quantity,
             slide,
             supplier,
             inventory,
@@ -70,30 +76,32 @@ const productController = {
             variants
         } = req.body;
 
-        // Tạo các biến thể nếu chưa được cung cấp
-        let productVariants = variants || [];
-        if (!variants && color && sizes && color.length > 0 && sizes.length > 0) {
-            // Phân phối số lượng đều giữa các biến thể
-            const variantCount = color.length * sizes.length;
-            const quantityPerVariant = Math.floor(quantity / variantCount);
-            let remainingQuantity = quantity % variantCount;
+        // Nếu đã có biến thể được gửi đến, sử dụng chúng trực tiếp
+        let productVariants = [];
+        
+        if (variants && variants.length > 0) {
+            // Sử dụng biến thể đã được gửi đến, không phân phối lại số lượng
+            productVariants = variants.map(variant => ({
+                variantId: variant.variantId,
+                color: variant.color,
+                size: variant.size,
+                quantity: parseInt(variant.quantity, 10) || 0 // Đảm bảo số lượng là số nguyên
+            }));
+        }
+        // Nếu không có biến thể nhưng có màu sắc và kích thước, tạo biến thể mới
+        else if (color && sizes && color.length > 0 && sizes.length > 0) {
+            const tempId = Date.now().toString();
             
             // Tạo các biến thể cho tất cả các tổ hợp màu sắc và kích thước
             for (const c of color) {
                 for (const s of sizes) {
-                    let variantQuantity = quantityPerVariant;
-                    if (remainingQuantity > 0) {
-                        variantQuantity++;
-                        remainingQuantity--;
-                    }
-                    
-                    const variantId = `${Date.now()}-${c}-${s}`;
+                    const variantId = `${tempId}-${s}-${c.replace('#', '')}`;
                     
                     productVariants.push({
                         variantId,
                         color: c,
                         size: s,
-                        quantity: variantQuantity
+                        quantity: 0 // Mặc định là 0
                     });
                 }
             }
@@ -106,16 +114,15 @@ const productController = {
             category,
             image,
             promotion,
-            quantity,
             slide,
             supplier,
             color,
             sizes,
-            variants: productVariants, // Thêm biến thể vào sản phẩm
+            variants: productVariants, // Sử dụng biến thể đã xử lý
             inventory: {
                 quantityOnHand: inventory?.quantityOnHand || 0,
                 expirationDate: inventory?.expirationDate || null,
-                variantStock: productVariants // Lưu biến thể trong inventory nếu cần
+                variantStock: productVariants // Lưu biến thể trong inventory 
             }
         });
 
@@ -152,7 +159,6 @@ const productController = {
             category,
             image,
             promotion,
-            quantity,
             color,
             supplier,
             inventory,
@@ -169,11 +175,11 @@ const productController = {
             
             // Cập nhật inventory cơ bản
             if (existingProduct.inventory) {
-                existingProduct.inventory.quantityOnHand = (Number(existingProduct.inventory.quantityOnHand) || 0) + (Number(inventory?.quantityOnHand) || 0);
+                existingProduct.inventory.quantityOnHand = 0; // Không cần thiết, sẽ tính từ variants
                 existingProduct.inventory.expirationDate = inventory?.expirationDate || existingProduct.inventory.expirationDate;
             } else {
                 existingProduct.inventory = {
-                    quantityOnHand: Number(inventory?.quantityOnHand) || 0,
+                    quantityOnHand: 0,
                     expirationDate: inventory?.expirationDate || null,
                     variantStock: []
                 };
@@ -181,11 +187,16 @@ const productController = {
 
             // Cập nhật biến thể nếu được cung cấp
             if (variants && variants.length > 0) {
-                existingProduct.variants = variants;
-                existingProduct.inventory.variantStock = variants;
+                // Sử dụng biến thể đã được gửi đến, không phân phối lại số lượng
+                const updatedVariants = variants.map(variant => ({
+                    variantId: variant.variantId || `${id}-${variant.size}-${variant.color.replace('#', '')}`,
+                    color: variant.color,
+                    size: variant.size,
+                    quantity: parseInt(variant.quantity, 10) || 0 // Đảm bảo số lượng là số nguyên
+                }));
                 
-                // Tính lại tổng số lượng từ các biến thể
-                existingProduct.quantity = variants.reduce((sum, variant) => sum + variant.quantity, 0);
+                existingProduct.variants = updatedVariants;
+                existingProduct.inventory.variantStock = updatedVariants;
             }
             // Nếu không có biến thể nhưng có thay đổi về color hoặc sizes, tạo biến thể mới
             else if ((color && color.length > 0) || (sizes && sizes.length > 0)) {
@@ -193,78 +204,35 @@ const productController = {
                 const updatedSizes = sizes || existingProduct.sizes || [];
                 
                 if (updatedColor.length > 0 && updatedSizes.length > 0) {
-                    // Lưu trữ biến thể hiện tại và số lượng của chúng
-                    const currentVariants = existingProduct.variants || [];
-                    const currentVariantMap = {};
-                    
-                    currentVariants.forEach(variant => {
-                        const key = `${variant.color}-${variant.size}`;
-                        currentVariantMap[key] = variant.quantity;
-                    });
+                    const newVariants = [];
                     
                     // Tạo biến thể mới
-                    const newVariants = [];
-                    const updatedQuantity = quantity || existingProduct.quantity || 0;
-                    
-                    // Phân phối số lượng đều giữa các biến thể mới
-                    const variantCount = updatedColor.length * updatedSizes.length;
-                    const quantityPerVariant = Math.floor(updatedQuantity / variantCount);
-                    let remainingQuantity = updatedQuantity % variantCount;
-                    
                     for (const c of updatedColor) {
                         for (const s of updatedSizes) {
-                            const key = `${c}-${s}`;
+                            const variantId = `${existingProduct._id}-${s}-${c.replace('#', '')}`;
                             
-                            // Ưu tiên sử dụng số lượng từ biến thể hiện có nếu có
-                            let variantQuantity = currentVariantMap[key];
-                            
-                            // Nếu không tìm thấy biến thể hiện có, phân phối số lượng mới
-                            if (variantQuantity === undefined) {
-                                variantQuantity = quantityPerVariant;
-                                if (remainingQuantity > 0) {
-                                    variantQuantity++;
-                                    remainingQuantity--;
-                                }
-                            }
-                            
-                            const variantId = `${existingProduct._id}-${c}-${s}`;
+                            // Tìm biến thể hiện có nếu có
+                            const existingVariant = existingProduct.variants?.find(
+                                v => v.color === c && v.size === s
+                            );
                             
                             newVariants.push({
                                 variantId,
                                 color: c,
                                 size: s,
-                                quantity: variantQuantity
+                                quantity: existingVariant ? parseInt(existingVariant.quantity, 10) || 0 : 0
                             });
                         }
                     }
                     
                     existingProduct.variants = newVariants;
                     existingProduct.inventory.variantStock = newVariants;
-                    
-                    // Tính tổng số lượng từ các biến thể
-                    existingProduct.quantity = newVariants.reduce((sum, variant) => sum + variant.quantity, 0);
                 }
-            } else if (quantity) {
-                // Nếu chỉ cập nhật số lượng tổng
-                existingProduct.quantity = (Number(existingProduct.quantity) || 0) + Number(quantity);
-                
-                // Phân phối số lượng mới giữa các biến thể nếu có
-                if (existingProduct.variants && existingProduct.variants.length > 0) {
-                    const variantCount = existingProduct.variants.length;
-                    const quantityPerVariant = Math.floor(Number(quantity) / variantCount);
-                    let remainingQuantity = Number(quantity) % variantCount;
-                    
-                    existingProduct.variants.forEach(variant => {
-                        let extraQuantity = quantityPerVariant;
-                        if (remainingQuantity > 0) {
-                            extraQuantity++;
-                            remainingQuantity--;
-                        }
-                        variant.quantity = (Number(variant.quantity) || 0) + extraQuantity;
-                    });
-                    
-                    existingProduct.inventory.variantStock = existingProduct.variants;
-                }
+            }
+
+            // Xóa trường quantity (nếu có)
+            if (existingProduct.quantity !== undefined) {
+                delete existingProduct.quantity;
             }
 
             // Cập nhật các trường khác của sản phẩm
@@ -331,11 +299,18 @@ const productController = {
         }
     },
 
-    // Hàm tính cosine similarity giữa hai sản phẩm
+    // Hàm tính cosine similarity giữa hai sản phẩm - cập nhật để sử dụng số lượng từ variants
     calculateCosineSimilarity: (product1, product2) => {
+        // Tính tổng số lượng từ variants thay vì sử dụng trường quantity
+        const product1Quantity = product1.variants ? 
+            product1.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
+        
+        const product2Quantity = product2.variants ? 
+            product2.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
+        
         // Chuyển đổi các đặc trưng của sản phẩm thành vector
-        const vector1 = [product1.price, product1.quantity]; // Ví dụ: sử dụng giá và số lượng làm đặc trưng
-        const vector2 = [product2.price, product2.quantity];
+        const vector1 = [product1.price, product1Quantity];
+        const vector2 = [product2.price, product2Quantity];
 
         // Tính tổng tích của hai vector
         let dotProduct = 0;
@@ -506,13 +481,9 @@ const productController = {
                     stock: variant.quantity
                 });
             } else {
-                // Nếu không có biến thể, kiểm tra số lượng tổng
-                const available = product.quantity >= quantity;
-                
-                return res.status(200).json({
-                    success: true,
-                    available: available,
-                    stock: product.quantity
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Không tìm thấy thông tin về kho của sản phẩm này' 
                 });
             }
         } catch (error) {
@@ -552,9 +523,6 @@ const productController = {
                 }
                 
                 if (updated) {
-                    // Cập nhật tổng số lượng
-                    product.quantity = product.variants.reduce((sum, v) => sum + v.quantity, 0);
-                    
                     // Đồng bộ với inventory.variantStock nếu có
                     if (product.inventory && product.inventory.variantStock) {
                         product.inventory.variantStock = product.variants;
@@ -587,9 +555,6 @@ const productController = {
                 }
                 
                 if (updated) {
-                    // Cập nhật tổng số lượng
-                    product.quantity = product.inventory.variantStock.reduce((sum, v) => sum + v.quantity, 0);
-                    
                     // Đồng bộ với variants nếu có
                     if (product.variants) {
                         product.variants = product.inventory.variantStock;
@@ -603,22 +568,6 @@ const productController = {
                         product: product
                     });
                 }
-            } 
-            // Nếu không có biến thể, cập nhật số lượng tổng
-            else if (product.quantity >= quantity) {
-                product.quantity -= quantity;
-                await product.save();
-                
-                return res.status(200).json({
-                    success: true,
-                    message: 'Đã cập nhật tồn kho thành công',
-                    product: product
-                });
-            } else {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Không đủ số lượng tồn kho' 
-                });
             }
             
             return res.status(404).json({ 
@@ -656,29 +605,14 @@ const productController = {
             }
             // Nếu không có biến thể, tạo biến thể từ color và sizes nếu có
             else if (product.color && product.sizes && product.color.length > 0 && product.sizes.length > 0) {
-                const hasStock = product.quantity > 0;
-                
-                // Phân phối số lượng đều giữa các biến thể
-                const variantCount = product.color.length * product.sizes.length;
-                const quantityPerVariant = Math.floor(product.quantity / variantCount);
-                let remainingQuantity = product.quantity % variantCount;
-                
                 for (const color of product.color) {
                     for (const size of product.sizes) {
-                        let quantity = quantityPerVariant;
-                        if (remainingQuantity > 0) {
-                            quantity++;
-                            remainingQuantity--;
-                        }
-                        
-                        if (quantity > 0) {
-                            availableVariants.push({
-                                variantId: `${product._id}-${color}-${size}`,
-                                color,
-                                size,
-                                quantity
-                            });
-                        }
+                        availableVariants.push({
+                            variantId: `${product._id}-${color}-${size}`,
+                            color,
+                            size,
+                            quantity: 0
+                        });
                     }
                 }
             }
@@ -697,8 +631,7 @@ const productController = {
                     name: product.name,
                     price: product.price,
                     promotion: product.promotion,
-                    image: product.image,
-                    quantity: product.quantity
+                    image: product.image
                 }
             });
         } catch (error) {
@@ -730,28 +663,20 @@ const productController = {
             } 
             // Nếu không có biến thể, tạo biến thể từ color và sizes nếu có
             else if (product.color && product.sizes && product.color.length > 0 && product.sizes.length > 0) {
-                // Phân phối số lượng đều giữa các biến thể
-                const variantCount = product.color.length * product.sizes.length;
-                const quantityPerVariant = Math.floor(product.quantity / variantCount);
-                let remainingQuantity = product.quantity % variantCount;
-                
                 for (const color of product.color) {
                     for (const size of product.sizes) {
-                        let quantity = quantityPerVariant;
-                        if (remainingQuantity > 0) {
-                            quantity++;
-                            remainingQuantity--;
-                        }
-                        
                         variants.push({
                             variantId: `${product._id}-${color}-${size}`,
                             color,
                             size,
-                            quantity
+                            quantity: 0
                         });
                     }
                 }
             }
+            
+            // Tính tổng số lượng từ variants
+            const totalQuantity = variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0);
             
             return res.status(200).json({
                 success: true,
@@ -764,7 +689,7 @@ const productController = {
                     image: product.image,
                     color: product.color,
                     sizes: product.sizes,
-                    quantity: product.quantity
+                    totalQuantity: totalQuantity
                 }
             });
         } catch (error) {

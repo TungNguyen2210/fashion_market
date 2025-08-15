@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import "./sidebar.css";
 import { Layout, Menu } from 'antd';
 import { useHistory, useLocation } from "react-router-dom";
-import { UserOutlined, ContainerOutlined, DashboardOutlined, SolutionOutlined, BarsOutlined, BgColorsOutlined, ShoppingOutlined, AuditOutlined, ShoppingCartOutlined, FormOutlined, NotificationOutlined } from '@ant-design/icons';
+import { UserOutlined, ContainerOutlined, DashboardOutlined, SolutionOutlined, BarsOutlined, BgColorsOutlined, ShoppingOutlined, AuditOutlined, ShoppingCartOutlined, FormOutlined, NotificationOutlined, CarOutlined } from '@ant-design/icons';
 
 const { SubMenu } = Menu;
 const { Sider } = Layout;
@@ -61,6 +61,12 @@ function Sidebar() {
       title: "Quản lý đơn hàng",
       link: "/order-list",
       icon: <ShoppingCartOutlined />
+    },
+    {
+      key: "shipping",
+      title: "Quản lý vận chuyển",
+      link: "/shipping",
+      icon: <CarOutlined />
     },
     {
       key: "news-list",

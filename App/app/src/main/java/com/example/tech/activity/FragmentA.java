@@ -54,6 +54,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FragmentA extends Fragment {
@@ -162,16 +163,13 @@ public class FragmentA extends Fragment {
                 btnViewAll.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        // Bỏ chọn tất cả danh mục
                         if (chuDeAdapter != null) {
                             chuDeAdapter.clearSelection();
                         }
 
-                        // Reset trang về 1 khi chuyển sang xem tất cả
                         currentPage = 1;
                         currentCategoryId = null;
 
-                        // Hiển thị tất cả sản phẩm với phân trang
                         loadAllProductsWithPagination();
 
                         Toast.makeText(getContext(), "Xem tất cả sản phẩm", Toast.LENGTH_SHORT).show();
@@ -186,11 +184,14 @@ public class FragmentA extends Fragment {
         // Thiết lập RecyclerViews
         setupRecyclerViews();
 
+        // Đặt giá trị mặc định cho hiển thị tất cả sản phẩm
+        currentPage = 1;
+        currentCategoryId = null;
+
         // Tải dữ liệu
         LoadChuDe();
         LoadSanPham();
 
-        // Cập nhật UI phân trang ban đầu
         updatePaginationUI();
 
         // Thiết lập tìm kiếm
@@ -410,8 +411,6 @@ public class FragmentA extends Fragment {
                         @Override
                         public void onResponse(JSONObject responseObject) {
                             try {
-                                Log.d(TAG, "Phản hồi API danh mục: " + responseObject.toString().substring(0, Math.min(500, responseObject.toString().length())));
-
                                 data.clear();
 
                                 // Kiểm tra cấu trúc JSON
@@ -424,9 +423,6 @@ public class FragmentA extends Fragment {
                                         totalPages = dataObject.optInt("totalPages", 1);
                                         currentPage = dataObject.optInt("page", 1);
                                         isLastPage = currentPage >= totalPages;
-
-                                        Log.d(TAG, "Thông tin phân trang: Trang " + currentPage + "/" + totalPages +
-                                                ", Tổng số sản phẩm: " + totalItems);
                                     }
 
                                     // Kiểm tra xem có trường "docs" không
@@ -434,16 +430,14 @@ public class FragmentA extends Fragment {
                                         JSONArray docsArray = dataObject.getJSONArray("docs");
 
                                         if (docsArray.length() > 0) {
-                                            Log.d(TAG, "Tìm thấy " + docsArray.length() + " sản phẩm trong trang " + currentPage);
-
                                             for (int j = 0; j < docsArray.length(); j++) {
                                                 try {
                                                     JSONObject docsObject = docsArray.getJSONObject(j);
 
-                                                    // Sử dụng tên trường chính xác từ API
+                                                    // Xử lý thông tin cơ bản sản phẩm
                                                     String id = docsObject.optString("_id", "");
-                                                    int giagoc = docsObject.optInt("price", 0); // Giá gốc
-                                                    int giasanpham = docsObject.optInt("promotion", 0); // Giá sau khi giảm
+                                                    int giagoc = docsObject.optInt("price", 0);
+                                                    int giasanpham = docsObject.optInt("promotion", 0);
                                                     String tensanpham = docsObject.optString("name", "");
                                                     String hinhsanpham = docsObject.optString("image", "");
                                                     String motasanpham = docsObject.optString("description", "");
@@ -453,8 +447,59 @@ public class FragmentA extends Fragment {
                                                         giasanpham = giagoc;
                                                     }
 
-                                                    // Tạo đối tượng SanPham với constructor mới
+                                                    // Tạo đối tượng SanPham
                                                     SanPham product = new SanPham(id, categoryId, tensanpham, giagoc, giasanpham, hinhsanpham, motasanpham);
+
+                                                    // Xử lý danh sách màu sắc
+                                                    if (docsObject.has("color") && !docsObject.isNull("color")) {
+                                                        JSONArray colorArray = docsObject.getJSONArray("color");
+                                                        List<String> colors = new ArrayList<>();
+                                                        for (int k = 0; k < colorArray.length(); k++) {
+                                                            colors.add(colorArray.getString(k));
+                                                        }
+                                                        product.setColors(colors);
+                                                    }
+
+                                                    // Xử lý danh sách kích thước
+                                                    if (docsObject.has("sizes") && !docsObject.isNull("sizes")) {
+                                                        JSONArray sizesArray = docsObject.getJSONArray("sizes");
+                                                        List<String> sizes = new ArrayList<>();
+                                                        for (int k = 0; k < sizesArray.length(); k++) {
+                                                            sizes.add(sizesArray.getString(k));
+                                                        }
+                                                        product.setSizes(sizes);
+                                                    }
+
+                                                    // Xử lý danh sách biến thể
+                                                    if (docsObject.has("variants") && !docsObject.isNull("variants")) {
+                                                        JSONArray variantsArray = docsObject.getJSONArray("variants");
+                                                        List<SanPham.ProductVariant> variants = new ArrayList<>();
+
+                                                        for (int k = 0; k < variantsArray.length(); k++) {
+                                                            JSONObject variantObj = variantsArray.getJSONObject(k);
+
+                                                            String variantId = variantObj.optString("variantId", "");
+                                                            String color = variantObj.optString("color", "");
+                                                            String size = variantObj.optString("size", "");
+                                                            int quantity = variantObj.optInt("quantity", 0);
+
+                                                            SanPham.ProductVariant variant = new SanPham.ProductVariant(variantId, color, size, quantity);
+                                                            variants.add(variant);
+                                                        }
+
+                                                        product.setVariants(variants);
+                                                    }
+
+                                                    // Xử lý thông tin tồn kho
+                                                    if (docsObject.has("inventory") && !docsObject.isNull("inventory")) {
+                                                        JSONObject inventoryObj = docsObject.getJSONObject("inventory");
+                                                        int quantityOnHand = inventoryObj.optInt("quantityOnHand", 0);
+                                                        String inventoryId = inventoryObj.optString("_id", "");
+
+                                                        SanPham.Inventory inventory = new SanPham.Inventory(quantityOnHand, inventoryId);
+                                                        product.setInventory(inventory);
+                                                    }
+
                                                     data.add(product);
 
                                                     Log.d(TAG, "Thêm sản phẩm danh mục: " + tensanpham + " - Giá gốc: " + giagoc + " - Giá giảm: " + giasanpham);
@@ -473,11 +518,7 @@ public class FragmentA extends Fragment {
                                     adaptersp.notifyDataSetChanged();
                                     recyclerView.scheduleLayoutAnimation();
                                 }
-
-                                // Cập nhật UI phân trang
                                 updatePaginationUI();
-
-                                // Cuộn lên đầu danh sách
                                 recyclerView.smoothScrollToPosition(0);
 
                             } catch (Exception e) {
@@ -506,8 +547,6 @@ public class FragmentA extends Fragment {
                                 }
                             }
                             handleError(errorMessage);
-
-                            // Reset về trang 1 nếu có lỗi
                             currentPage = 1;
 
                             if (swipeRefresh != null && swipeRefresh.isRefreshing()) {
@@ -613,7 +652,7 @@ public class FragmentA extends Fragment {
                                                 try {
                                                     JSONObject docsObject = docsArray.getJSONObject(j);
 
-                                                    // Sử dụng tên trường chính xác từ model SanPham và API
+                                                    // Xử lý thông tin cơ bản sản phẩm
                                                     String id = docsObject.optString("_id", "");
                                                     String categoryId = docsObject.optString("category_id", ""); // Lấy ID danh mục từ JSON
                                                     String tensanpham = docsObject.optString("name", "");
@@ -627,15 +666,68 @@ public class FragmentA extends Fragment {
                                                         giasanpham = giagoc;
                                                     }
 
+                                                    // Tạo đối tượng SanPham
+                                                    SanPham product = new SanPham(id, categoryId, tensanpham, giagoc, giasanpham, hinhsanpham, motasanpham);
+
+                                                    // Xử lý danh sách màu sắc
+                                                    if (docsObject.has("color") && !docsObject.isNull("color")) {
+                                                        JSONArray colorArray = docsObject.getJSONArray("color");
+                                                        List<String> colors = new ArrayList<>();
+                                                        for (int k = 0; k < colorArray.length(); k++) {
+                                                            colors.add(colorArray.getString(k));
+                                                        }
+                                                        product.setColors(colors);
+                                                    }
+
+                                                    // Xử lý danh sách kích thước
+                                                    if (docsObject.has("sizes") && !docsObject.isNull("sizes")) {
+                                                        JSONArray sizesArray = docsObject.getJSONArray("sizes");
+                                                        List<String> sizes = new ArrayList<>();
+                                                        for (int k = 0; k < sizesArray.length(); k++) {
+                                                            sizes.add(sizesArray.getString(k));
+                                                        }
+                                                        product.setSizes(sizes);
+                                                    }
+
+                                                    // Xử lý danh sách biến thể
+                                                    if (docsObject.has("variants") && !docsObject.isNull("variants")) {
+                                                        JSONArray variantsArray = docsObject.getJSONArray("variants");
+                                                        List<SanPham.ProductVariant> variants = new ArrayList<>();
+
+                                                        for (int k = 0; k < variantsArray.length(); k++) {
+                                                            JSONObject variantObj = variantsArray.getJSONObject(k);
+
+                                                            String variantId = variantObj.optString("variantId", "");
+                                                            String color = variantObj.optString("color", "");
+                                                            String size = variantObj.optString("size", "");
+                                                            int quantity = variantObj.optInt("quantity", 0);
+
+                                                            SanPham.ProductVariant variant = new SanPham.ProductVariant(variantId, color, size, quantity);
+                                                            variants.add(variant);
+                                                        }
+
+                                                        product.setVariants(variants);
+                                                    }
+
+                                                    // Xử lý thông tin tồn kho
+                                                    if (docsObject.has("inventory") && !docsObject.isNull("inventory")) {
+                                                        JSONObject inventoryObj = docsObject.getJSONObject("inventory");
+                                                        int quantityOnHand = inventoryObj.optInt("quantityOnHand", 0);
+                                                        String inventoryId = inventoryObj.optString("_id", "");
+
+                                                        SanPham.Inventory inventory = new SanPham.Inventory(quantityOnHand, inventoryId);
+                                                        product.setInventory(inventory);
+                                                    }
+
                                                     // Kiểm tra dữ liệu quan trọng trước khi thêm vào danh sách
                                                     if (!id.isEmpty() && !tensanpham.isEmpty()) {
-                                                        // Tạo đối tượng SanPham với constructor mới
-                                                        SanPham product = new SanPham(id, categoryId, tensanpham, giagoc, giasanpham, hinhsanpham, motasanpham);
-
                                                         allProductsData.add(product); // Thêm vào danh sách tất cả sản phẩm
 
-                                                        Log.d(TAG, "Thêm sản phẩm: " + tensanpham + " - Danh mục: " + categoryId +
-                                                                " - Giá gốc: " + giagoc + " - Giá giảm: " + giasanpham);
+                                                        Log.d(TAG, "Thêm sản phẩm: " + tensanpham +
+                                                                " - Danh mục: " + categoryId +
+                                                                " - Giá gốc: " + giagoc +
+                                                                " - Giá giảm: " + giasanpham +
+                                                                " - Tồn kho: " + product.getTotalStock());
                                                     } else {
                                                         Log.w(TAG, "Bỏ qua sản phẩm thiếu dữ liệu quan trọng");
                                                     }
@@ -649,8 +741,13 @@ public class FragmentA extends Fragment {
                                     }
                                 }
 
+                                // Thiết lập adapter trước khi tải sản phẩm
                                 setupSanPhamAdapter();
+
+                                // Hiển thị tất cả sản phẩm ngay sau khi tải xong
                                 loadAllProductsWithPagination();
+
+                                // Cập nhật thông tin phân trang
                                 totalPages = (int) Math.ceil((double) allProductsData.size() / itemsPerPage);
                                 isLastPage = currentPage >= totalPages;
                                 updatePaginationUI();
@@ -773,13 +870,15 @@ public class FragmentA extends Fragment {
             intent.putExtra("original_price", sp.getGiagoc());
             intent.putExtra("img", sp.getHinhsanpham());
             intent.putExtra("mota", sp.getMotasanpham());
+            intent.putExtra("total_stock", sp.getTotalStock());
+            intent.putExtra("product", sp);
 
             Log.d(TAG, "Chuyển đến chi tiết sản phẩm: " + sp.getTensanpham());
 
             // Kiểm tra xem intent đã được thiết lập đúng không
             Log.d(TAG, "Intent data: id=" + sp.getIdsanpham() + ", name=" + sp.getTensanpham() +
                     ", original_price=" + sp.getGiagoc() + ", sale_price=" + sp.getGiasanpham() +
-                    ", img=" + sp.getHinhsanpham());
+                    ", img=" + sp.getHinhsanpham() + ", total_stock=" + sp.getTotalStock());
 
             startActivity(intent);
         } catch (Exception e) {
@@ -861,5 +960,8 @@ public class FragmentA extends Fragment {
 
         rvChude.setAdapter(chuDeAdapter);
         rvChude.scheduleLayoutAnimation();
+
+        // Đảm bảo không có danh mục nào được chọn khi khởi động
+        chuDeAdapter.clearSelection();
     }
 }

@@ -20,7 +20,7 @@ import androidx.cardview.widget.CardView;
 import com.example.tech.R;
 import com.example.tech.SERVER;
 import com.example.tech.activity.GioHang;
-import com.example.tech.model.Product;
+import com.example.tech.model.SanPham;
 import com.google.gson.Gson;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
@@ -29,13 +29,13 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class CartAdapter extends ArrayAdapter<Product> {
+public class CartAdapter extends ArrayAdapter<SanPham> {
 
     private static final String TAG = "CartAdapter";
     private Context context;
-    private ArrayList<Product> cartItems;
+    private ArrayList<SanPham> cartItems;
 
-    public CartAdapter(Context context, ArrayList<Product> cartItems) {
+    public CartAdapter(Context context, ArrayList<SanPham> cartItems) {
         super(context, 0, cartItems);
         this.context = context;
         this.cartItems = cartItems;
@@ -68,82 +68,76 @@ public class CartAdapter extends ArrayAdapter<Product> {
         }
 
         // Get the current item in the list
-        final Product currentItem = cartItems.get(position);
+        final SanPham currentItem = cartItems.get(position);
+        SanPham.ProductVariant variant = null;
+        if (currentItem.getVariants() != null && !currentItem.getVariants().isEmpty()) {
+            variant = currentItem.getVariants().get(0);
+        }
 
         // Set the data to the views
-        holder.tvName.setText(currentItem.getName());
+        holder.tvName.setText(currentItem.getTensanpham());
 
         // Format the price with proper locale
         NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
 
         // Xử lý giá gốc và giá khuyến mãi
-        if (currentItem.hasDiscount()) {
+        if (currentItem.isOnSale()) {
             // Có giảm giá
-            String promotionPriceStr = currentItem.getPromotionPrice();
-            String originalPriceStr = currentItem.getPrice();
+            int promotionPrice = currentItem.getGiasanpham();
+            int originalPrice = currentItem.getGiagoc();
 
             try {
                 // Định dạng giá khuyến mãi
-                String numericPromo = promotionPriceStr.replaceAll("[\\D]", "");
-                if (!numericPromo.isEmpty()) {
-                    int promoPrice = Integer.parseInt(numericPromo);
-                    holder.tvPrice.setText(formatter.format(promoPrice) + "đ");
-                } else {
-                    holder.tvPrice.setText(promotionPriceStr);
-                }
+                holder.tvPrice.setText(formatter.format(promotionPrice) + "đ");
 
                 // Định dạng giá gốc
-                String numericOriginal = originalPriceStr.replaceAll("[\\D]", "");
-                if (!numericOriginal.isEmpty()) {
-                    int originalPrice = Integer.parseInt(numericOriginal);
-                    holder.tvOriginalPrice.setText(formatter.format(originalPrice) + "đ");
-                    holder.tvOriginalPrice.setPaintFlags(holder.tvOriginalPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-                    holder.tvOriginalPrice.setVisibility(View.VISIBLE);
-                }
-            } catch (NumberFormatException e) {
+                holder.tvOriginalPrice.setText(formatter.format(originalPrice) + "đ");
+                holder.tvOriginalPrice.setPaintFlags(holder.tvOriginalPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+                holder.tvOriginalPrice.setVisibility(View.VISIBLE);
+            } catch (Exception e) {
                 Log.e(TAG, "Error formatting price: " + e.getMessage());
-                holder.tvPrice.setText(promotionPriceStr);
-                holder.tvOriginalPrice.setText(originalPriceStr);
+                holder.tvPrice.setText(String.valueOf(promotionPrice) + "đ");
+                holder.tvOriginalPrice.setText(String.valueOf(originalPrice) + "đ");
                 holder.tvOriginalPrice.setVisibility(View.VISIBLE);
             }
         } else {
             // Không có giảm giá
-            String priceStr = currentItem.getPrice();
+            int price = currentItem.getGiasanpham();
             try {
-                String numericPrice = priceStr.replaceAll("[\\D]", "");
-                if (!numericPrice.isEmpty()) {
-                    int price = Integer.parseInt(numericPrice);
-                    holder.tvPrice.setText(formatter.format(price) + "đ");
-                } else {
-                    holder.tvPrice.setText(priceStr);
-                }
+                holder.tvPrice.setText(formatter.format(price) + "đ");
                 holder.tvOriginalPrice.setVisibility(View.GONE);
-            } catch (NumberFormatException e) {
+            } catch (Exception e) {
                 Log.e(TAG, "Error formatting price: " + e.getMessage());
-                holder.tvPrice.setText(priceStr);
+                holder.tvPrice.setText(String.valueOf(price) + "đ");
                 holder.tvOriginalPrice.setVisibility(View.GONE);
             }
         }
 
         // Hiển thị thông tin kích thước và màu sắc
-        if (!TextUtils.isEmpty(currentItem.getSelectedSize())) {
-            holder.tvSize.setText("Size: " + currentItem.getSelectedSize());
+        if (variant != null && variant.getSize() != null) {
+            holder.tvSize.setText("Size: " + variant.getSize());
             holder.tvSize.setVisibility(View.VISIBLE);
         } else {
             holder.tvSize.setVisibility(View.GONE);
         }
 
-        if (!TextUtils.isEmpty(currentItem.getSelectedColor())) {
-            holder.tvColor.setText("Màu: " + currentItem.getSelectedColor());
+        if (variant != null && variant.getColor() != null) {
+            holder.tvColor.setText("Màu: " + variant.getColor());
             holder.tvColor.setVisibility(View.VISIBLE);
         } else {
             holder.tvColor.setVisibility(View.GONE);
         }
 
-        holder.tvQuantity.setText(String.valueOf(currentItem.getQuantity()));
+        int quantity = 1;
+        if (variant != null) {
+            quantity = variant.getQuantity();
+        } else if (currentItem.getInventory() != null) {
+            quantity = currentItem.getInventory().getQuantityOnHand();
+        }
+        holder.tvQuantity.setText(String.valueOf(quantity));
 
         // Load product image
-        String imageUrl = currentItem.getImageUrl();
+        String imageUrl = currentItem.getHinhsanpham();
         if (!TextUtils.isEmpty(imageUrl)) {
             // Check if the URL is already complete or needs the base URL
             if (!imageUrl.startsWith("http")) {
@@ -172,21 +166,36 @@ public class CartAdapter extends ArrayAdapter<Product> {
 
         // Set up button click listeners
         final ViewHolder finalHolder = holder;
+        final SanPham.ProductVariant finalVariant = variant;
 
         holder.btnDecreaseQuantity.setOnClickListener(v -> {
-            int quantity = currentItem.getQuantity();
-            if (quantity > 1) {
-                currentItem.setQuantity(quantity - 1);
-                finalHolder.tvQuantity.setText(String.valueOf(quantity - 1));
+            int currentQuantity = Integer.parseInt(finalHolder.tvQuantity.getText().toString());
+            if (currentQuantity > 1) {
+                int newQuantity = currentQuantity - 1;
+                finalHolder.tvQuantity.setText(String.valueOf(newQuantity));
+
+                if (finalVariant != null) {
+                    finalVariant.setQuantity(newQuantity);
+                } else if (currentItem.getInventory() != null) {
+                    currentItem.getInventory().setQuantityOnHand(newQuantity);
+                }
+
                 updateTotalPrice();
                 saveCartItems();
             }
         });
 
         holder.btnIncreaseQuantity.setOnClickListener(v -> {
-            int quantity = currentItem.getQuantity();
-            currentItem.setQuantity(quantity + 1);
-            finalHolder.tvQuantity.setText(String.valueOf(quantity + 1));
+            int currentQuantity = Integer.parseInt(finalHolder.tvQuantity.getText().toString());
+            int newQuantity = currentQuantity + 1;
+            finalHolder.tvQuantity.setText(String.valueOf(newQuantity));
+
+            if (finalVariant != null) {
+                finalVariant.setQuantity(newQuantity);
+            } else if (currentItem.getInventory() != null) {
+                currentItem.getInventory().setQuantityOnHand(newQuantity);
+            }
+
             updateTotalPrice();
             saveCartItems();
         });
@@ -205,23 +214,6 @@ public class CartAdapter extends ArrayAdapter<Product> {
     }
 
     private void updateTotalPrice() {
-        int totalPrice = 0;
-        for (Product product : cartItems) {
-            String price = product.getDisplayPrice(); // Sử dụng phương thức mới để lấy giá hiển thị
-            int quantity = product.getQuantity();
-            if (price != null) {
-                try {
-                    String numericPrice = price.replaceAll("[\\D]", "");
-                    if (!numericPrice.isEmpty()) {
-                        int priceValue = Integer.parseInt(numericPrice);
-                        totalPrice += priceValue * quantity;
-                    }
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "Error parsing price: " + e.getMessage());
-                }
-            }
-        }
-
         // Notify the activity to update the total price
         if (context instanceof GioHang) {
             ((GioHang) context).updateTotalPrice();

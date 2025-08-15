@@ -12,7 +12,6 @@ import triangleTopRight from "../../../assets/icon/Triangle-Top-Right.svg";
 import { numberWithCommas } from "../../../utils/common";
 import "./productList.css";
 
-
 const ProductList = () => {
   const [productDetail, setProductDetail] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,11 +22,9 @@ const ProductList = () => {
   const [maxPrice, setMaxPrice] = useState(100000000);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
 
-
   let { id } = useParams();
   const history = useHistory();
   const match = useRouteMatch();
-
 
   const handleReadMore = (id) => {
     console.log(id);
@@ -66,7 +63,6 @@ const ProductList = () => {
     fetchProductsByCategory(categoryId);
   };
 
-
   const handleSearchPrice = async (minPrice, maxPrice) => {
     try {
       setLoading(true);
@@ -91,13 +87,11 @@ const ProductList = () => {
     }
   };
 
-
   const handleSearchClick = () => {
     // Gọi hàm tìm kiếm theo giá
     handleSearchPrice(minPrice, maxPrice);
     // Giữ nguyên logic của nút "Tất cả sản phẩm" như bạn yêu cầu
   };
-
 
   useEffect(() => {
     (async () => {
@@ -133,7 +127,6 @@ const ProductList = () => {
     window.scrollTo(0, 0);
   }, [id]);
 
-
   return (
     <div>
       <Spin spinning={loading}>
@@ -166,7 +159,6 @@ const ProductList = () => {
                 </div>
               ))}
             </div>
-
 
             <div
               className="list-products container"
@@ -267,9 +259,9 @@ const ProductList = () => {
                               )}
                             </div>
                             
-                            {/* Hiển thị trạng thái tồn kho */}
+                            {/* Hiển thị trạng thái tồn kho - đã cập nhật */}
                             <div className="stock-status-container">
-                              {item.quantity > 0 ? (
+                              {item.variants && item.variants.some(v => v.quantity > 0) ? (
                                 <span className="stock-status in-stock">Còn hàng</span>
                               ) : (
                                 <span className="stock-status out-of-stock">Hết hàng</span>

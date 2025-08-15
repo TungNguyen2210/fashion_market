@@ -26,7 +26,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.tech.R;
-import com.example.tech.model.Product;
+import com.example.tech.model.SanPham;
 import com.example.tech.utils.UserManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -36,6 +36,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,11 +56,12 @@ public class CheckoutActivity extends AppCompatActivity {
     private Button btnBackToCart, btnConfirmOrder;
 
     private int subtotal = 0;
-    private ArrayList<Product> cartItems;
+    private ArrayList<SanPham> cartItems;
     private String userId = "";
     private RequestQueue requestQueue;
     private Gson gson;
     private UserManager userManager;
+    private int orderFormatAttempt = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,7 +159,7 @@ public class CheckoutActivity extends AppCompatActivity {
         String jsonCart = preferences.getString("cartItems", "");
 
         if (!jsonCart.isEmpty()) {
-            Type type = new TypeToken<ArrayList<Product>>() {}.getType();
+            Type type = new TypeToken<ArrayList<SanPham>>() {}.getType();
             cartItems = gson.fromJson(jsonCart, type);
         }
 
@@ -167,12 +169,17 @@ public class CheckoutActivity extends AppCompatActivity {
 
         // In thông tin các sản phẩm trong giỏ hàng để debug
         Log.d(TAG, "Số lượng sản phẩm trong giỏ hàng: " + cartItems.size());
-        for (Product product : cartItems) {
-            Log.d(TAG, "Sản phẩm: ID=" + product.getId() +
-                    ", Name=" + product.getName() +
-                    ", Qty=" + product.getQuantity() +
-                    ", DisplayPrice=" + product.getDisplayPrice() +
-                    ", Price=" + product.getPrice());
+        for (SanPham sanpham : cartItems) {
+            int quantity = 0;
+            if (sanpham.getVariants() != null && !sanpham.getVariants().isEmpty()) {
+                quantity = sanpham.getVariants().get(0).getQuantity();
+            }
+
+            Log.d(TAG, "Sản phẩm: ID=" + sanpham.getIdsanpham() +
+                    ", Name=" + sanpham.getTensanpham() +
+                    ", Qty=" + quantity +
+                    ", Price=" + sanpham.getGiasanpham() +
+                    ", OriginalPrice=" + sanpham.getGiagoc());
         }
     }
 
@@ -180,32 +187,31 @@ public class CheckoutActivity extends AppCompatActivity {
     private void calculateSubtotalFromCart() {
         subtotal = 0;
 
-        for (Product product : cartItems) {
-            // Lấy giá hiển thị đang được dùng trong giỏ hàng
-            String priceString = product.getDisplayPrice();
+        for (SanPham sanpham : cartItems) {
+            int price = sanpham.getGiasanpham(); // Giá sau khuyến mãi (nếu có)
+            int quantity = 0;
 
-            // Nếu displayPrice không có, thử dùng price
-            if (TextUtils.isEmpty(priceString)) {
-                priceString = product.getPrice();
+            // Lấy số lượng từ biến thể nếu có
+            if (sanpham.getVariants() != null && !sanpham.getVariants().isEmpty()) {
+                for (SanPham.ProductVariant variant : sanpham.getVariants()) {
+                    quantity += variant.getQuantity();
+                }
+            } else if (sanpham.getInventory() != null) {
+                // Nếu không có biến thể, sử dụng số lượng từ inventory
+                quantity = sanpham.getInventory().getQuantityOnHand();
+            } else {
+                // Nếu không có cả hai, sử dụng 1 làm giá trị mặc định
+                quantity = 1;
             }
 
-            // Chuyển đổi chuỗi giá sang số
-            try {
-                // Loại bỏ tất cả các ký tự không phải số
-                String numericPrice = priceString.replaceAll("[^\\d]", "");
-                int price = Integer.parseInt(numericPrice);
+            // Tính tổng tiền cho sản phẩm này (giá * số lượng)
+            int productTotal = price * quantity;
+            subtotal += productTotal;
 
-                // Tính tổng tiền cho sản phẩm này (giá * số lượng)
-                int productTotal = price * product.getQuantity();
-                subtotal += productTotal;
-
-                Log.d(TAG, "Sản phẩm " + product.getName() +
-                        ": Đơn giá=" + price +
-                        ", Số lượng=" + product.getQuantity() +
-                        ", Thành tiền=" + productTotal);
-            } catch (NumberFormatException e) {
-                Log.e(TAG, "Lỗi chuyển đổi giá sản phẩm: " + priceString, e);
-            }
+            Log.d(TAG, "Sản phẩm " + sanpham.getTensanpham() +
+                    ": Đơn giá=" + price +
+                    ", Số lượng=" + quantity +
+                    ", Thành tiền=" + productTotal);
         }
 
         Log.d(TAG, "Tổng tiền sản phẩm: " + subtotal);
@@ -377,7 +383,9 @@ public class CheckoutActivity extends AppCompatActivity {
                 .setTitle("Xác nhận đặt hàng")
                 .setMessage("Bạn có chắc muốn đặt đơn hàng này?")
                 .setPositiveButton("Đặt hàng", (dialog, which) -> {
-                    // Tạo và gửi đơn hàng
+                    // Đặt lại giá trị của orderFormatAttempt
+                    orderFormatAttempt = 0;
+                    // Bắt đầu với định dạng đầu tiên
                     submitOrder();
                 })
                 .setNegativeButton("Hủy", null)
@@ -394,110 +402,177 @@ public class CheckoutActivity extends AppCompatActivity {
         }
 
         try {
-            // Tạo JSON request body với cấu trúc sửa đổi
+            // Kiểm tra userId có hợp lệ không
+            if (!isValidObjectId(userId)) {
+                Log.e(TAG, "User ID không hợp lệ: " + userId);
+                Toast.makeText(this, "ID người dùng không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
+                navigateToLogin();
+                return;
+            }
+
+            // Tạo JSON request body với cấu trúc khớp với web
             JSONObject jsonBody = new JSONObject();
 
-            JSONObject userObject = new JSONObject();
-            userObject.put("_id", userId);
-            jsonBody.put("user", userId);
+            // Dựa vào số lần thử, thay đổi định dạng trường user
+            switch (orderFormatAttempt) {
+                case 0:
+                    // Định dạng 1: User là chuỗi đơn giản - ĐỊNH DẠNG CHUẨN MONGOOSE
+                    jsonBody.put("user", userId);
+                    Log.d(TAG, "Thử với định dạng 1: user là chuỗi đơn giản");
+                    break;
 
-            // Thêm trường userID dự phòng
-            jsonBody.put("userId", userId);
+                case 1:
+                    // Định dạng 2: Chỉ user là chuỗi, nhưng thêm một số trường khác
+                    jsonBody.put("user", userId);
+                    jsonBody.put("userId", userId); // Trường bổ sung để hỗ trợ
+                    Log.d(TAG, "Thử với định dạng 2: user là chuỗi + thêm userId");
+                    break;
+
+                case 2:
+                    // Định dạng 3: Cố gắng với một đối tượng _id
+                    JSONObject userObject = new JSONObject();
+                    userObject.put("_id", userId);
+                    jsonBody.put("user", userObject);
+                    Log.d(TAG, "Thử với định dạng 3: user là đối tượng có _id");
+                    break;
+
+                default:
+                    // Chuyển sang offline mode
+                    Log.d(TAG, "Đã thử tất cả các định dạng, chuyển sang offline mode");
+                    mockCreateOrder();
+                    return;
+            }
 
             // Log thông tin userId để debug
             Log.d(TAG, "UserId đang sử dụng: " + userId);
 
-            // Debug: Thêm thông tin về user từ UserManager
-            Log.d(TAG, "UserManager info - userId: " + userManager.getUserId() +
-                    ", username: " + userManager.getUsername());
-
             // Tạo mảng sản phẩm
             JSONArray productsArray = new JSONArray();
 
-            for (Product product : cartItems) {
-                JSONObject productObject = new JSONObject();
+            // Thêm tất cả sản phẩm vào mảng - LUÔN DÙNG ĐỊNH DẠNG CHUỖI CHO PRODUCT
+            for (SanPham sanpham : cartItems) {
+                if (sanpham.getVariants() != null && !sanpham.getVariants().isEmpty()) {
+                    for (SanPham.ProductVariant variant : sanpham.getVariants()) {
+                        // Kiểm tra nếu ID sản phẩm hợp lệ
+                        String productId = sanpham.getIdsanpham();
+                        if (!isValidObjectId(productId)) {
+                            Log.w(TAG, "Bỏ qua sản phẩm với ID không hợp lệ: " + productId);
+                            continue;
+                        }
 
-                // Xử lý ID sản phẩm
-                String fullProductId = product.getId();
-                String baseProductId = fullProductId;
-                String size = "";
-                String color = "";
+                        JSONObject productObject = new JSONObject();
 
-                if (fullProductId.contains("-")) {
-                    String[] parts = fullProductId.split("-");
-                    if (parts.length > 0) {
-                        baseProductId = parts[0];
+                        // QUAN TRỌNG: LUÔN SỬ DỤNG CHUỖI ĐƠN GIẢN CHO PRODUCT
+                        productObject.put("product", productId);
+
+                        // Thêm thông tin biến thể
+                        String size = variant.getSize();
+                        String color = variant.getColor();
+
+                        if (size != null && !size.isEmpty()) {
+                            productObject.put("size", size);
+                        }
+
+                        if (color != null && !color.isEmpty()) {
+                            if (color.startsWith("#")) {
+                                color = color.substring(1); // Loại bỏ # từ mã màu nếu có
+                            }
+                            productObject.put("color", color);
+                        }
+
+                        // Tạo variantId
+                        String variantId = productId;
+                        if (size != null && !size.isEmpty()) {
+                            variantId += "-" + size;
+                        }
+                        if (color != null && !color.isEmpty()) {
+                            variantId += "-" + color;
+                        }
+                        productObject.put("variantId", variantId);
+
+                        // Thêm số lượng và giá
+                        productObject.put("quantity", variant.getQuantity());
+                        productObject.put("price", sanpham.getGiasanpham());
+
+                        // Thêm các trường theo định dạng của MongoDB
+                        productObject.put("rated", false);
+
+                        // QUAN TRỌNG: Sử dụng null thay vì JSONObject.NULL
+                        productObject.put("rating", null);
+                        productObject.put("comment", "");
+
+                        productsArray.put(productObject);
                     }
-                    if (parts.length > 1) {
-                        size = parts[1];
-                    }
-                    if (parts.length > 2) {
-                        color = parts[2];
-                    }
-                }
-
-                // Đảm bảo baseProductId là một ObjectId hợp lệ
-                if (isValidObjectId(baseProductId)) {
-                    productObject.put("product", baseProductId);
-
-                    // Thêm cả trường productId để hỗ trợ nhiều kiểu schema
-                    productObject.put("productId", baseProductId);
                 } else {
-                    Log.w(TAG, "ID sản phẩm không hợp lệ: " + baseProductId + ", thử tạo ID mới");
-                    // Sử dụng ID ngẫu nhiên 24 ký tự hex
-                    String randomId = generateRandomObjectId();
-                    productObject.put("product", randomId);
-                    productObject.put("productId", randomId);
+                    // Nếu không có biến thể, kiểm tra ID sản phẩm
+                    String productId = sanpham.getIdsanpham();
+                    if (!isValidObjectId(productId)) {
+                        Log.w(TAG, "Bỏ qua sản phẩm với ID không hợp lệ: " + productId);
+                        continue;
+                    }
+
+                    JSONObject productObject = new JSONObject();
+
+                    // QUAN TRỌNG: LUÔN SỬ DỤNG CHUỖI ĐƠN GIẢN CHO PRODUCT
+                    productObject.put("product", productId);
+
+                    // Thiết lập số lượng
+                    int quantity = 1;
+                    if (sanpham.getInventory() != null) {
+                        quantity = sanpham.getInventory().getQuantityOnHand();
+                    }
+                    productObject.put("quantity", quantity);
+
+                    // Thêm giá và các trường khác
+                    productObject.put("price", sanpham.getGiasanpham());
+                    productObject.put("variantId", productId);
+                    productObject.put("rated", false);
+                    productObject.put("rating", null);
+                    productObject.put("comment", "");
+
+                    productsArray.put(productObject);
                 }
+            }
 
-                // Thêm các thuộc tính bổ sung
-                if (!TextUtils.isEmpty(size)) {
-                    productObject.put("size", size);
-                }
-
-                if (!TextUtils.isEmpty(color)) {
-                    productObject.put("color", color.replace("#", ""));  // Loại bỏ # từ mã màu
-                }
-
-                productObject.put("quantity", product.getQuantity());
-
-                // Chuyển đổi giá từ String sang int
-                String price = product.getDisplayPrice();
-                if (price == null || price.isEmpty()) {
-                    price = product.getPrice();
-                }
-                String numericPrice = price.replaceAll("[^\\d]", "");
-                int priceValue = Integer.parseInt(numericPrice);
-                productObject.put("price", priceValue);
-
-                productsArray.put(productObject);
+            // Kiểm tra nếu không có sản phẩm nào hợp lệ
+            if (productsArray.length() == 0) {
+                Log.e(TAG, "Không có sản phẩm hợp lệ để đặt hàng");
+                Toast.makeText(this, "Không có sản phẩm hợp lệ để đặt hàng", Toast.LENGTH_SHORT).show();
+                return;
             }
 
             jsonBody.put("products", productsArray);
 
             // Tính tổng tiền
-            int totalPayment = subtotal + SHIPPING_FEE;
+            int totalPayment = subtotal;
             jsonBody.put("orderTotal", totalPayment);
 
             // Thêm địa chỉ và phương thức thanh toán
             jsonBody.put("address", etAddress.getText().toString());
             String paymentMethod = rbCOD.isChecked() ? "cod" : "paypal";
             jsonBody.put("billing", paymentMethod);
-            jsonBody.put("paymentMethod", paymentMethod);
+
+            // Thêm trạng thái
+            jsonBody.put("status", "pending");
 
             // Thêm ghi chú
             String notes = etNotes.getText().toString().trim();
             jsonBody.put("description", notes);
-            jsonBody.put("note", notes);
 
-            jsonBody.put("status", "pending");
+            // Thêm các trường bổ sung theo định dạng MongoDB
+            jsonBody.put("rated", false);
+            jsonBody.put("rating", null);
+            jsonBody.put("comment", "");
 
             // Log JSON request đầy đủ
-            Log.d(TAG, "Order JSON: " + jsonBody.toString());
+            Log.d(TAG, "Order JSON (định dạng " + orderFormatAttempt + "): " + jsonBody.toString());
 
             // API endpoint
             String url = BASE_URL + "/api/order";
             Log.d(TAG, "Gửi request đến: " + url);
+
+            // Hiển thị thông báo đang xử lý
+            Toast.makeText(this, "Đang xử lý đơn hàng...", Toast.LENGTH_SHORT).show();
 
             // Tạo request
             JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
@@ -510,32 +585,29 @@ public class CheckoutActivity extends AppCompatActivity {
                     new Response.ErrorListener() {
                         @Override
                         public void onErrorResponse(VolleyError error) {
-                            // Thử sử dụng mockCreateOrder khi gặp lỗi
-                            Log.e(TAG, "Lỗi khi gọi API đặt hàng, chuyển sang giải pháp thay thế", error);
-                            mockCreateOrder();
+                            // Tăng số lần thử và thử lại nếu chưa đạt giới hạn
+                            orderFormatAttempt++;
+                            if (orderFormatAttempt < 3) {
+                                Log.d(TAG, "Thử lại với định dạng " + orderFormatAttempt);
+                                submitOrder();
+                            } else {
+                                // Hiển thị lỗi sau khi đã thử tất cả các định dạng
+                                handleOrderError(error);
+                            }
                         }
                     }) {
                 @Override
                 public Map<String, String> getHeaders() throws AuthFailureError {
                     Map<String, String> headers = new HashMap<>();
                     headers.put("Content-Type", "application/json");
-
-                    if (authToken != null && !authToken.isEmpty()) {
-                        headers.put("Authorization", authToken);
-
-                        String maskedToken = authToken.length() > 15
-                                ? authToken.substring(0, 7) + "..." + authToken.substring(authToken.length() - 7)
-                                : authToken;
-                        Log.d(TAG, "Authorization header: " + maskedToken);
-                    }
-
+                    headers.put("Authorization", authToken);
                     return headers;
                 }
             };
 
             // Tăng thời gian timeout
             request.setRetryPolicy(new DefaultRetryPolicy(
-                    30000,  // 30 giây timeout
+                    60000,  // 60 giây timeout
                     1,     // Số lần thử lại
                     DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
@@ -543,9 +615,46 @@ public class CheckoutActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             Log.e(TAG, "Lỗi khi tạo đơn hàng: " + e.getMessage(), e);
-            Toast.makeText(this, "Lỗi khi tạo đơn hàng, đang chuyển sang chế độ offline", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Lỗi khi tạo đơn hàng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             mockCreateOrder();
         }
+    }
+
+    // Xử lý lỗi đặt hàng
+    private void handleOrderError(VolleyError error) {
+        // Hiển thị chi tiết lỗi
+        String errorDetail = "";
+        int statusCode = -1;
+
+        if (error.networkResponse != null) {
+            statusCode = error.networkResponse.statusCode;
+            if (error.networkResponse.data != null) {
+                try {
+                    String responseBody = new String(error.networkResponse.data, StandardCharsets.UTF_8);
+                    Log.e(TAG, "Error response body: " + responseBody);
+                    errorDetail = responseBody;
+
+                    try {
+                        JSONObject errorJson = new JSONObject(responseBody);
+                        if (errorJson.has("error")) {
+                            errorDetail = errorJson.getString("error");
+                        } else if (errorJson.has("message")) {
+                            errorDetail = errorJson.getString("message");
+                        }
+                    } catch (JSONException e) {
+                        // Không phải JSON, giữ nguyên responseBody
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Không thể đọc dữ liệu lỗi", e);
+                }
+            }
+        }
+
+        Log.e(TAG, "Lỗi " + statusCode + " khi gọi API đặt hàng: " + errorDetail, error);
+
+        // Sau khi đã thử tất cả các định dạng, sử dụng mockCreateOrder
+        Toast.makeText(this, "Không thể tạo đơn hàng trực tuyến. Chuyển sang chế độ offline...", Toast.LENGTH_SHORT).show();
+        mockCreateOrder();
     }
 
     // Xử lý đơn hàng thành công
@@ -575,6 +684,9 @@ public class CheckoutActivity extends AppCompatActivity {
             // Xóa giỏ hàng
             clearCart();
 
+            // Lưu thông tin đơn hàng gần nhất
+            saveLastOrderInfo(orderId);
+
             // Chuyển đến màn hình xác nhận đơn hàng
             goToOrderConfirmation(orderId);
 
@@ -584,18 +696,7 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // Tạo một ObjectId ngẫu nhiên hợp lệ
-    private String generateRandomObjectId() {
-        StringBuilder sb = new StringBuilder();
-        String characters = "0123456789abcdef";
-        for (int i = 0; i < 24; i++) {
-            int index = (int)(Math.random() * characters.length());
-            sb.append(characters.charAt(index));
-        }
-        return sb.toString();
-    }
-
-    // Phương thức mockCreateOrder() giữ nguyên
+    // Phương thức mockCreateOrder()
     private void mockCreateOrder() {
         try {
             // Hiển thị thông báo
@@ -608,14 +709,7 @@ public class CheckoutActivity extends AppCompatActivity {
             String orderId = "ORD_" + System.currentTimeMillis();
 
             // Lưu thông tin đơn hàng
-            SharedPreferences orderPrefs = getSharedPreferences("LastOrder", Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = orderPrefs.edit();
-            editor.putString("orderId", orderId);
-            editor.putString("address", etAddress.getText().toString());
-            editor.putString("billing", rbCOD.isChecked() ? "cod" : "paypal");
-            editor.putString("notes", etNotes.getText().toString());
-            editor.putInt("total", subtotal + SHIPPING_FEE);
-            editor.apply();
+            saveLastOrderInfo(orderId);
 
             Log.d(TAG, "Đơn hàng giả lập đã được tạo: " + orderId);
 
@@ -626,6 +720,18 @@ public class CheckoutActivity extends AppCompatActivity {
             Log.e(TAG, "Lỗi trong mockCreateOrder: " + e.getMessage(), e);
             Toast.makeText(this, "Có lỗi xảy ra: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // Lưu thông tin đơn hàng gần nhất
+    private void saveLastOrderInfo(String orderId) {
+        SharedPreferences orderPrefs = getSharedPreferences("LastOrder", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = orderPrefs.edit();
+        editor.putString("orderId", orderId);
+        editor.putString("address", etAddress.getText().toString());
+        editor.putString("billing", rbCOD.isChecked() ? "cod" : "paypal");
+        editor.putString("notes", etNotes.getText().toString());
+        editor.putInt("total", subtotal + SHIPPING_FEE);
+        editor.apply();
     }
 
     // Kiểm tra xem chuỗi có phải là MongoDB ObjectId hợp lệ không
