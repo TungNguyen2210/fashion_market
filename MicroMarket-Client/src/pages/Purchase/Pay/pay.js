@@ -62,60 +62,45 @@ const Pay = () => {
   const history = useHistory();
   const [showModal, setShowModal] = useState(false);
   const [addrQuery, setAddrQuery] = useState('');
-  const [addrOptions, setAddrOptions] = useState([]);
   const [addrLoading, setAddrLoading] = useState(false);
   const [selectedLL, setSelectedLL] = useState(null); // {lat, lng}
 
   const debounceRef = useRef(null);
-  const handleSearchAddr = (value) => {
-    setAddrQuery(value);
-    setSelectedLL(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!value || value.trim().length < 3) {
-      setAddrOptions([]);
-      return;
-    }
+  // Nominatim search: địa chỉ -> lat/lon
+  async function geocodeAddress(q) {
+    if (!q || q.trim().length < 3) return;
 
-    debounceRef.current = setTimeout(async () => {
-      try {
-        setAddrLoading(true);
-        const list = await searchMaps(`${value}, Việt Nam`, { country: 'vn', lang: 'vi' });
-        const options = list.map((p) => {
-          const name = p.name || '';
-          const addr = p.formatted_address || '';
-          const lat = p.geometry?.location?.lat ?? p.lat ?? p.latitude;
-          const lng = p.geometry?.location?.lng ?? p.lng ?? p.longitude;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=vn&addressdetails=1`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
+      const list = await res.json();
 
-          return {
-            value: addr || name,
-            label: (
-              <div style={{ lineHeight: 1.2 }}>
-                <div style={{ fontWeight: 600 }}>{name}</div>
-                <div style={{ fontSize: 12, color: '#666' }}>{addr}</div>
-              </div>
-            ),
-            lat, lng, text: addr || name,
-          };
-        });
-        setAddrOptions(options);
-      } catch (e) {
-        setAddrOptions([]);
-      } finally {
-        setAddrLoading(false);
+      if (Array.isArray(list) && list.length > 0) {
+        const first = list[0];
+        const lat = Number(first.lat);
+        const lng = Number(first.lon); // Nominatim trả "lon", ta đổi sang "lng"
+
+        // Cập nhật form + state để map hiển thị
+        form.setFieldsValue({ address: first.display_name, lat, lng });
+        setAddrQuery(first.display_name);
+        setSelectedLL({ lat, lng });
       }
-    }, 300);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // onChange của Input: debounce để tránh gọi API liên tục
+  const onAddressChange = (e) => {
+    const v = e.target.value;
+    setAddrQuery(v);
+    form.setFieldsValue({ address: v, lat: undefined, lng: undefined }); // gõ lại => reset lat/lng
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => geocodeAddress(v), 1500);
   };
 
-  const handleSelectAddr = (_value, option) => {
-    form.setFieldsValue({
-      address: option.text,
-      lat: option.lat,
-      lng: option.lng,
-    });
-    setAddrQuery(option.text);
-    setSelectedLL({ lat: option.lat, lng: option.lng });
-  };
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -131,8 +116,8 @@ const Pay = () => {
   };
 
   const handleUseMyLocation = () => {
-    if (!navigator.geolocation) {
-      notification.warning({ message: 'Trình duyệt không hỗ trợ lấy vị trí.' });
+    if (!('geolocation' in navigator)) {
+      notification.warning({ message: 'Trình duyệt của bạn không hỗ trợ định vị.' });
       return;
     }
 
@@ -197,14 +182,12 @@ const Pay = () => {
 
   const calcShipFee = (km) => {
     if (km == null) return 0;
-    const baseKm = 3;
+
+    const baseKm = 30;
     const baseFee = 15000;
-    const perKm = 5000;
-    let fee = km <= baseKm
-      ? baseFee
-      : baseFee + Math.ceil(km - baseKm) * perKm;
-    fee = Math.min(fee, 60000);
-    return fee;
+    const outFee = 30000;
+
+    return km <= baseKm ? baseFee : outFee;
   };
 
   const latWatch = Form.useWatch('lat', form);
@@ -558,29 +541,20 @@ const Pay = () => {
                           ]}
                           style={{ marginBottom: 15 }}
                         >
-                          <AutoComplete
-                            value={addrQuery || form.getFieldValue('address')}
-                            onChange={(v) => { setAddrQuery(v); form.setFieldsValue({ address: v, lat: undefined, lng: undefined }); }}
-                            onSearch={handleSearchAddr}
-                            onSelect={handleSelectAddr}
-                            options={addrOptions}
-                            filterOption={false}
-                            notFoundContent={addrLoading ? <Spin size="small" /> : 'Không có gợi ý'}
+
+                          <Input
+                            value={addrQuery}
+                            onChange={onAddressChange}
+                            placeholder="Nhập địa chỉ của bạn"
                             allowClear
-                            dropdownMatchSelectWidth={600}
-                            style={{ width: '100%' }}
-                          >
-                            <Input
-                              placeholder="Nhập địa chỉ của bạn"
-                              suffix={
-                                <EnvironmentOutlined
-                                  title="Dùng vị trí của tôi"
-                                  style={{ color: '#1890ff', cursor: 'pointer' }}
-                                  onClick={handleUseMyLocation}
-                                />
-                              }
-                            />
-                          </AutoComplete>
+                            suffix={
+                              <EnvironmentOutlined
+                                title="Dùng vị trí của tôi"
+                                style={{ color: '#1890ff', cursor: 'pointer' }}
+                                onClick={handleUseMyLocation}
+                              />
+                            }
+                          />
                         </Form.Item>
 
                         {/* Map preview */}

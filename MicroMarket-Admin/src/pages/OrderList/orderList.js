@@ -60,6 +60,12 @@ const OrderList = () => {
         });
     };
 
+    const LS_KEY = 'shipping_map_v1';
+    const getShipMap = () => {
+        try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+        catch { return {}; }
+    };
+
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
@@ -234,6 +240,12 @@ const OrderList = () => {
             render: (text, record) => <a>{text.email}</a>,
         },
         {
+            title: 'SĐT',
+            dataIndex: 'user',
+            key: 'user',
+            render: (text, record) => <a>{text.phone}</a>,
+        },
+        {
             title: 'Tổng tiền',
             dataIndex: 'orderTotal',
             key: 'orderTotal',
@@ -266,7 +278,8 @@ const OrderList = () => {
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (text) => <span>{formatDate(text)}</span>, // Format date
-            sorter: (a, b) => new Date(b.createdAt) - new Date(a.createdAt), // Enable sorting in table
+            sorter: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+            defaultSortOrder: 'ascend',
         },
         {
             title: 'Mô tả',
@@ -361,6 +374,14 @@ const OrderList = () => {
             try {
                 await orderApi.getListOrder({ page: 1, limit: 10000 }).then((res) => {
                     console.log(res);
+
+                    const docs = res?.data?.docs || [];
+
+                    const shipMap = getShipMap();             // { [orderId]: shipment }
+                    const rows = docs.map(od => ({ ...od, ship: shipMap[od._id] || null }));
+
+                    rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
                     setTotalList(res.totalDocs)
                     setOrder(res.data.docs);
                     setLoading(false);

@@ -3,7 +3,7 @@ import {
   LeftSquareOutlined
 } from "@ant-design/icons";
 import {
-  Breadcrumb, Button, Card, Col, Divider, Form,
+  Breadcrumb, Button, Card, Col, Divider, Form, Table,
   InputNumber, Layout, Row, Spin, Tag, Input, Statistic
 } from "antd";
 import React, { useEffect, useState } from "react";
@@ -140,6 +140,10 @@ const Cart = () => {
   const handleCart = () => {
     (async () => {
       try {
+        // Thêm reset phanTramKhuyenMai khi tải lại giỏ hàng
+        localStorage.removeItem("phanTramKhuyenMai");
+        setPhanTramKhuyenMai("");
+
         await promotionManagementApi.listPromotionManagement().then((res) => {
           console.log(res);
           setCategory(res.data);
@@ -178,8 +182,9 @@ const Cart = () => {
       const discount = (cartTotal * foundCategory.phanTramKhuyenMai) / 100;
       setCartTotal(cartTotal - discount);
     } else {
-      handleCart();
+      localStorage.removeItem("phanTramKhuyenMai");
       setPhanTramKhuyenMai(""); // Nếu không tìm thấy, gán lại giá trị rỗng
+      handleCart();
     }
   };
 

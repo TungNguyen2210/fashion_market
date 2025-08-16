@@ -11,13 +11,11 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import './shippingList.css';
+import orderApi from "../../apis/orderApi";
 import axiosClient from '../../apis/axiosClient'; // 🔁 dùng để cập nhật trạng thái đơn hàng
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
-
-/* ====== NO-API: localStorage store ====== */
-const LS_KEY = 'shipping_map_v1'; // { [orderId]: {...} }
 
 const getMap = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; } };
 const saveMap = (m) => localStorage.setItem(LS_KEY, JSON.stringify(m));
@@ -41,13 +39,20 @@ const nextSequence = () => {
   return n;
 };
 
-const genShipCode = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const seq = String(nextSequence()).padStart(4, '0');
-  return `SHP-${y}${m}${day}-${seq}`;
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const genShipCode = (orderId) => {
+  const suffix = String(Math.floor(1000 + Math.random() * 9000)); // 4 số ngẫu nhiên
+  return `SHP${(orderId || '').slice(-6).toUpperCase()}-${suffix}`;
 };
 
 /* ====== public tracking URL (mở ngoài) ====== */
@@ -60,6 +65,9 @@ const buildTrackingUrl = (carrier, trackingNumber) => {
   if (c === 'vnpost') return `https://www.vnpost.vn/tra-cuu-hanh-trinh?key=${encodeURIComponent(trackingNumber)}`;
   return null;
 };
+
+/* ====== NO-API: localStorage store ====== */
+const LS_KEY = 'shipping_map_v1';
 
 /* ====== UI constants ====== */
 const STATUS = {
@@ -95,16 +103,17 @@ const fetchOrderDetail = async (orderId) => {
     const res = await axiosClient.get(`/order/${orderId}`);
     const order = res?.data?.data ?? res?.data ?? res;
     let user = order?.user;
+    console.log('Order data:', order);
     // nếu chỉ là userId -> gọi thêm API user
     if (user && typeof user === 'string') {
       const userRes = await axiosClient.get(`/user/${user}`);
       user = userRes?.data?.data ?? userRes?.data ?? userRes;
     }
     return {
-      customerName: user?.username ?? null,
-      customerEmail: user?.email ?? null,
-      customerPhone: user?.phone ?? null,
-      address: order?.address ?? null,
+      customerName: user?.username || '',
+      customerEmail: user?.email || '',
+      customerPhone: user?.phone || '',
+      address: order?.address || '',
     };
   } catch (e) {
     console.error(e);
@@ -166,12 +175,16 @@ export default function ShippingList() {
         let changed = false;
 
         if (!d.shipCode) {
-          d.shipCode = genShipCode();
+          d.shipCode = genShipCode(d.orderId);
           setOne(d.orderId, { ...d, shipCode: d.shipCode });
         }
 
-
-        if (isMissing(d.customerName) || isMissing(d.address) || (isMissing(d.customerEmail))) {
+        if (
+          isMissing(d.customerName) ||
+          isMissing(d.address) ||
+          isMissing(d.customerEmail) ||
+          isMissing(d.customerPhone)
+        ) {
           const info = await fetchOrderDetail(d.orderId);
           Object.assign(d, info);
           if (!d.shipper) d.shipper = 'Nguyễn Văn A';
@@ -232,7 +245,7 @@ export default function ShippingList() {
     setEditing(null);
     formCU.resetFields();
 
-    const newCode = genShipCode();
+    const newCode = genShipCode(orderId);
     formCU.setFieldsValue({
       status: 'created',
       shipCode: newCode,
@@ -261,20 +274,40 @@ export default function ShippingList() {
   const submitCU = async () => {
     try {
       const vals = await formCU.validateFields();
-      if (!orderId) return notification.warning({ message: 'Nhập ID đơn hàng' });
+      if (!orderId) {
+        notification.warning({ message: 'Vui lòng chọn đơn hàng' });
+        return;
+      }
 
+      let backendStatus = null;
+      try {
+        const res = await axiosClient.get(`/order/${orderId}`);
+        const od = res?.data?.data ?? res?.data ?? res;
+        backendStatus = od?.status;
+      } catch (e) {
+        console.error(e);
+      }
+
+      if (backendStatus && !(backendStatus === 'pending' || backendStatus === 'đang xác nhận')) {
+        notification.warning({ message: 'Chỉ đơn đang xác nhận mới được tạo vận đơn' });
+        return;
+      }
       // ⤵ lấy thông tin đơn để đồng bộ
       const info = await fetchOrderDetail(orderId);
+      console.log('Fetched info for submitCU:', info);
       const current = getOne(orderId);
-      const shipCode = vals.shipCode || current?.shipCode || genShipCode();
+      const shipCode = (vals.shipCode || '').trim() || current.shipCode || genShipCode(orderId);
 
       // lưu vận đơn (localStorage) + gán shipper mặc định nếu chưa có
       setOne(orderId, {
         ...vals,
+        orderId,
         shipCode,                                 // <— mã vận đơn auto
-        shipper: vals.shipper || 'Nguyễn Văn A',
+        shipper: vals.shipper || current?.shipper || 'Nguyễn Văn A',
+
         customerName: info.customerName,
         customerEmail: info.customerEmail,
+        customerPhone: info.customerPhone,
         address: info.address,
       });
 
@@ -338,8 +371,8 @@ export default function ShippingList() {
 
     {
       title: 'KHÁCH HÀNG',
-      dataIndex: 'user',
-      key: 'user',
+      dataIndex: 'customerName',
+      key: 'customerName',
       render: (t, r) => (r.customerName ?? (t && typeof t === 'object' ? t.username : null) ?? '-'),
     },
 
@@ -347,7 +380,13 @@ export default function ShippingList() {
       title: 'EMAIL',
       dataIndex: 'customerEmail',
       key: 'customerEmail',
-      render: (t) => t || '-',
+      render: (t) => t.email || '-',
+    },
+    {
+      title: 'SĐT',
+      dataIndex: 'customerPhone',
+      key: 'customerPhone',
+      render: (text, record) => <a>{text.phone}</a>,
     },
     {
       title: 'ĐỊA CHỈ',
@@ -363,6 +402,12 @@ export default function ShippingList() {
         const m = STATUS[s] || { color: 'default', text: s || 'N/A' };
         return <Tag color={m.color}>{m.text}</Tag>;
       },
+    },
+    {
+      title: 'NGÀY ĐẶT',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (text) => <span>{formatDate(text)}</span>,
     },
     {
       title: 'ĐƠN VỊ VC',
@@ -445,9 +490,6 @@ export default function ShippingList() {
                 <Button onClick={onReset}>Xoá lọc</Button>
               </Space>
             </Col>
-            <Col>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tạo đơn mới</Button>
-            </Col>
           </Row>
 
           {/* Table */}
@@ -480,7 +522,7 @@ export default function ShippingList() {
         >
           <Form form={formCU} layout="vertical">
             <Form.Item label="ID đơn hàng" required tooltip="Nhập OrderID để liên kết vận đơn">
-              <Input value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="VD: 66a1b..." />
+              <Input value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="VD: 66a1b..." disabled />
             </Form.Item>
             <Form.Item name="carrier" label="Hãng vận chuyển" rules={[{ required: true }]}>
               <Select placeholder="Chọn hãng">
