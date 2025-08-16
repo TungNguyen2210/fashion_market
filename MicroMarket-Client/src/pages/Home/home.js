@@ -49,7 +49,7 @@ const Home = () => {
 
   const handleCategoryDetails = (id) => {
     console.log(id);
-    history.push("product-list");
+    history.push("product-list/" + id);
   };
 
   const onLoad = () => {
@@ -202,7 +202,7 @@ const Home = () => {
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Phần hiển thị trạng thái tồn kho đã được cập nhật */}
                         <div className="stock-status-container">
                           {item.variants && item.variants.some(v => v.quantity > 0) ? (

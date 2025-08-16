@@ -1083,29 +1083,3 @@ ul {
 .badge > img {
     width: 8px;
 }
-
-/* Cải thiện: Style cho trạng thái tồn kho */
-.stock-status-container {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
-}
-
-.stock-status {
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 10px;
-    display: inline-block;
-}
-
-.stock-status.in-stock {
-    background-color: #f6ffed;
-    color: #52c41a;
-    border: 1px solid #b7eb8f;
-}
-
-.stock-status.out-of-stock {
-    background-color: #fff2f0;
-    color: #ff4d4f;
-    border: 1px solid #ffccc7;
-}
