@@ -20,7 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.SERVER;
 import com.example.tech.activity.GioHang;
 import com.example.tech.model.SanPham;

@@ -34,7 +34,7 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.SERVER;
 import com.example.tech.adapter.ReviewAdapter;
 import com.example.tech.model.Product;

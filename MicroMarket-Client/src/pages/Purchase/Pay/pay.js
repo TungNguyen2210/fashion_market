@@ -6,7 +6,7 @@ import eventApi from "../../../apis/eventApi";
 import userApi from "../../../apis/userApi";
 import productApi from "../../../apis/productApi";
 import { useHistory } from "react-router-dom";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Col, Row, Tag, Spin, Card, AutoComplete } from "antd";
 import { DateTime } from "../../../utils/dateTime";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
@@ -21,22 +21,16 @@ import {
   Form,
   Input,
   Select,
-  message,
   Radio,
+  Divider,
+  Statistic,
 } from "antd";
 import {
-  HistoryOutlined,
-  AuditOutlined,
-  CloseOutlined,
-  UserOutlined,
-  MehOutlined,
-  TeamOutlined,
-  HomeOutlined,
-  LeftSquareOutlined,
-  EnvironmentOutlined
-} from "@ant-design/icons";
 
-import Slider from "react-slick";
+  LeftSquareOutlined,
+  EnvironmentOutlined,
+  PercentageOutlined
+} from "@ant-design/icons";
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -44,12 +38,16 @@ const { Option } = Select;
 const { Title } = Typography;
 const DATE_TIME_FORMAT = "DD/MM/YYYY HH:mm";
 const { TextArea } = Input;
+const RATE_VND_USD = 26144.38; 
 
 const Pay = () => {
   const [productDetail, setProductDetail] = useState([]);
+  const [productNames, setProductNames] = useState({});
   const [userData, setUserData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [orderTotal, setOrderTotal] = useState([]);
+  const [orderTotal, setOrderTotal] = useState(0);
+  const [originalTotal, setOriginalTotal] = useState(0); 
+  const [discountAmount, setDiscountAmount] = useState(0); 
   const [visible, setVisible] = useState(false);
   const [dataForm, setDataForm] = useState([]);
   const location = useLocation();
@@ -63,11 +61,12 @@ const Pay = () => {
   const [showModal, setShowModal] = useState(false);
   const [addrQuery, setAddrQuery] = useState('');
   const [addrLoading, setAddrLoading] = useState(false);
-  const [selectedLL, setSelectedLL] = useState(null); // {lat, lng}
+  const [selectedLL, setSelectedLL] = useState(null);
+  const [phanTramKhuyenMai, setPhanTramKhuyenMai] = useState(0);
+  const [pendingFormValues, setPendingFormValues] = useState(null);
 
   const debounceRef = useRef(null);
 
-  // Nominatim search: địa chỉ -> lat/lon
   async function geocodeAddress(q) {
     if (!q || q.trim().length < 3) return;
 
@@ -79,9 +78,8 @@ const Pay = () => {
       if (Array.isArray(list) && list.length > 0) {
         const first = list[0];
         const lat = Number(first.lat);
-        const lng = Number(first.lon); // Nominatim trả "lon", ta đổi sang "lng"
+        const lng = Number(first.lon); 
 
-        // Cập nhật form + state để map hiển thị
         form.setFieldsValue({ address: first.display_name, lat, lng });
         setAddrQuery(first.display_name);
         setSelectedLL({ lat, lng });
@@ -91,16 +89,14 @@ const Pay = () => {
     }
   }
 
-  // onChange của Input: debounce để tránh gọi API liên tục
   const onAddressChange = (e) => {
     const v = e.target.value;
     setAddrQuery(v);
-    form.setFieldsValue({ address: v, lat: undefined, lng: undefined }); // gõ lại => reset lat/lng
+    form.setFieldsValue({ address: v, lat: undefined, lng: undefined });
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => geocodeAddress(v), 1500);
   };
-
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -122,36 +118,66 @@ const Pay = () => {
     }
 
     setAddrLoading(true);
+    notification.info({
+      message: 'Đang lấy vị trí',
+      description: 'Vui lòng cấp quyền truy cập vị trí trong trình duyệt.',
+      duration: 0, 
+      key: 'geolocation-loading',
+    });
+
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const lat = coords.latitude;
         const lng = coords.longitude;
 
-        // Reverse geocode to address string
         const addr = await reverseGeocode(lat, lng);
 
-        // Update map + form + input
         setSelectedLL({ lat, lng });
         form.setFieldsValue({ lat, lng, address: addr || form.getFieldValue('address') });
         setAddrQuery(addr || form.getFieldValue('address'));
 
         setAddrLoading(false);
+        notification.close('geolocation-loading');
+        notification.success({
+          message: 'Thành công',
+          description: 'Lấy vị trí hiện tại thành công!',
+        });
       },
       (err) => {
         setAddrLoading(false);
-        notification.error({ message: 'Không lấy được vị trí hiện tại', description: err.message });
+        notification.close('geolocation-loading');
+
+        if (err.code === err.PERMISSION_DENIED) {
+          notification.error({
+            message: 'Không lấy được vị trí',
+            description: 'Bạn đã từ chối cấp quyền truy cập vị trí. Vui lòng cấp quyền trong cài đặt trình duyệt hoặc nhập địa chỉ thủ công.',
+          });
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          notification.error({
+            message: 'Không lấy được vị trí',
+            description: 'Không thể xác định vị trí hiện tại. Vui lòng thử lại hoặc nhập địa chỉ thủ công.',
+          });
+        } else if (err.code === err.TIMEOUT) {
+          notification.error({
+            message: 'Hết thời gian lấy vị trí',
+            description: 'Yêu cầu lấy vị trí mất quá nhiều thời gian. Vui lòng thử lại.',
+          });
+        } else {
+          notification.error({
+            message: 'Lỗi không xác định',
+            description: err.message || 'Đã xảy ra lỗi khi lấy vị trí.',
+          });
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } 
     );
   };
 
-  // Toạ độ kho/shop của bạn
-  const STORE_COORD = { lat: 10.870319219700491, lng: 106.79061359058457 }; // ptit
+  const STORE_COORD = { lat: 10.870319219700491, lng: 106.79061359058457 }; 
 
-  // State hiển thị
   const [distKm, setDistKm] = useState(null);
   const [shipFee, setShipFee] = useState(0);
-  const [grandTotal, setGrandTotal] = useState(0); // tổng cuối cùng (hàng + ship)
+  const [grandTotal, setGrandTotal] = useState(0);
 
   const getDrivingDistanceKm = async (from, to) => {
     try {
@@ -161,7 +187,7 @@ const Pay = () => {
       const j = await res.json();
       const meters = j?.routes?.[0]?.distance;
       if (!meters && meters !== 0) throw new Error('no distance');
-      return meters / 1000; // km
+      return meters / 1000; 
     } catch {
       return null;
     }
@@ -199,12 +225,15 @@ const Pay = () => {
       setShipFee(0);
       const lat = form.getFieldValue('lat');
       const lng = form.getFieldValue('lng');
-      if (!lat || !lng) { setGrandTotal(orderTotal || 0); return; }
+      if (!lat || !lng) { 
+        setGrandTotal(orderTotal || 0); 
+        return; 
+      }
 
       const to = { lat: Number(lat), lng: Number(lng) };
-      // 1) thử OSRM
+      
       let km = await getDrivingDistanceKm(STORE_COORD, to);
-      // 2) fallback Haversine
+      
       if (km == null) km = haversineKm(STORE_COORD, to);
 
       const fee = calcShipFee(km);
@@ -213,108 +242,43 @@ const Pay = () => {
       setGrandTotal((orderTotal || 0) + fee);
     };
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [latWatch, lngWatch, orderTotal]);
 
   const hideModal = () => {
     setVisible(false);
   };
 
-  const accountCreate = async (values) => {
-    if (values.billing === "paypal") {
-      localStorage.setItem("description", values.description);
-      localStorage.setItem("address", values.address);
-      try {
-        const approvalUrl = await handlePayment(values);
-        console.log(approvalUrl);
-        if (approvalUrl) {
-          window.location.href = approvalUrl; // Chuyển hướng đến URL thanh toán PayPal
-        } else {
-          notification["error"]({
-            message: `Thông báo`,
-            description: "Thanh toán thất bại",
-          });
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        notification["error"]({
-          message: `Thông báo`,
-          description: "Thanh toán thất bại",
-        });
+  async function fetchUsdVndRate() {
+    try {
+      const response = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!response.ok) {
+        return RATE_VND_USD; 
       }
-    } else {
-      try {
-        const { lat, lng } = form.getFieldsValue(['lat', 'lng']);
-        const subtotal = orderTotal || 0;
-        const shippingFee = shipFee || 0;
-        const distanceKm = distKm ?? null;
-        const total = (grandTotal || (subtotal + shippingFee));
-        const formatData = {
-          userId: userData._id,
-          address: values.address,
-          billing: values.billing,
-          description: values.description,
-          status: "pending",
-          products: productDetail,
-          orderTotal: orderTotal,
-          subtotal,               // tiền hàng
-          shippingFee,            // phí ship
-          distanceKm,             // km ước tính
-          orderTotal: total,      // tổng cuối cùng (subtotal + ship)
-          shipping: {             // block vận chuyển
-            address: values.address,
-            lat,
-            lng
-          }
-        };
-
-        console.log(formatData);
-        await axiosClient.post("/order", formatData).then((response) => {
-          console.log(response);
-          if (response.error === "Insufficient quantity for one or more products.") {
-            return notification["error"]({
-              message: `Thông báo`,
-              description: "Sản phẩm đã hết hàng!",
-            });
-          }
-
-          if (response == undefined) {
-            notification["error"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thất bại",
-            });
-          } else {
-            notification["success"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thành công",
-            });
-            form.resetFields();
-            history.push("/final-pay");
-            localStorage.removeItem("cart");
-            localStorage.removeItem("cartLength");
-          }
-        });
-      } catch (error) {
-        throw error;
+      const data = await response.json();
+      const rate = data?.rates?.VND;
+      if (!rate) {
+        return RATE_VND_USD; 
       }
-      setTimeout(function () {
-        setLoading(false);
-      }, 1000);
+      return rate;
+    } catch (error) {
+      console.error("Lỗi khi lấy tỷ giá:", error);
+      return RATE_VND_USD;
     }
-  };
+  }
 
-  const handlePayment = async (values) => {
+  const handlePayment = async (values, totalUSD) => {
     try {
       const productPayment = {
-        price: "800",
-        description: values.bookingDetails,
+        price: totalUSD, 
+        description: values.description,
         return_url: "http://localhost:3500" + location.pathname,
         cancel_url: "http://localhost:3500" + location.pathname,
       };
       const response = await axiosClient.post("/payment/pay", productPayment);
       if (response.approvalUrl) {
         localStorage.setItem("session_paypal", response.accessToken);
-        return response.approvalUrl; // Trả về URL thanh toán
+        return response.approvalUrl;
       } else {
         notification["error"]({
           message: `Thông báo`,
@@ -327,77 +291,322 @@ const Pay = () => {
     }
   };
 
-  const handleModalConfirm = async () => {
-    try {
-      const queryParams = new URLSearchParams(window.location.search);
-      const paymentId = queryParams.get("paymentId");
-      // const token = queryParams.get('token');
-      const PayerID = queryParams.get("PayerID");
-      const token = localStorage.getItem("session_paypal");
-      const description = localStorage.getItem("description");
-      const address = localStorage.getItem("address");
+  const confirmOrder = async (values) => {
+  // Kiểm tra nếu đây là PayPal callback, không xử lý ở đây
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPayPalCallback = urlParams.get("paymentId") && urlParams.get("PayerID");
+  
+  if (isPayPalCallback) {
+    console.log("Detected PayPal callback, skipping confirmOrder");
+    return;
+  }
 
-      // Gọi API executePayment để thực hiện thanh toán
-      const response = await axiosClient.get("/payment/executePayment", {
-        params: {
-          paymentId,
-          token,
-          PayerID,
-        },
+  console.log("ConfirmOrder called with values:", values);
+
+  if (values.billing === "paypal") {
+    // Lưu thông tin form trước khi chuyển đến PayPal
+    localStorage.setItem("description", values.description || "");
+    localStorage.setItem("address", values.address || "");
+    
+    console.log("Saving to localStorage:", {
+      description: values.description,
+      address: values.address
+    });
+    
+    try {
+      const usdToVndRate = await fetchUsdVndRate();
+      console.log("USD to VND rate:", usdToVndRate);
+
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      const processedProducts = cart.map(item => {
+        const priceVND = item.promotion || item.price;
+        const priceUSD = (priceVND / usdToVndRate).toFixed(2);
+        return {
+          product: item._id,
+          quantity: item.quantity,
+          price: priceUSD,
+          promotion: item.promotion,
+          size: item.selectedSize || item.size || item.productSize || null,
+          color: item.selectedColor || item.color || null,
+          variantId: item.variantId || `${item._id}-${item.selectedSize || item.size || ''}-${(item.selectedColor || item.color || '').replace('#', '')}`
+        };
       });
 
-      if (response) {
-        const local = localStorage.getItem("user");
-        const currentUser = JSON.parse(local);
+      const totalUSD = processedProducts.reduce(
+        (sum, p) => sum + (p.price * p.quantity), 0
+      ).toFixed(2);
 
-        const formatData = {
-          userId: currentUser.user._id,
-          address: address,
-          billing: "paypal",
-          description: description,
-          status: "pending",
-          products: productDetail,
-          orderTotal: orderTotal,
-        };
+      console.log("Processed products for PayPal:", processedProducts);
+      console.log("Total USD:", totalUSD);
 
-        console.log(formatData);
-        await axiosClient.post("/order", formatData).then((response) => {
-          console.log(response);
-          if (response == undefined) {
-            notification["error"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thất bại",
-            });
-          } else {
-            notification["success"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thành công",
-            });
-            form.resetFields();
-            history.push("/final-pay");
-            localStorage.removeItem("cart");
-            localStorage.removeItem("cartLength");
-            localStorage.removeItem("phanTramKhuyenMai");
-
-          }
-        });
-        notification["success"]({
-          message: `Thông báo`,
-          description: "Thanh toán thành công",
-        });
-
-        setShowModal(false);
+      const approvalUrl = await handlePayment(values, totalUSD);
+      if (approvalUrl) {
+        console.log("Redirecting to PayPal:", approvalUrl);
+        // Chuyển hướng đến PayPal
+        window.location.href = approvalUrl;
       } else {
         notification["error"]({
           message: `Thông báo`,
           description: "Thanh toán thất bại",
         });
       }
-
-      setShowModal(false);
     } catch (error) {
-      console.error("Error executing payment:", error);
-      // Xử lý lỗi
+      console.error("Lỗi PayPal:", error);
+      notification["error"]({
+        message: `Thông báo`,
+        description: "Thanh toán thất bại",
+      });
+    }
+  } else {
+    // Xử lý COD
+    console.log("Processing COD order");
+    try {
+      const { lat, lng } = form.getFieldsValue(['lat', 'lng']);
+      const subtotal = orderTotal || 0;
+      const shippingFee = shipFee || 0;
+      const distanceKm = distKm ?? null;
+      const total = (grandTotal || (subtotal + shippingFee));
+
+      const formatData = {
+        userId: userData._id,
+        address: values.address,
+        billing: values.billing,
+        description: values.description,
+        status: "pending",
+        products: productDetail.map(item => ({
+          product: item.product,
+          quantity: item.quantity,
+          promotion: item.promotion,
+          price: item.price,
+          size: item.selectedSize || item.size || item.productSize || null,
+          color: item.selectedColor || item.color || null,
+          variantId: item.variantId || null
+        })),
+        subtotal: originalTotal,
+        discount: discountAmount,
+        discountRate: phanTramKhuyenMai,
+        afterDiscount: subtotal,
+        shippingFee,
+        distanceKm,
+        orderTotal: total,
+        shipping: {
+          address: values.address,
+          lat,
+          lng
+        }
+      };
+
+      console.log("Dữ liệu đơn hàng COD gửi đi:", formatData);
+
+      await axiosClient.post("/order", formatData).then((response) => {
+        console.log("Phản hồi từ server:", response);
+
+        if (response.error === "Insufficient quantity for one or more products.") {
+          let errorMessage = "Sản phẩm đã hết hàng!";
+          if (response.insufficientQuantityProducts && response.insufficientQuantityProducts.length > 0) {
+            errorMessage += " Chi tiết:\n";
+            response.insufficientQuantityProducts.forEach(p => {
+              const productName = productNames[p.productId]?.name || `Sản phẩm ID: ${p.productId}`;
+              errorMessage += `\n- ${productName}`;
+              if (p.size) errorMessage += `, kích cỡ: ${p.size}`;
+              if (p.color) errorMessage += `, màu: ${p.color}`;
+              errorMessage += `\n  Số lượng hiện có: ${p.availableQuantity}, Yêu cầu: ${p.requestedQuantity}`;
+            });
+          }
+
+          return notification["error"]({
+            message: `Thông báo`,
+            description: errorMessage,
+            duration: 10
+          });
+        }
+
+        if (response == undefined) {
+          notification["error"]({
+            message: `Thông báo`,
+            description: "Đặt hàng thất bại",
+          });
+        } else {
+          notification["success"]({
+            message: `Thông báo`,
+            description: "Đặt hàng thành công",
+          });
+          form.resetFields();
+          history.push("/final-pay");
+          localStorage.removeItem("cart");
+          localStorage.removeItem("cartLength");
+          localStorage.removeItem("phanTramKhuyenMai");
+        }
+      });
+    } catch (error) {
+      console.error("Lỗi đặt hàng COD:", error);
+      notification["error"]({
+        message: `Thông báo`,
+        description: "Đặt hàng thất bại: " + (error.message || "Lỗi không xác định"),
+      });
+      throw error;
+    }
+  }
+  
+  setTimeout(function () {
+    setLoading(false);
+  }, 1000);
+};
+
+  const accountCreate = async (values) => {
+    setPendingFormValues(values); 
+    setShowModal(true);
+  };
+
+  const handleModalConfirm = async () => {
+    try {
+      // Lấy payment parameters từ URL
+      const queryParams = new URLSearchParams(window.location.search);
+      const paymentId = queryParams.get("paymentId");
+      const PayerID = queryParams.get("PayerID");
+      
+      console.log("Modal confirm - PaymentId:", paymentId, "PayerID:", PayerID);
+      console.log("Modal confirm - PendingFormValues:", pendingFormValues);
+      
+      if (paymentId && PayerID) {
+        // Đây là xử lý PayPal callback
+        const token = localStorage.getItem("session_paypal");
+        const description = localStorage.getItem("description");
+        const address = localStorage.getItem("address");
+
+        console.log("Processing PayPal payment:", { paymentId, PayerID, token, description, address });
+
+        if (!token) {
+          notification["error"]({
+            message: `Thông báo`,
+            description: "Không tìm thấy token thanh toán PayPal",
+          });
+          setShowModal(false);
+          return;
+        }
+
+        const response = await axiosClient.get("/payment/executePayment", {
+          params: {
+            paymentId,
+            token,
+            PayerID,
+          },
+        });
+
+        console.log("PayPal execute response:", response);
+
+        if (response) {
+          const local = localStorage.getItem("user");
+          const currentUser = JSON.parse(local);
+
+          const cart = JSON.parse(localStorage.getItem("cart")) || [];
+          const processedProducts = cart.map(item => {
+            return {
+              product: item._id,
+              quantity: item.quantity,
+              price: item.promotion || item.price,
+              promotion: item.promotion,
+              size: item.selectedSize || item.size || item.productSize || null,
+              color: item.selectedColor || item.color || null,
+              variantId: item.variantId || `${item._id}-${item.selectedSize || item.size || ''}-${(item.selectedColor || item.color || '').replace('#', '')}`
+            };
+          });
+
+          const formatData = {
+            userId: currentUser.user._id,
+            address: address,
+            billing: "paypal",
+            description: description,
+            status: "pending",
+            products: processedProducts,
+            subtotal: originalTotal,
+            discount: discountAmount,
+            discountRate: phanTramKhuyenMai,
+            afterDiscount: orderTotal,
+            orderTotal: orderTotal,
+          };
+
+          console.log("Dữ liệu đơn hàng PayPal:", formatData);
+          
+          const orderResponse = await axiosClient.post("/order", formatData);
+          console.log("Kết quả từ API:", orderResponse);
+          
+          if (orderResponse.error === "Insufficient quantity for one or more products.") {
+            let errorMessage = "Sản phẩm đã hết hàng!";
+            if (orderResponse.insufficientQuantityProducts && orderResponse.insufficientQuantityProducts.length > 0) {
+              errorMessage += " Chi tiết:\n";
+              orderResponse.insufficientQuantityProducts.forEach(p => {
+                const productName = productNames[p.productId]?.name || `Sản phẩm ID: ${p.productId}`;
+                errorMessage += `\n- ${productName}`;
+                if (p.size) errorMessage += `, kích cỡ: ${p.size}`;
+                if (p.color) errorMessage += `, màu: ${p.color}`;
+                errorMessage += `\n  Số lượng hiện có: ${p.availableQuantity}, Yêu cầu: ${p.requestedQuantity}`;
+              });
+            }
+            
+            notification["error"]({
+              message: `Thông báo`,
+              description: errorMessage,
+              duration: 10
+            });
+            setShowModal(false);
+            return;
+          }
+
+          if (!orderResponse) {
+            notification["error"]({
+              message: `Thông báo`,
+              description: "Đặt hàng thất bại",
+            });
+            setShowModal(false);
+            return;
+          }
+
+          // Thành công
+          notification["success"]({
+            message: `Thông báo`,
+            description: "Thanh toán và đặt hàng thành công",
+          });
+          
+          // Cleanup localStorage
+          localStorage.removeItem("cart");
+          localStorage.removeItem("cartLength");
+          localStorage.removeItem("phanTramKhuyenMai");
+          localStorage.removeItem("session_paypal");
+          localStorage.removeItem("description");
+          localStorage.removeItem("address");
+          
+          // Reset form và chuyển trang
+          form.resetFields();
+          history.push("/final-pay");
+          
+        } else {
+          notification["error"]({
+            message: `Thông báo`,
+            description: "Thanh toán thất bại",
+          });
+        }
+      } else if (pendingFormValues) {
+        // Xử lý submit form thông thường (COD hoặc PayPal mới)
+        console.log("Processing normal form submission:", pendingFormValues);
+        await confirmOrder(pendingFormValues);
+      } else {
+        notification["warning"]({
+          message: `Thông báo`,
+          description: "Không có dữ liệu thanh toán để xử lý",
+        });
+      }
+      
+      setShowModal(false);
+      setPendingFormValues(null);
+    } catch (error) {
+      console.error("Lỗi khi thực hiện thanh toán:", error);
+      notification["error"]({
+        message: `Thông báo`,
+        description: "Thanh toán thất bại: " + (error.message || "Lỗi không xác định"),
+      });
+      setShowModal(false);
+      setPendingFormValues(null);
     }
   };
 
@@ -409,8 +618,21 @@ const Pay = () => {
   useEffect(() => {
     (async () => {
       try {
-        if (paymentId) {
+        // Kiểm tra nếu đây là callback từ PayPal
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get("paymentId");
+        const PayerID = urlParams.get("PayerID");
+        
+        if (paymentId && PayerID) {
+          // Đây là callback từ PayPal, hiển thị modal xác nhận
           setShowModal(true);
+          
+          // Restore form data từ localStorage
+          const savedDescription = localStorage.getItem("description");
+          const savedAddress = localStorage.getItem("address");
+          
+          console.log("PayPal callback detected:", { paymentId, PayerID });
+          console.log("Restored data:", { savedDescription, savedAddress });
         }
 
         await productApi.getDetailProduct(id).then((item) => {
@@ -419,33 +641,83 @@ const Pay = () => {
         const response = await userApi.getProfile();
         localStorage.setItem("user", JSON.stringify(response));
         console.log(response);
-        form.setFieldsValue({
+        
+        // Set form fields với thông tin user
+        const formData = {
           name: response.user.username,
           email: response.user.email,
           phone: response.user.phone,
-        });
+        };
+        
+        // Nếu là PayPal callback, thêm thông tin đã lưu
+        if (paymentId && PayerID) {
+          const savedDescription = localStorage.getItem("description");
+          const savedAddress = localStorage.getItem("address");
+          if (savedAddress) {
+            formData.address = savedAddress;
+            formData.billing = "paypal";
+            formData.description = savedDescription;
+            setAddrQuery(savedAddress);
+          }
+        }
+        
+        form.setFieldsValue(formData);
+
         const cart = JSON.parse(localStorage.getItem("cart")) || [];
-        console.log(cart);
+        console.log("Giỏ hàng:", cart);
 
-        const transformedData = cart.map(
-          ({ _id: product, quantity, promotion, price }) => ({ product, quantity, promotion, price })
-        );
-        let totalPrice = 0;
+        const transformedData = cart.map(item => {
+          console.log("Item from cart:", item);
+          return {
+            product: item._id,
+            productName: item.name || null,
+            quantity: item.quantity,
+            promotion: item.promotion,
+            originalPrice: item.price || item.promotion,
+            price: item.promotion || item.price,
+            selectedSize: item.selectedSize || item.size || item.productSize || 
+                        (item.details && item.details.size) || 
+                        (item.options && item.options.size) || null,
+            selectedColor: item.selectedColor || item.color || null,
+            variantId: item.variantId || 
+                      (item.selectedSize && item.selectedColor ? 
+                        `${item._id}-${item.selectedSize}-${item.selectedColor.replace('#', '')}` : 
+                        null)
+          };
+        });
 
+        console.log("Dữ liệu chuyển đổi:", transformedData);
+
+        let totalOriginalPrice = 0;
         for (let i = 0; i < transformedData.length; i++) {
           let product = transformedData[i];
-          console.log(product);
+          let price = product.originalPrice * product.quantity;
+          totalOriginalPrice += price;
+        }
+        setOriginalTotal(totalOriginalPrice);
+
+        let totalPromotionPrice = 0;
+        for (let i = 0; i < transformedData.length; i++) {
+          let product = transformedData[i];
           let price = product.promotion * product.quantity;
-          totalPrice += price;
+          totalPromotionPrice += price;
         }
 
-        const phanTramKhuyenMai = localStorage.getItem("phanTramKhuyenMai");
-        const discount = (totalPrice * phanTramKhuyenMai) / 100;
+        const phanTramKhuyenMaiValue = localStorage.getItem("phanTramKhuyenMai");
+        if (phanTramKhuyenMaiValue) {
+          setPhanTramKhuyenMai(parseFloat(phanTramKhuyenMaiValue));
 
-        console.log(totalPrice - discount)
-        setOrderTotal(totalPrice - discount);
+          const couponDiscount = (totalPromotionPrice * parseFloat(phanTramKhuyenMaiValue)) / 100;
+          setDiscountAmount(couponDiscount);
+
+          const afterCouponPrice = totalPromotionPrice - couponDiscount;
+          setOrderTotal(afterCouponPrice);
+        } else {
+          setDiscountAmount(totalOriginalPrice - totalPromotionPrice);
+          setOrderTotal(totalPromotionPrice);
+        }
+
         setProductDetail(transformedData);
-        console.log(transformedData);
         setUserData(response.user);
         setLoading(false);
       } catch (error) {
@@ -456,8 +728,8 @@ const Pay = () => {
   }, []);
 
   return (
-    <div class="py-5">
-      <Spin spinning={false}>
+    <div className="py-5">
+      <Spin spinning={loading}>
         <Card className="container">
           <div className="product_detail">
             <div style={{ marginLeft: 5, marginBottom: 10, marginTop: 10 }}>
@@ -492,9 +764,7 @@ const Pay = () => {
               <div className="information_pay">
                 <Form form={form} onFinish={accountCreate} layout="vertical">
                   <Row gutter={24}>
-                    {/* LEFT COLUMN */}
                     <Col xs={24} lg={16} >
-                      {/* Customer Information */}
                       <Card bordered style={{ marginBottom: 16 }} title={<span style={{ fontWeight: 600 }}>Thông tin khách hàng</span>}>
                         <Row gutter={16} style={{ padding: '0 10px' }}>
                           <Col xs={24} md={12}>
@@ -541,7 +811,6 @@ const Pay = () => {
                           ]}
                           style={{ marginBottom: 15 }}
                         >
-
                           <Input
                             value={addrQuery}
                             onChange={onAddressChange}
@@ -557,16 +826,13 @@ const Pay = () => {
                           />
                         </Form.Item>
 
-                        {/* Map preview */}
                         <div style={{ marginTop: 8 }}>
                           <div style={{ marginBottom: 6, fontWeight: 500 }}>Location Preview</div>
-
                           {(() => {
                             const lat = selectedLL?.lat ?? form.getFieldValue('lat');
                             const lng = selectedLL?.lng ?? form.getFieldValue('lng');
                             const hasLL = !!lat && !!lng;
 
-                            // bbox nhỏ quanh marker để map focus
                             const pad = 0.0015;
                             const left = lng - pad;
                             const right = lng + pad;
@@ -593,7 +859,7 @@ const Pay = () => {
                                       src={src}
                                       style={{
                                         position: 'absolute',
-                                        inset: 0,           // top:0,right:0,bottom:0,left:0
+                                        inset: 0,
                                         width: '100%',
                                         height: '100%',
                                         border: 0,
@@ -619,8 +885,6 @@ const Pay = () => {
                                     </div>
                                   )}
                                 </div>
-
-                                {/* Link mở to bản đồ OSM (đặt dưới khung, không chèn vào trong để khỏi che map) */}
                                 {hasLL && (
                                   <div style={{ paddingTop: 6, fontSize: 12 }}>
                                     <a
@@ -635,8 +899,6 @@ const Pay = () => {
                               </>
                             );
                           })()}
-
-                          {/* Estimated distance */}
                           <div
                             style={{
                               marginTop: 12,
@@ -652,57 +914,108 @@ const Pay = () => {
                             <b>{distKm != null ? `${distKm.toFixed(2)} km` : '-'}</b>
                           </div>
                         </div>
-                        {/* hidden để lưu lat/lng nếu bạn đang dùng */}
                         <Form.Item name="lat" hidden><Input /></Form.Item>
                         <Form.Item name="lng" hidden><Input /></Form.Item>
                       </Card>
                     </Col>
 
-                    {/* RIGHT COLUMN */}
                     <Col xs={24} lg={8}>
                       <Card bordered style={{ marginBottom: 16 }} title={<span style={{ fontWeight: 600 }}>Thông tin đơn hàng</span>}>
-                        {/* danh sách sản phẩm */}
-                        <div style={{ marginBottom: 12, padding: '0 10px' }}>
+                        <div style={{ marginBottom: 12 }}>
                           {Array.isArray(productDetail) && productDetail.length > 0 ? (
-                            productDetail.map((p, i) => (
-                              <div key={i}
-                                style={{
-                                  display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0',
-                                  borderBottom: '1px dashed rgba(255,255,255,0.08)'
-                                }}>
-                                <div>
-                                  <div style={{ fontWeight: 500 }}>{p.product?.name || 'Sản phẩm'}</div>
-                                  <div style={{ fontSize: 12, color: '#999' }}>Số lượng: {p.quantity}</div>
-                                </div>
-                                <div>{(p.promotion || p.price || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</div>
-                              </div>
-                            ))
+                            <div className="custom-table-container" style={{maxHeight: "400px", overflowY: "auto"}}>
+                              <table style={{width: "100%", borderCollapse: "collapse"}}>
+                                <tbody>
+                                  {productDetail.map((item, index) => (
+                                    <tr key={index} style={{borderBottom: "1px solid #f0f0f0"}}>
+                                      <td style={{padding: "12px 0"}}>
+                                        <div style={{display: "flex", flexDirection: "column"}}>
+                                          <div style={{fontWeight: "500", marginBottom: "8px", fontSize: "15px"}}>
+                                            {item.productName || `Sản phẩm ${index + 1}`}
+                                          </div>
+                                          <div style={{display: "flex", gap: "15px", fontSize: "13px", color: "#666"}}>
+                                            <div>SL: {item.quantity}</div>
+                                            {item.selectedSize && (
+                                              <div>
+                                                <span>Size: </span>
+                                                <Tag color="blue">{item.selectedSize}</Tag>
+                                              </div>
+                                            )}
+                                            {item.selectedColor && item.selectedColor !== '-' && (
+                                              <div style={{display: "flex", alignItems: "center"}}>
+                                                <span>Màu: </span>
+                                                <div style={{
+                                                  display: "inline-block",
+                                                  width: "14px",
+                                                  height: "14px",
+                                                  borderRadius: "50%",
+                                                  background: item.selectedColor,
+                                                  border: "1px solid #ddd",
+                                                  marginLeft: "4px",
+                                                  marginRight: "4px"
+                                                }}></div>
+                                                <span>{item.selectedColor}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td style={{textAlign: "right", paddingLeft: "10px", verticalAlign: "top"}}>
+                                        <div style={{fontWeight: "500"}}>
+                                          {(item.promotion || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           ) : (
-                            <div style={{ color: '#999' }}>No items</div>
+                            <div style={{ color: '#999', padding: '20px 0', textAlign: 'center' }}>
+                              Không có sản phẩm
+                            </div>
                           )}
                         </div>
 
-                        {/* tiền */}
-                        <div style={{ display: 'grid', gap: 6, padding: '0 10px' }}>
+                        <Divider style={{margin: "10px 0"}} />
+
+                        <div style={{ display: 'grid', gap: 8, padding: '8px 0' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Tổng tiền hàng</span>
+                            <span>{(originalTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
+                          </div>
+                          {discountAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52c41a' }}>
+                              <span style={{ display: 'flex', alignItems: 'center' }}>
+                                <PercentageOutlined style={{ marginRight: '5px' }} />
+                                Giảm giá {phanTramKhuyenMai > 0 ? `(${phanTramKhuyenMai}%)` : ''}
+                              </span>
+                              <span>-{(discountAmount || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '500' }}>
                             <span>Tạm tính</span>
                             <span>{(orderTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.85 }}>
-                            <span>Tiền vận chuyển{distKm != null ? `(${distKm.toFixed(2)} km)` : ''}</span>
+                            <span>Phí vận chuyển{distKm != null ? ` (${distKm.toFixed(2)} km)` : ''}</span>
                             <span>{(shipFee || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                           </div>
-                          <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '6px 0' }} />
+                          <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '6px 0' }} />
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                            <span>Tổng tiền</span>
-                            <span>{(grandTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
+                            <span>Tổng thanh toán</span>
+                            <Statistic 
+                              value={grandTotal || 0} 
+                              precision={0} 
+                              suffix="VND" 
+                              valueStyle={{ fontSize: '18px', lineHeight: '1.2', color: '#ff4d4f' }} 
+                            />
                           </div>
                         </div>
 
-                        {/* phương thức thanh toán */}
                         <div style={{ marginTop: 16 }}>
                           <div style={{ marginBottom: 8, fontWeight: 600 }}>Chọn phương thức thanh toán</div>
-                          <Form.Item name="billing" rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán!' }]} style={{ marginBottom: 0, padding: '0 10px' }}>
+                          <Form.Item name="billing" rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán!' }]} style={{ marginBottom: 0 }}>
                             <Radio.Group style={{ display: 'grid', gap: 8 }}>
                               <Radio value="cod">COD</Radio>
                               <Radio value="paypal">PayPal</Radio>
@@ -710,15 +1023,14 @@ const Pay = () => {
                           </Form.Item>
                         </div>
 
-                        {/* nút submit */}
                         <Form.Item style={{ marginTop: 16, marginBottom: 0 }}>
-                          <Button htmlType="submit" block style={{ height: 40, fontWeight: 600 }}>
+                          <Button type="primary" htmlType="submit" block style={{ height: 40, fontWeight: 600 }}>
                             Thanh toán
                           </Button>
                         </Form.Item>
 
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-                          Your payment information is secure
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#999', textAlign: 'center' }}>
+                          Thông tin thanh toán của bạn được bảo mật
                         </div>
                       </Card>
                     </Col>
@@ -729,9 +1041,12 @@ const Pay = () => {
           </div>
         </Card>
         <Modal
+          title="Xác nhận thanh toán"
           visible={showModal}
           onOk={handleModalConfirm}
-          onCancel={() => setShowModal(false)}
+          onCancel={() => { setShowModal(false); setPendingFormValues(null); }}
+          okText="Xác nhận"
+          cancelText="Hủy"
         >
           <p>Bạn có chắc chắn muốn xác nhận thanh toán?</p>
         </Modal>

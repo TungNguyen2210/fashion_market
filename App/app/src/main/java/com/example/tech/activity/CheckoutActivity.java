@@ -2,16 +2,28 @@ package com.example.tech.activity;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.text.Editable;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -25,9 +37,15 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.model.SanPham;
+import com.example.tech.model.Promotion;
 import com.example.tech.utils.UserManager;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -35,11 +53,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -48,14 +68,26 @@ public class CheckoutActivity extends AppCompatActivity {
     private static final String TAG = "CheckoutActivity";
     private static final String BASE_URL = "http://10.0.2.2:3100";
     private static final int SHIPPING_FEE = 30000;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
+    // UI Components
     private TextView tvBack, tvSubtotal, tvShippingFee, tvTotalPayment;
     private EditText etName, etEmail, etPhone, etAddress, etNotes;
     private RadioGroup rgPaymentMethod;
     private RadioButton rbCOD, rbPayPal;
     private Button btnBackToCart, btnConfirmOrder;
+    private ImageButton btnGetLocation;
 
+    // Promotion UI Components
+    private EditText etPromotionCode;
+    private Button btnApplyPromotion;
+    private LinearLayout layoutPromotionStatus, layoutPromotionDiscount;
+    private ImageView ivPromotionIcon;
+    private TextView tvPromotionStatus, btnRemovePromotion, tvPromotionDiscount;
+
+    // Data variables
     private int subtotal = 0;
+    private int promotionDiscount = 0;
     private ArrayList<SanPham> cartItems;
     private String userId = "";
     private RequestQueue requestQueue;
@@ -63,20 +95,32 @@ public class CheckoutActivity extends AppCompatActivity {
     private UserManager userManager;
     private int orderFormatAttempt = 0;
 
+    // Promotion data
+    private Promotion currentPromotion = null;
+    private ArrayList<Promotion> availablePromotions = new ArrayList<>();
+
+    // Location services
+    private FusedLocationProviderClient fusedLocationProviderClient;
+    private Geocoder geocoder;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_checkout);
 
-        // Khởi tạo UserManager
+        // Initialize UserManager
         userManager = UserManager.getInstance(this);
 
-        // Debug: In thông tin token
+        // Initialize location services
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        geocoder = new Geocoder(this, Locale.getDefault());
+
+        // Debug: Print token information
         Log.d(TAG, "============== DEBUG TOKEN ==============");
         userManager.debugCurrentToken();
         Log.d(TAG, "========================================");
 
-        // Kiểm tra đăng nhập
+        // Check login status
         if (!userManager.isLoggedIn()) {
             Toast.makeText(this, "Vui lòng đăng nhập để tiếp tục", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(this, LoginActivity.class);
@@ -84,7 +128,7 @@ public class CheckoutActivity extends AppCompatActivity {
             finish();
             return;
         } else {
-            // Kiểm tra token có hợp lệ không
+            // Check if token is valid
             if (!userManager.isTokenValid()) {
                 Log.e(TAG, "Token đã hết hạn hoặc không hợp lệ. Đăng xuất người dùng.");
                 userManager.logout();
@@ -95,7 +139,7 @@ public class CheckoutActivity extends AppCompatActivity {
                 return;
             }
 
-            // Lấy userId từ UserManager
+            // Get userId from UserManager
             userId = userManager.getUserId();
             if (!TextUtils.isEmpty(userId)) {
                 Log.d(TAG, "User ID đã được nạp từ UserManager: " + userId);
@@ -104,40 +148,52 @@ public class CheckoutActivity extends AppCompatActivity {
             }
         }
 
-        // Khởi tạo RequestQueue và Gson
+        // Initialize RequestQueue and Gson
         requestQueue = Volley.newRequestQueue(this);
         gson = new Gson();
 
-        // Ánh xạ các view
-        anhxa();
+        // Map views
+        initializeViews();
 
-        // Tải thông tin giỏ hàng trước khi lấy subtotal
+        // Load cart items before calculating subtotal
         loadCartItems();
 
-        // Tính toán lại tổng tiền từ giỏ hàng thay vì lấy từ Intent
+        // Recalculate total from cart instead of getting from Intent
         calculateSubtotalFromCart();
 
-        // Cập nhật giao diện giá tiền
+        // Update price display
         updatePriceDisplay();
 
-        // Thiết lập sự kiện nút back
+        // Setup back button
         setupBackButton();
 
-        // Đặt tên người dùng từ UserManager
+        // Set username from UserManager
         String username = userManager.getUsername();
         if (!TextUtils.isEmpty(username)) {
             etName.setText(username);
             Log.d(TAG, "Đã đặt username từ UserManager: " + username);
         }
 
-        // Tải thông tin chi tiết người dùng từ API
+        // Load detailed user information from API
         loadUserProfile();
 
-        // Thiết lập sự kiện cho các nút
+        // Setup button listeners
         setupButtonListeners();
+
+        // Setup location button
+        setupLocationButton();
+
+        // Setup promotion features
+        setupPromotionFeatures();
+
+        // Load available promotions
+        loadPromotions();
     }
 
-    private void anhxa() {
+    /**
+     * Initialize all UI components
+     */
+    private void initializeViews() {
         tvBack = findViewById(R.id.tvBack);
         tvSubtotal = findViewById(R.id.tvSubtotal);
         tvShippingFee = findViewById(R.id.tvShippingFee);
@@ -152,8 +208,418 @@ public class CheckoutActivity extends AppCompatActivity {
         rbPayPal = findViewById(R.id.rbPayPal);
         btnBackToCart = findViewById(R.id.btnBackToCart);
         btnConfirmOrder = findViewById(R.id.btnConfirmOrder);
+        btnGetLocation = findViewById(R.id.btnGetLocation);
+
+        // Promotion UI components
+        etPromotionCode = findViewById(R.id.etPromotionCode);
+        btnApplyPromotion = findViewById(R.id.btnApplyPromotion);
+        layoutPromotionStatus = findViewById(R.id.layoutPromotionStatus);
+        layoutPromotionDiscount = findViewById(R.id.layoutPromotionDiscount);
+        ivPromotionIcon = findViewById(R.id.ivPromotionIcon);
+        tvPromotionStatus = findViewById(R.id.tvPromotionStatus);
+        btnRemovePromotion = findViewById(R.id.btnRemovePromotion);
+        tvPromotionDiscount = findViewById(R.id.tvPromotionDiscount);
     }
 
+    /**
+     * Setup promotion features
+     */
+    private void setupPromotionFeatures() {
+        // Apply promotion button click
+        btnApplyPromotion.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String promoCode = etPromotionCode.getText().toString().trim().toUpperCase();
+                if (!TextUtils.isEmpty(promoCode)) {
+                    applyPromotionCode(promoCode);
+                } else {
+                    Toast.makeText(CheckoutActivity.this, "Vui lòng nhập mã khuyến mãi", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        // Remove promotion click
+        btnRemovePromotion.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                removePromotion();
+            }
+        });
+
+        // Auto uppercase for promotion code
+        etPromotionCode.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String text = s.toString().toUpperCase();
+                if (!text.equals(s.toString())) {
+                    etPromotionCode.setText(text);
+                    etPromotionCode.setSelection(text.length());
+                }
+            }
+        });
+    }
+
+    /**
+     * Load available promotions from API
+     */
+    private void loadPromotions() {
+        String url = BASE_URL + "/api/promotions";
+        Log.d(TAG, "Loading promotions from: " + url);
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try {
+                            Log.d(TAG, "Promotions API response: " + response.toString());
+
+                            if (response.has("data")) {
+                                JSONArray dataArray = response.getJSONArray("data");
+                                availablePromotions.clear();
+
+                                for (int i = 0; i < dataArray.length(); i++) {
+                                    JSONObject promoJson = dataArray.getJSONObject(i);
+
+                                    Promotion promotion = new Promotion();
+                                    promotion.set_id(promoJson.getString("_id"));
+                                    promotion.setMaKhuyenMai(promoJson.getString("maKhuyenMai"));
+                                    promotion.setPhanTramKhuyenMai(promoJson.getInt("phanTramKhuyenMai"));
+                                    promotion.setThoiGianBD(promoJson.getString("thoiGianBD"));
+                                    promotion.setThoiGianKT(promoJson.getString("thoiGianKT"));
+                                    promotion.set__v(promoJson.getInt("__v"));
+
+                                    availablePromotions.add(promotion);
+                                    Log.d(TAG, "Loaded promotion: " + promotion.getMaKhuyenMai() +
+                                            " - " + promotion.getPhanTramKhuyenMai() + "%" +
+                                            " - Valid: " + promotion.isValid());
+                                }
+
+                                Log.d(TAG, "Loaded " + availablePromotions.size() + " promotions");
+                            }
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Error parsing promotions: " + e.getMessage(), e);
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e(TAG, "Error loading promotions: " + error.getMessage(), error);
+                        // Don't show error to user, promotions are optional
+                    }
+                });
+
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                15000,  // 15 seconds timeout
+                1,      // 1 retry
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        requestQueue.add(request);
+    }
+
+    /**
+     * Apply promotion code
+     */
+    private void applyPromotionCode(String promoCode) {
+        Log.d(TAG, "Attempting to apply promotion code: " + promoCode);
+
+        // Find promotion in loaded list
+        Promotion foundPromotion = null;
+        for (Promotion promotion : availablePromotions) {
+            if (promotion.getMaKhuyenMai().equalsIgnoreCase(promoCode)) {
+                foundPromotion = promotion;
+                break;
+            }
+        }
+
+        if (foundPromotion == null) {
+            // Promotion not found
+            showPromotionError("Mã khuyến mãi không tồn tại");
+            return;
+        }
+
+        if (!foundPromotion.isValid()) {
+            // Promotion expired or not yet valid
+            showPromotionError("Mã khuyến mãi đã hết hạn hoặc chưa có hiệu lực");
+            return;
+        }
+
+        // Apply promotion
+        currentPromotion = foundPromotion;
+        calculatePromotionDiscount();
+        showPromotionSuccess();
+        updatePriceDisplay();
+
+        Log.d(TAG, "Promotion applied successfully: " + promoCode + " - " +
+                foundPromotion.getPhanTramKhuyenMai() + "%");
+    }
+
+    /**
+     * Calculate promotion discount amount
+     */
+    private void calculatePromotionDiscount() {
+        if (currentPromotion != null) {
+            promotionDiscount = (subtotal * currentPromotion.getPhanTramKhuyenMai()) / 100;
+            Log.d(TAG, "Promotion discount calculated: " + promotionDiscount +
+                    " (Subtotal: " + subtotal + ", Percentage: " +
+                    currentPromotion.getPhanTramKhuyenMai() + "%)");
+        } else {
+            promotionDiscount = 0;
+        }
+    }
+
+    /**
+     * Show promotion success state
+     */
+    private void showPromotionSuccess() {
+        if (currentPromotion != null) {
+            layoutPromotionStatus.setVisibility(View.VISIBLE);
+            layoutPromotionDiscount.setVisibility(View.VISIBLE);
+
+            // Use built-in Android icons with color filter
+            ivPromotionIcon.setImageResource(android.R.drawable.ic_dialog_info);
+            ivPromotionIcon.setColorFilter(getResources().getColor(android.R.color.holo_green_dark));
+
+            tvPromotionStatus.setText("Mã khuyến mãi: " + currentPromotion.getPhanTramKhuyenMai() +
+                    "% đã được áp dụng");
+            tvPromotionStatus.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+
+            // Update discount display
+            NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
+            tvPromotionDiscount.setText("-" + formatter.format(promotionDiscount) + "đ");
+
+            Toast.makeText(this, "Áp dụng mã khuyến mãi thành công!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Show promotion error state
+     */
+    private void showPromotionError(String message) {
+        layoutPromotionStatus.setVisibility(View.VISIBLE);
+        layoutPromotionDiscount.setVisibility(View.GONE);
+
+        // Use built-in Android icons with color filter
+        ivPromotionIcon.setImageResource(android.R.drawable.ic_dialog_alert);
+        ivPromotionIcon.setColorFilter(getResources().getColor(android.R.color.holo_red_dark));
+
+        tvPromotionStatus.setText(message);
+        tvPromotionStatus.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
+
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+
+        // Hide error after 3 seconds
+        tvPromotionStatus.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                layoutPromotionStatus.setVisibility(View.GONE);
+            }
+        }, 3000);
+    }
+
+    /**
+     * Remove applied promotion
+     */
+    private void removePromotion() {
+        currentPromotion = null;
+        promotionDiscount = 0;
+
+        layoutPromotionStatus.setVisibility(View.GONE);
+        layoutPromotionDiscount.setVisibility(View.GONE);
+
+        etPromotionCode.setText("");
+        updatePriceDisplay();
+
+        Toast.makeText(this, "Đã xóa mã khuyến mãi", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Promotion removed");
+    }
+
+    /**
+     * Setup location button click listener
+     */
+    private void setupLocationButton() {
+        btnGetLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getCurrentLocation();
+            }
+        });
+    }
+
+    /**
+     * Get current location and convert to address
+     */
+    private void getCurrentLocation() {
+        // Check permissions
+        if (!hasLocationPermissions()) {
+            requestLocationPermissions();
+            return;
+        }
+
+        // Show loading message
+        Toast.makeText(this, "Đang lấy vị trí hiện tại...", Toast.LENGTH_SHORT).show();
+
+        try {
+            // Get current location
+            fusedLocationProviderClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    .addOnCompleteListener(new OnCompleteListener<Location>() {
+                        @Override
+                        public void onComplete(Task<Location> task) {
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                Location location = task.getResult();
+                                Log.d(TAG, "Vị trí hiện tại: " + location.getLatitude() + ", " + location.getLongitude());
+
+                                // Convert coordinates to address
+                                getAddressFromLocation(location.getLatitude(), location.getLongitude());
+                            } else {
+                                Log.e(TAG, "Không thể lấy vị trí hiện tại", task.getException());
+                                Toast.makeText(CheckoutActivity.this, "Không thể lấy vị trí. Vui lòng thử lại.", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+        } catch (SecurityException e) {
+            Log.e(TAG, "Security exception khi lấy vị trí", e);
+            Toast.makeText(this, "Không có quyền truy cập vị trí", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Convert latitude and longitude to readable address
+     */
+    private void getAddressFromLocation(double latitude, double longitude) {
+        try {
+            List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
+
+            if (addresses != null && !addresses.isEmpty()) {
+                Address address = addresses.get(0);
+
+                // Build full address string
+                StringBuilder addressText = new StringBuilder();
+
+                // Add house number and street name
+                if (address.getSubThoroughfare() != null) {
+                    addressText.append(address.getSubThoroughfare()).append(" ");
+                }
+                if (address.getThoroughfare() != null) {
+                    addressText.append(address.getThoroughfare()).append(", ");
+                }
+
+                // Add district
+                if (address.getSubAdminArea() != null) {
+                    addressText.append(address.getSubAdminArea()).append(", ");
+                }
+
+                // Add city/province
+                if (address.getAdminArea() != null) {
+                    addressText.append(address.getAdminArea()).append(", ");
+                }
+
+                // Add country
+                if (address.getCountryName() != null) {
+                    addressText.append(address.getCountryName());
+                }
+
+                String fullAddress = addressText.toString().trim();
+                if (fullAddress.endsWith(",")) {
+                    fullAddress = fullAddress.substring(0, fullAddress.length() - 1);
+                }
+
+                // Tạo biến final để sử dụng trong inner class
+                final String finalAddress = fullAddress;
+
+                Log.d(TAG, "Địa chỉ đầy đủ: " + finalAddress);
+
+                // Update EditText on UI thread
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        etAddress.setText(finalAddress);
+                        Toast.makeText(CheckoutActivity.this, "Đã cập nhật vị trí hiện tại", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            } else {
+                Log.w(TAG, "Không tìm thấy địa chỉ cho tọa độ: " + latitude + ", " + longitude);
+
+                // Tạo biến final cho coordinates
+                final String coordinates = "Tọa độ: " + String.format("%.6f", latitude) + ", " + String.format("%.6f", longitude);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        etAddress.setText(coordinates);
+                        Toast.makeText(CheckoutActivity.this, "Đã lấy tọa độ vị trí", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Lỗi Geocoder", e);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(CheckoutActivity.this, "Lỗi khi chuyển đổi vị trí thành địa chỉ", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    /**
+     * Check if location permissions are granted
+     */
+    private boolean hasLocationPermissions() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Request location permissions
+     */
+    private void requestLocationPermissions() {
+        // Show explanation dialog if needed
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Quyền truy cập vị trí")
+                    .setMessage("Ứng dụng cần quyền truy cập vị trí để tự động điền địa chỉ giao hàng của bạn.")
+                    .setPositiveButton("Đồng ý", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                                LOCATION_PERMISSION_REQUEST_CODE);
+                    })
+                    .setNegativeButton("Hủy", null)
+                    .show();
+        } else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        }
+    }
+
+    /**
+     * Handle permission request results
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Quyền truy cập vị trí đã được cấp", Toast.LENGTH_SHORT).show();
+                getCurrentLocation();
+            } else {
+                Toast.makeText(this, "Cần quyền truy cập vị trí để sử dụng tính năng này", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Load cart items from SharedPreferences
+     */
     private void loadCartItems() {
         SharedPreferences preferences = getSharedPreferences("Cart", Context.MODE_PRIVATE);
         String jsonCart = preferences.getString("cartItems", "");
@@ -167,7 +633,7 @@ public class CheckoutActivity extends AppCompatActivity {
             cartItems = new ArrayList<>();
         }
 
-        // In thông tin các sản phẩm trong giỏ hàng để debug
+        // Log cart items for debugging
         Log.d(TAG, "Số lượng sản phẩm trong giỏ hàng: " + cartItems.size());
         for (SanPham sanpham : cartItems) {
             int quantity = 0;
@@ -183,28 +649,30 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // Tính lại tổng tiền từ giỏ hàng
+    /**
+     * Recalculate subtotal from cart items
+     */
     private void calculateSubtotalFromCart() {
         subtotal = 0;
 
         for (SanPham sanpham : cartItems) {
-            int price = sanpham.getGiasanpham(); // Giá sau khuyến mãi (nếu có)
+            int price = sanpham.getGiasanpham(); // Price after discount (if any)
             int quantity = 0;
 
-            // Lấy số lượng từ biến thể nếu có
+            // Get quantity from variants if available
             if (sanpham.getVariants() != null && !sanpham.getVariants().isEmpty()) {
                 for (SanPham.ProductVariant variant : sanpham.getVariants()) {
                     quantity += variant.getQuantity();
                 }
             } else if (sanpham.getInventory() != null) {
-                // Nếu không có biến thể, sử dụng số lượng từ inventory
+                // If no variants, use inventory quantity
                 quantity = sanpham.getInventory().getQuantityOnHand();
             } else {
-                // Nếu không có cả hai, sử dụng 1 làm giá trị mặc định
+                // If neither, use 1 as default
                 quantity = 1;
             }
 
-            // Tính tổng tiền cho sản phẩm này (giá * số lượng)
+            // Calculate total for this product (price * quantity)
             int productTotal = price * quantity;
             subtotal += productTotal;
 
@@ -215,8 +683,16 @@ public class CheckoutActivity extends AppCompatActivity {
         }
 
         Log.d(TAG, "Tổng tiền sản phẩm: " + subtotal);
+
+        // Recalculate promotion discount if applied
+        if (currentPromotion != null) {
+            calculatePromotionDiscount();
+        }
     }
 
+    /**
+     * Setup back button click listener
+     */
     private void setupBackButton() {
         tvBack.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -226,20 +702,39 @@ public class CheckoutActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Update price display on UI
+     */
     private void updatePriceDisplay() {
         NumberFormat formatter = NumberFormat.getNumberInstance(new Locale("vi", "VN"));
 
-        // Hiển thị giá tiền sản phẩm
+        // Display product subtotal
         tvSubtotal.setText(formatter.format(subtotal) + "đ");
 
-        // Hiển thị phí giao hàng
+        // Display shipping fee
         tvShippingFee.setText(formatter.format(SHIPPING_FEE) + "đ");
 
-        // Tính và hiển thị tổng tiền
-        int totalPayment = subtotal + SHIPPING_FEE;
+        // Display promotion discount if applied
+        if (currentPromotion != null && promotionDiscount > 0) {
+            layoutPromotionDiscount.setVisibility(View.VISIBLE);
+            tvPromotionDiscount.setText("-" + formatter.format(promotionDiscount) + "đ");
+        } else {
+            layoutPromotionDiscount.setVisibility(View.GONE);
+        }
+
+        // Calculate and display total payment (subtotal - discount + shipping)
+        int totalPayment = subtotal - promotionDiscount + SHIPPING_FEE;
         tvTotalPayment.setText(formatter.format(totalPayment) + "đ");
+
+        Log.d(TAG, "Price display updated - Subtotal: " + subtotal +
+                ", Discount: " + promotionDiscount +
+                ", Shipping: " + SHIPPING_FEE +
+                ", Total: " + totalPayment);
     }
 
+    /**
+     * Load user profile from API
+     */
     private void loadUserProfile() {
         String authToken = userManager.getAuthorizationToken();
 
@@ -249,14 +744,14 @@ public class CheckoutActivity extends AppCompatActivity {
             return;
         }
 
-        // Hiển thị thông tin token để debug
+        // Display token info for debugging
         if (authToken.length() > 20) {
             Log.d(TAG, "Token preview: " + authToken.substring(0, 7) + "..." + authToken.substring(authToken.length() - 7));
         } else {
             Log.d(TAG, "Token (full): " + authToken);
         }
 
-        // Gọi API lấy thông tin người dùng sử dụng Volley
+        // Call API to get user information using Volley
         String url = BASE_URL + "/api/user/profile";
         Log.d(TAG, "Calling API: " + url);
 
@@ -266,28 +761,28 @@ public class CheckoutActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         Log.d(TAG, "API response: " + response.toString());
                         try {
-                            // Phân tích JSON để lấy thông tin người dùng
+                            // Parse JSON to get user information
                             if (response.has("user")) {
                                 JSONObject userObject = response.getJSONObject("user");
 
-                                // Lấy ID người dùng nếu chưa có
+                                // Get user ID if not available
                                 if (TextUtils.isEmpty(userId)) {
                                     userId = userObject.getString("_id");
                                     Log.d(TAG, "Đã lấy userId từ API: " + userId);
                                 }
 
-                                // Lấy các thông tin khác và hiển thị lên form
+                                // Get other information and display on form
                                 final String username = userObject.optString("username", "");
                                 final String email = userObject.optString("email", "");
                                 final String phone = userObject.optString("phone", "");
 
                                 Log.d(TAG, "Dữ liệu người dùng từ API - Username: " + username + ", Email: " + email + ", Phone: " + phone);
 
-                                // Cập nhật UI trên main thread
+                                // Update UI on main thread
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        // Kiểm tra dữ liệu và hiển thị
+                                        // Check data and display
                                         if (!TextUtils.isEmpty(username)) {
                                             etName.setText(username);
                                         }
@@ -324,7 +819,7 @@ public class CheckoutActivity extends AppCompatActivity {
                 if (authToken != null && !authToken.isEmpty()) {
                     headers.put("Authorization", authToken);
 
-                    // Log để debug
+                    // Log for debugging
                     String maskedToken = authToken.length() > 15
                             ? authToken.substring(0, 7) + "..." + authToken.substring(authToken.length() - 7)
                             : authToken;
@@ -338,18 +833,21 @@ public class CheckoutActivity extends AppCompatActivity {
         };
 
         request.setRetryPolicy(new DefaultRetryPolicy(
-                30000,  // 30 giây timeout
-                1,     // Số lần thử lại
+                30000,  // 30 seconds timeout
+                1,     // Retry attempts
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
         requestQueue.add(request);
     }
 
+    /**
+     * Setup button click listeners
+     */
     private void setupButtonListeners() {
         btnBackToCart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish(); // Quay lại màn hình giỏ hàng
+                finish(); // Return to cart screen
             }
         });
 
@@ -363,6 +861,9 @@ public class CheckoutActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Validate form inputs
+     */
     private boolean validateForm() {
         if (TextUtils.isEmpty(etAddress.getText())) {
             etAddress.setError("Vui lòng nhập địa chỉ giao hàng");
@@ -377,23 +878,29 @@ public class CheckoutActivity extends AppCompatActivity {
         return true;
     }
 
+    /**
+     * Show order confirmation dialog
+     */
     private void createOrder() {
-        // Hiển thị dialog xác nhận
+        // Show confirmation dialog
         new AlertDialog.Builder(this)
                 .setTitle("Xác nhận đặt hàng")
                 .setMessage("Bạn có chắc muốn đặt đơn hàng này?")
                 .setPositiveButton("Đặt hàng", (dialog, which) -> {
-                    // Đặt lại giá trị của orderFormatAttempt
+                    // Reset order format attempt
                     orderFormatAttempt = 0;
-                    // Bắt đầu với định dạng đầu tiên
+                    // Start with first format
                     submitOrder();
                 })
                 .setNegativeButton("Hủy", null)
                 .show();
     }
 
+    /**
+     * Submit order to server
+     */
     private void submitOrder() {
-        // Lấy token từ UserManager
+        // Get token from UserManager
         String authToken = userManager.getAuthorizationToken();
 
         if (TextUtils.isEmpty(authToken)) {
@@ -402,7 +909,7 @@ public class CheckoutActivity extends AppCompatActivity {
         }
 
         try {
-            // Kiểm tra userId có hợp lệ không
+            // Check if userId is valid
             if (!isValidObjectId(userId)) {
                 Log.e(TAG, "User ID không hợp lệ: " + userId);
                 Toast.makeText(this, "ID người dùng không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
@@ -410,26 +917,26 @@ public class CheckoutActivity extends AppCompatActivity {
                 return;
             }
 
-            // Tạo JSON request body với cấu trúc khớp với web
+            // Create JSON request body matching web structure
             JSONObject jsonBody = new JSONObject();
 
-            // Dựa vào số lần thử, thay đổi định dạng trường user
+            // Based on attempt count, change user field format
             switch (orderFormatAttempt) {
                 case 0:
-                    // Định dạng 1: User là chuỗi đơn giản - ĐỊNH DẠNG CHUẨN MONGOOSE
+                    // Format 1: User as simple string - STANDARD MONGOOSE FORMAT
                     jsonBody.put("user", userId);
                     Log.d(TAG, "Thử với định dạng 1: user là chuỗi đơn giản");
                     break;
 
                 case 1:
-                    // Định dạng 2: Chỉ user là chuỗi, nhưng thêm một số trường khác
+                    // Format 2: User as string but add additional fields
                     jsonBody.put("user", userId);
-                    jsonBody.put("userId", userId); // Trường bổ sung để hỗ trợ
+                    jsonBody.put("userId", userId); // Additional field for support
                     Log.d(TAG, "Thử với định dạng 2: user là chuỗi + thêm userId");
                     break;
 
                 case 2:
-                    // Định dạng 3: Cố gắng với một đối tượng _id
+                    // Format 3: Try with _id object
                     JSONObject userObject = new JSONObject();
                     userObject.put("_id", userId);
                     jsonBody.put("user", userObject);
@@ -437,23 +944,23 @@ public class CheckoutActivity extends AppCompatActivity {
                     break;
 
                 default:
-                    // Chuyển sang offline mode
+                    // Switch to offline mode
                     Log.d(TAG, "Đã thử tất cả các định dạng, chuyển sang offline mode");
                     mockCreateOrder();
                     return;
             }
 
-            // Log thông tin userId để debug
+            // Log userId for debugging
             Log.d(TAG, "UserId đang sử dụng: " + userId);
 
-            // Tạo mảng sản phẩm
+            // Create products array
             JSONArray productsArray = new JSONArray();
 
-            // Thêm tất cả sản phẩm vào mảng - LUÔN DÙNG ĐỊNH DẠNG CHUỖI CHO PRODUCT
+            // Add all products to array - ALWAYS USE STRING FORMAT FOR PRODUCT
             for (SanPham sanpham : cartItems) {
                 if (sanpham.getVariants() != null && !sanpham.getVariants().isEmpty()) {
                     for (SanPham.ProductVariant variant : sanpham.getVariants()) {
-                        // Kiểm tra nếu ID sản phẩm hợp lệ
+                        // Check if product ID is valid
                         String productId = sanpham.getIdsanpham();
                         if (!isValidObjectId(productId)) {
                             Log.w(TAG, "Bỏ qua sản phẩm với ID không hợp lệ: " + productId);
@@ -462,10 +969,10 @@ public class CheckoutActivity extends AppCompatActivity {
 
                         JSONObject productObject = new JSONObject();
 
-                        // QUAN TRỌNG: LUÔN SỬ DỤNG CHUỖI ĐƠN GIẢN CHO PRODUCT
+                        // IMPORTANT: ALWAYS USE SIMPLE STRING FOR PRODUCT
                         productObject.put("product", productId);
 
-                        // Thêm thông tin biến thể
+                        // Add variant information
                         String size = variant.getSize();
                         String color = variant.getColor();
 
@@ -475,12 +982,12 @@ public class CheckoutActivity extends AppCompatActivity {
 
                         if (color != null && !color.isEmpty()) {
                             if (color.startsWith("#")) {
-                                color = color.substring(1); // Loại bỏ # từ mã màu nếu có
+                                color = color.substring(1); // Remove # from color code if present
                             }
                             productObject.put("color", color);
                         }
 
-                        // Tạo variantId
+                        // Create variantId
                         String variantId = productId;
                         if (size != null && !size.isEmpty()) {
                             variantId += "-" + size;
@@ -490,21 +997,21 @@ public class CheckoutActivity extends AppCompatActivity {
                         }
                         productObject.put("variantId", variantId);
 
-                        // Thêm số lượng và giá
+                        // Add quantity and price
                         productObject.put("quantity", variant.getQuantity());
                         productObject.put("price", sanpham.getGiasanpham());
 
-                        // Thêm các trường theo định dạng của MongoDB
+                        // Add fields according to MongoDB format
                         productObject.put("rated", false);
 
-                        // QUAN TRỌNG: Sử dụng null thay vì JSONObject.NULL
+                        // IMPORTANT: Use null instead of JSONObject.NULL
                         productObject.put("rating", null);
                         productObject.put("comment", "");
 
                         productsArray.put(productObject);
                     }
                 } else {
-                    // Nếu không có biến thể, kiểm tra ID sản phẩm
+                    // If no variants, check product ID
                     String productId = sanpham.getIdsanpham();
                     if (!isValidObjectId(productId)) {
                         Log.w(TAG, "Bỏ qua sản phẩm với ID không hợp lệ: " + productId);
@@ -513,17 +1020,17 @@ public class CheckoutActivity extends AppCompatActivity {
 
                     JSONObject productObject = new JSONObject();
 
-                    // QUAN TRỌNG: LUÔN SỬ DỤNG CHUỖI ĐƠN GIẢN CHO PRODUCT
+                    // IMPORTANT: ALWAYS USE SIMPLE STRING FOR PRODUCT
                     productObject.put("product", productId);
 
-                    // Thiết lập số lượng
+                    // Set quantity
                     int quantity = 1;
                     if (sanpham.getInventory() != null) {
                         quantity = sanpham.getInventory().getQuantityOnHand();
                     }
                     productObject.put("quantity", quantity);
 
-                    // Thêm giá và các trường khác
+                    // Add price and other fields
                     productObject.put("price", sanpham.getGiasanpham());
                     productObject.put("variantId", productId);
                     productObject.put("rated", false);
@@ -534,7 +1041,7 @@ public class CheckoutActivity extends AppCompatActivity {
                 }
             }
 
-            // Kiểm tra nếu không có sản phẩm nào hợp lệ
+            // Check if no valid products
             if (productsArray.length() == 0) {
                 Log.e(TAG, "Không có sản phẩm hợp lệ để đặt hàng");
                 Toast.makeText(this, "Không có sản phẩm hợp lệ để đặt hàng", Toast.LENGTH_SHORT).show();
@@ -543,38 +1050,57 @@ public class CheckoutActivity extends AppCompatActivity {
 
             jsonBody.put("products", productsArray);
 
-            // Tính tổng tiền
-            int totalPayment = subtotal;
+            // ✅ FIXED: Calculate total including shipping fee
+            int totalPayment = subtotal - promotionDiscount + SHIPPING_FEE;
             jsonBody.put("orderTotal", totalPayment);
 
-            // Thêm địa chỉ và phương thức thanh toán
+            // Add shipping fee and subtotal separately for server reference
+            jsonBody.put("shippingFee", SHIPPING_FEE);
+            jsonBody.put("subtotal", subtotal);
+
+            // Add address and payment method
             jsonBody.put("address", etAddress.getText().toString());
             String paymentMethod = rbCOD.isChecked() ? "cod" : "paypal";
             jsonBody.put("billing", paymentMethod);
 
-            // Thêm trạng thái
+            // Add status
             jsonBody.put("status", "pending");
 
-            // Thêm ghi chú
+            // Add notes
             String notes = etNotes.getText().toString().trim();
             jsonBody.put("description", notes);
 
-            // Thêm các trường bổ sung theo định dạng MongoDB
+            // Add promotion information if applied
+            if (currentPromotion != null) {
+                jsonBody.put("promotionCode", currentPromotion.getMaKhuyenMai());
+                jsonBody.put("promotionDiscount", promotionDiscount);
+                jsonBody.put("promotionPercent", currentPromotion.getPhanTramKhuyenMai());
+            }
+
+            // Add additional fields according to MongoDB format
             jsonBody.put("rated", false);
             jsonBody.put("rating", null);
             jsonBody.put("comment", "");
 
-            // Log JSON request đầy đủ
+            // ✅ LOG for debugging
+            Log.d(TAG, "=== ORDER CALCULATION DEBUG ===");
+            Log.d(TAG, "Subtotal: " + subtotal);
+            Log.d(TAG, "Promotion Discount: " + promotionDiscount);
+            Log.d(TAG, "Shipping Fee: " + SHIPPING_FEE);
+            Log.d(TAG, "Final Total: " + totalPayment);
+            Log.d(TAG, "===============================");
+
+            // Log full JSON request
             Log.d(TAG, "Order JSON (định dạng " + orderFormatAttempt + "): " + jsonBody.toString());
 
             // API endpoint
             String url = BASE_URL + "/api/order";
             Log.d(TAG, "Gửi request đến: " + url);
 
-            // Hiển thị thông báo đang xử lý
+            // Show processing message
             Toast.makeText(this, "Đang xử lý đơn hàng...", Toast.LENGTH_SHORT).show();
 
-            // Tạo request
+            // Create request
             JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                     new Response.Listener<JSONObject>() {
                         @Override
@@ -585,13 +1111,13 @@ public class CheckoutActivity extends AppCompatActivity {
                     new Response.ErrorListener() {
                         @Override
                         public void onErrorResponse(VolleyError error) {
-                            // Tăng số lần thử và thử lại nếu chưa đạt giới hạn
+                            // Increment attempt count and retry if not reached limit
                             orderFormatAttempt++;
                             if (orderFormatAttempt < 3) {
                                 Log.d(TAG, "Thử lại với định dạng " + orderFormatAttempt);
                                 submitOrder();
                             } else {
-                                // Hiển thị lỗi sau khi đã thử tất cả các định dạng
+                                // Show error after trying all formats
                                 handleOrderError(error);
                             }
                         }
@@ -605,10 +1131,10 @@ public class CheckoutActivity extends AppCompatActivity {
                 }
             };
 
-            // Tăng thời gian timeout
+            // Increase timeout
             request.setRetryPolicy(new DefaultRetryPolicy(
-                    60000,  // 60 giây timeout
-                    1,     // Số lần thử lại
+                    60000,  // 60 seconds timeout
+                    1,     // Retry attempts
                     DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
             requestQueue.add(request);
@@ -620,9 +1146,11 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // Xử lý lỗi đặt hàng
+    /**
+     * Handle order creation error
+     */
     private void handleOrderError(VolleyError error) {
-        // Hiển thị chi tiết lỗi
+        // Show error details
         String errorDetail = "";
         int statusCode = -1;
 
@@ -642,7 +1170,7 @@ public class CheckoutActivity extends AppCompatActivity {
                             errorDetail = errorJson.getString("message");
                         }
                     } catch (JSONException e) {
-                        // Không phải JSON, giữ nguyên responseBody
+                        // Not JSON, keep original responseBody
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Không thể đọc dữ liệu lỗi", e);
@@ -652,18 +1180,20 @@ public class CheckoutActivity extends AppCompatActivity {
 
         Log.e(TAG, "Lỗi " + statusCode + " khi gọi API đặt hàng: " + errorDetail, error);
 
-        // Sau khi đã thử tất cả các định dạng, sử dụng mockCreateOrder
+        // After trying all formats, use mockCreateOrder
         Toast.makeText(this, "Không thể tạo đơn hàng trực tuyến. Chuyển sang chế độ offline...", Toast.LENGTH_SHORT).show();
         mockCreateOrder();
     }
 
-    // Xử lý đơn hàng thành công
+    /**
+     * Handle successful order creation
+     */
     private void handleOrderSuccess(JSONObject response) {
         try {
-            // Log phản hồi
+            // Log response
             Log.d(TAG, "Đơn hàng thành công: " + response.toString());
 
-            // Lấy ID đơn hàng
+            // Get order ID
             String orderId = "";
             if (response.has("_id")) {
                 orderId = response.getString("_id");
@@ -672,22 +1202,22 @@ public class CheckoutActivity extends AppCompatActivity {
             } else if (response.has("orderId")) {
                 orderId = response.getString("orderId");
             } else {
-                // Nếu không tìm thấy ID, tạo một ID ngẫu nhiên
+                // If no ID found, create random ID
                 orderId = "order_" + System.currentTimeMillis();
             }
 
             Log.d(TAG, "Đơn hàng đã được tạo với ID: " + orderId);
 
-            // Thông báo thành công
+            // Show success message
             Toast.makeText(CheckoutActivity.this, "Đặt hàng thành công!", Toast.LENGTH_SHORT).show();
 
-            // Xóa giỏ hàng
+            // Clear cart
             clearCart();
 
-            // Lưu thông tin đơn hàng gần nhất
+            // Save last order info
             saveLastOrderInfo(orderId);
 
-            // Chuyển đến màn hình xác nhận đơn hàng
+            // Navigate to order confirmation
             goToOrderConfirmation(orderId);
 
         } catch (Exception e) {
@@ -696,24 +1226,26 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // Phương thức mockCreateOrder()
+    /**
+     * Mock order creation for offline mode
+     */
     private void mockCreateOrder() {
         try {
-            // Hiển thị thông báo
+            // Show message
             Toast.makeText(this, "Đặt hàng thành công (chế độ offline)!", Toast.LENGTH_SHORT).show();
 
-            // Xóa giỏ hàng
+            // Clear cart
             clearCart();
 
-            // Tạo một orderId giả
+            // Create fake orderId
             String orderId = "ORD_" + System.currentTimeMillis();
 
-            // Lưu thông tin đơn hàng
+            // Save order info
             saveLastOrderInfo(orderId);
 
             Log.d(TAG, "Đơn hàng giả lập đã được tạo: " + orderId);
 
-            // Chuyển đến màn hình xác nhận
+            // Navigate to confirmation
             goToOrderConfirmation(orderId);
 
         } catch (Exception e) {
@@ -722,7 +1254,9 @@ public class CheckoutActivity extends AppCompatActivity {
         }
     }
 
-    // Lưu thông tin đơn hàng gần nhất
+    /**
+     * Save last order information
+     */
     private void saveLastOrderInfo(String orderId) {
         SharedPreferences orderPrefs = getSharedPreferences("LastOrder", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = orderPrefs.edit();
@@ -730,13 +1264,34 @@ public class CheckoutActivity extends AppCompatActivity {
         editor.putString("address", etAddress.getText().toString());
         editor.putString("billing", rbCOD.isChecked() ? "cod" : "paypal");
         editor.putString("notes", etNotes.getText().toString());
-        editor.putInt("total", subtotal + SHIPPING_FEE);
+        editor.putInt("subtotal", subtotal);
+        editor.putInt("promotionDiscount", promotionDiscount);
+        editor.putInt("shippingFee", SHIPPING_FEE);
+
+        // ✅ FIXED: Save correct total including shipping
+        int finalTotal = subtotal - promotionDiscount + SHIPPING_FEE;
+        editor.putInt("total", finalTotal);
+
+        // Save promotion info if applied
+        if (currentPromotion != null) {
+            editor.putString("promotionCode", currentPromotion.getMaKhuyenMai());
+            editor.putInt("promotionPercent", currentPromotion.getPhanTramKhuyenMai());
+        } else {
+            editor.remove("promotionCode");
+            editor.remove("promotionPercent");
+        }
+
+        // ✅ LOG for verification
+        Log.d(TAG, "Saved order total: " + finalTotal + " (Expected: 430000 for your example)");
+
         editor.apply();
     }
 
-    // Kiểm tra xem chuỗi có phải là MongoDB ObjectId hợp lệ không
+    /**
+     * Check if string is a valid MongoDB ObjectId
+     */
     private boolean isValidObjectId(String id) {
-        // MongoDB ObjectId là chuỗi 24 ký tự hexadecimal (0-9, a-f)
+        // MongoDB ObjectId is 24 character hexadecimal string (0-9, a-f)
         if (id == null || id.length() != 24) {
             return false;
         }
@@ -751,7 +1306,9 @@ public class CheckoutActivity extends AppCompatActivity {
         return true;
     }
 
-    // Phương thức để xử lý lỗi API một cách nhất quán
+    /**
+     * Handle API errors consistently
+     */
     private void handleApiError(VolleyError error, String apiName) {
         String errorMsg = "Lỗi khi gọi API " + apiName;
 
@@ -759,13 +1316,13 @@ public class CheckoutActivity extends AppCompatActivity {
             int statusCode = error.networkResponse.statusCode;
             errorMsg += " (Mã lỗi: " + statusCode + ")";
 
-            // Log chi tiết lỗi
+            // Log error details
             if (error.networkResponse.data != null) {
                 try {
                     String responseBody = new String(error.networkResponse.data, "utf-8");
                     Log.e(TAG, "Error response body: " + responseBody);
 
-                    // Xử lý lỗi "Invalid Token"
+                    // Handle "Invalid Token" error
                     if (responseBody.contains("Invalid Token") || statusCode == 400 || statusCode == 401) {
                         Log.e(TAG, "Token không hợp lệ, cần đăng nhập lại");
                         Toast.makeText(this, "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
@@ -773,7 +1330,7 @@ public class CheckoutActivity extends AppCompatActivity {
                         return;
                     }
 
-                    // Thử phân tích JSON lỗi
+                    // Try parsing JSON error
                     try {
                         JSONObject errorJson = new JSONObject(responseBody);
                         if (errorJson.has("message")) {
@@ -782,7 +1339,7 @@ public class CheckoutActivity extends AppCompatActivity {
                             errorMsg = errorJson.getString("error");
                         }
                     } catch (JSONException e) {
-                        // Không phải JSON, hiển thị nội dung lỗi gốc
+                        // Not JSON, show original error content
                         if (responseBody.length() < 100) {
                             errorMsg += ": " + responseBody;
                         }
@@ -792,15 +1349,15 @@ public class CheckoutActivity extends AppCompatActivity {
                 }
             }
 
-            // Xử lý mã lỗi cụ thể
+            // Handle specific error codes
             if (statusCode == 401 || statusCode == 403) {
-                // Token không hợp lệ hoặc hết hạn
+                // Invalid or expired token
                 Log.e(TAG, "Lỗi xác thực: Token không hợp lệ hoặc hết hạn");
                 Toast.makeText(this, "Phiên đăng nhập hết hạn, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
                 navigateToLogin();
                 return;
             } else if (statusCode == 500) {
-                // Lỗi server
+                // Server error
                 Log.e(TAG, "Lỗi server (500) - có thể do token không hợp lệ");
                 Toast.makeText(this, "Lỗi server, vui lòng thử lại sau", Toast.LENGTH_SHORT).show();
             }
@@ -813,22 +1370,27 @@ public class CheckoutActivity extends AppCompatActivity {
         Toast.makeText(this, errorMsg, Toast.LENGTH_SHORT).show();
     }
 
-    // Chuyển đến màn hình đăng nhập
+    /**
+     * Navigate to login screen
+     */
     private void navigateToLogin() {
-        // Đăng xuất người dùng hiện tại
+        // Logout current user
         userManager.logout();
 
-        // Chuyển đến màn hình đăng nhập
+        // Navigate to login screen
         Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
     }
 
+    /**
+     * Clear cart items
+     */
     private void clearCart() {
         cartItems.clear();
 
-        // Lưu giỏ hàng trống vào SharedPreferences
+        // Save empty cart to SharedPreferences
         SharedPreferences preferences = getSharedPreferences("Cart", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         String jsonCart = gson.toJson(cartItems);
@@ -838,6 +1400,9 @@ public class CheckoutActivity extends AppCompatActivity {
         Log.d(TAG, "Giỏ hàng đã được xóa");
     }
 
+    /**
+     * Navigate to order confirmation screen
+     */
     private void goToOrderConfirmation(String orderId) {
         Intent intent = new Intent(CheckoutActivity.this, OrderConfirmationActivity.class);
         intent.putExtra("orderId", orderId);

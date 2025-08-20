@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.model.Order;
 import com.example.tech.model.OrderItem;
 import com.example.tech.utils.CurrencyFormatter;

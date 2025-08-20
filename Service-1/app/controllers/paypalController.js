@@ -1,5 +1,7 @@
+require('dotenv').config();
 const axios = require('axios');
-
+console.log("Client ID:", process.env.PAYPAL_CLIENT_ID);
+console.log("Client Secret:", process.env.PAYPAL_CLIENT_SECRET);
 const paypalController = {
     payment: async (req, res) => {
         try {
@@ -15,7 +17,7 @@ const paypalController = {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         Authorization: `Basic ${Buffer.from(
-                            `AeyFK0Tomu06wnDGB4dmS3LMICoI_YezaWZBdHy6upiZ3S1YBDbmeJdKEQG2hXKnNf-XYcCE2lOgpVd2:EGAT2t45s_W_D3vF73RkfG_TJcGKg1FeBoLeygeexDcokCNYXeLPmxqQSJ3Tba7WA3CwzW80rZnQ8-Uj`
+                            `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
                         ).toString('base64')}`,
                     },
                 }
@@ -23,7 +25,8 @@ const paypalController = {
     
             // Lấy Access Token từ phản hồi
             const accessToken = response1.data.access_token;
-    
+            console.log('PayPal Client ID:', process.env.PAYPAL_CLIENT_ID);
+
             // Lấy thông tin giá trị thanh toán và các chi tiết từ yêu cầu của client
             const { price, description, return_url, cancel_url } = req.body;
     

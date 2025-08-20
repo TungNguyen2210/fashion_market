@@ -9,7 +9,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.model.Review;
 
 import java.util.List;

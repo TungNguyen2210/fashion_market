@@ -1,3 +1,4 @@
+/* Base styles */
 .container {
   margin-left: 10px;
   margin-right: 10px;
@@ -13,6 +14,7 @@
 .mb-16 {
   margin-bottom: 16px;
 }
+
 .mt-12 {
   margin-top: 12px;
 }
@@ -20,7 +22,9 @@
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+  font-weight: 500;
 }
+
 .muted {
   color: #8a8a8a;
 }
@@ -34,6 +38,7 @@
 .ant-pagination-item {
   border-radius: 10px;
 }
+
 .ant-pagination-prev .ant-pagination-item-link,
 .ant-pagination-next .ant-pagination-item-link {
   border-radius: 10px;
@@ -42,4 +47,200 @@
 .tl-title {
   font-weight: 600;
   margin-bottom: 2px;
+}
+
+/* CSS cho container */
+.container .product_detail{
+  padding-top: 20px;
+  padding-left: 25px;
+  padding-right: 25px;
+  padding-bottom: 25px;
+}
+
+.breadcrumb-container {
+  margin-bottom: 10px;
+}
+
+.divider-margin {
+  margin: 12px 0;
+}
+
+/* Khắc phục vấn đề tràn viền */
+.ant-table-wrapper {
+  overflow-x: auto;
+}
+
+/* Chi tiết đơn hàng khi mở rộng */
+.expanded-row-content {
+  padding: 0 8px;
+  width: 100%;
+}
+
+.order-info-card,
+.order-products-card {
+  height: 100%;
+  margin-bottom: 16px;
+}
+
+.product-detail-item {
+  display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.product-detail-item:last-child {
+  border-bottom: none;
+}
+
+.product-image {
+  flex: 0 0 70px;
+}
+
+.product-image img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+}
+
+.product-info {
+  flex: 1;
+  padding-left: 16px;
+}
+
+.product-name {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.product-meta {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.product-color {
+  display: flex;
+  align-items: center;
+}
+
+.color-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  border: 1px solid #ddd;
+}
+
+.product-subtotal {
+  margin-top: 5px;
+}
+
+.price {
+  color: #d70018;
+  font-weight: 700;
+}
+
+.order-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.total-price {
+  color: #d70018;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.product-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.8;
+}
+
+/* Cải thiện modal sản phẩm */
+.modal-product-item {
+  padding: 12px 0 !important;
+  align-items: flex-start !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container .product_detail {
+    padding: 10px;
+  }
+  
+  /* Điều chỉnh nút thao tác trên mobile */
+  .action-buttons {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* Đảm bảo các nút thao tác nằm cùng hàng */
+.action-buttons {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Override style cho nút thao tác để nằm cùng hàng */
+.action-buttons button {
+  margin-bottom: 0 !important;
+}
+
+/* Style cho nút xóa */
+.action-buttons .ant-btn-dangerous {
+  background: linear-gradient(to right, rgba(255, 77, 79, 1), rgba(255, 77, 79, 0.9)) !important;
+  color: white !important;
+}
+
+/* Style cho modal chi tiết đơn hàng */
+.order-detail-container {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Style cho hiển thị modal */
+.ant-modal-body {
+  padding: 16px;
+}
+
+/* Thêm margin cho Card trong modal */
+.ant-modal-body .ant-card {
+  margin-bottom: 16px;
+}
+
+/* Ghi đè style cho nút Ant Design để phù hợp */
+.ant-btn {
+  border-radius: 4px;
+}
+
+/* Đảm bảo bố cục đẹp cho các hộp thông tin */
+.order-info-card .ant-card-body,
+.order-summary-card .ant-card-body {
+  height: 100%;
+}
+
+/* Style cho tag kích thước sản phẩm */
+.size-tag {
+  margin-left: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border: 1px solid #91d5ff;
+  font-size: 12px;
+}
+
+/* Style cho footer trong modal */
+.order-detail-modal .ant-modal-footer button + button {
+  margin-left: 8px;
 }

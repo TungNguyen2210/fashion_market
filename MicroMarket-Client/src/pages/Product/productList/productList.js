@@ -29,55 +29,99 @@ const ProductList = () => {
   const handleReadMore = (id) => {
     console.log(id);
     history.push("/product-detail/" + id);
-    window.location.reload();
+    // Không reload trang để trải nghiệm mượt mà hơn
   };
 
-  const handleCategoryDetails = (id) => {
-    const newPath = match.url.replace(/\/[^/]+$/, `/${id}`);
+  // Hàm để tải sản phẩm theo danh mục mà không reload trang
+  const fetchProductsByCategory = async (categoryId) => {
+    try {
+      setLoading(true);
+      const response = await productApi.getProductCategory(categoryId);
+      if (response && response.data && response.data.docs) {
+        setProductDetail(response.data.docs);
+      } else {
+        console.error("Định dạng dữ liệu không như mong đợi:", response);
+        setProductDetail([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Lỗi khi tải sản phẩm theo danh mục:", error);
+      setProductDetail([]);
+      setLoading(false);
+    }
+  };
+
+  const handleCategoryDetails = (categoryId) => {
+    // Nếu đã ở danh mục này rồi thì không cần làm gì
+    if (categoryId === selectedCategoryId) return;
+    
+    setSelectedCategoryId(categoryId);
+    const newPath = match.url.replace(/\/[^/]+$/, `/${categoryId}`);
     history.push(newPath);
-    window.location.reload();
+    
+    // Tải dữ liệu mới mà không reload trang
+    fetchProductsByCategory(categoryId);
   };
 
   const handleSearchPrice = async (minPrice, maxPrice) => {
     try {
+      setLoading(true);
       const dataForm = {
         page: 1,
         limit: 50,
         minPrice: minPrice,
         maxPrice: maxPrice,
       };
-      await axiosClient
-        .post("/product/searchByPrice", dataForm)
-        .then((response) => {
-          if (response === undefined) {
-            setLoading(false);
-          } else {
-            setProductDetail(response.data.docs);
-            setLoading(false);
-          }
-        });
+      const response = await axiosClient.post("/product/searchByPrice", dataForm);
+      
+      if (response === undefined) {
+        setLoading(false);
+        setProductDetail([]);
+      } else {
+        setProductDetail(response.data.docs);
+        setLoading(false);
+      }
     } catch (error) {
-      throw error;
+      console.error("Lỗi khi tìm kiếm theo giá:", error);
+      setLoading(false);
     }
   };
 
   const handleSearchClick = () => {
     // Gọi hàm tìm kiếm theo giá
     handleSearchPrice(minPrice, maxPrice);
+    // Giữ nguyên logic của nút "Tất cả sản phẩm" như bạn yêu cầu
   };
 
   useEffect(() => {
     (async () => {
       try {
-        await productApi.getProductCategory(id).then((item) => {
-          setProductDetail(item.data.docs);
-        });
+        setLoading(true);
+        
+        // Tải sản phẩm theo danh mục nếu có ID
+        if (id) {
+          await productApi.getProductCategory(id).then((item) => {
+            setProductDetail(item.data.docs);
+          });
+          setSelectedCategoryId(id);
+        } else {
+          // Nếu không có ID, tải tất cả sản phẩm
+          const productsResponse = await productApi.getListProducts({ page: 1, limit: 50 });
+          if (productsResponse && productsResponse.data) {
+            setProductDetail(productsResponse.data.docs || []);
+          }
+        }
+        
+        // Tải danh sách danh mục
         const response = await productApi.getCategory({ limit: 50, page: 1 });
-        setCategories(response.data.docs);
+        if (response && response.data && response.data.docs) {
+          setCategories(response.data.docs);
+        }
 
         setLoading(false);
       } catch (error) {
-        console.log("Failed to fetch event detail:" + error);
+        console.error("Failed to fetch data:", error);
+        setLoading(false);
       }
     })();
     window.scrollTo(0, 0);
@@ -85,7 +129,7 @@ const ProductList = () => {
 
   return (
     <div>
-      <Spin spinning={false}>
+      <Spin spinning={loading}>
         <Card className="container_details">
           <div className="product_detail">
             <div style={{ marginLeft: 5, marginBottom: 10, marginTop: 10 }}>
@@ -93,18 +137,23 @@ const ProductList = () => {
                 <Breadcrumb.Item href="http://localhost:3500/home">
                   <span>Trang chủ</span>
                 </Breadcrumb.Item>
-                <Breadcrumb.Item href="">
+                <Breadcrumb.Item href="/product-list">
                   <span>Sản phẩm </span>
                 </Breadcrumb.Item>
+                {selectedCategoryId && categories.find(cat => cat._id === selectedCategoryId) && (
+                  <Breadcrumb.Item>
+                    <span>{categories.find(cat => cat._id === selectedCategoryId).name}</span>
+                  </Breadcrumb.Item>
+                )}
               </Breadcrumb>
             </div>
             <hr></hr>
             <div className="container box">
               {categories.map((category) => (
                 <div
-                  key={category.id}
+                  key={category.id || category._id}
                   onClick={() => handleCategoryDetails(category._id)}
-                  className="menu-item-1"
+                  className={`menu-item-1 ${selectedCategoryId === category._id ? "active-category" : ""}`}
                 >
                   <div className="menu-category-1">{category.name}</div>
                 </div>
@@ -119,14 +168,24 @@ const ProductList = () => {
               <Row>
                 <Col span={12}>
                   <div className="title-category">
-                    <div class="title">
-                      <h3 style={{ paddingTop: "30px" }}>DANH SÁCH SẢN PHẨM</h3>
+                    <div className="title">
+                      <h3 style={{ paddingTop: "30px" }}>
+                        {selectedCategoryId && categories.find(cat => cat._id === selectedCategoryId) 
+                          ? categories.find(cat => cat._id === selectedCategoryId).name.toUpperCase() 
+                          : "DANH SÁCH SẢN PHẨM"}
+                      </h3>
                     </div>
                   </div>
                 </Col>
                 <Col span={12}>
                   <div className="button-category">
-                    <Button type="primary" onClick={() => handleSearchClick()}>
+                    <Button 
+                      type="primary" 
+                      onClick={() => {
+                        setSelectedCategoryId(null);
+                        handleSearchClick();
+                      }}
+                    >
                       Tất cả sản phẩm
                     </Button>
                   </div>
@@ -173,7 +232,7 @@ const ProductList = () => {
                         >
                           <div className="client-list-product-image-container">
                             {item.image ? (
-                              <img className="client-list-product-image" src={item.image} alt={item.name} />
+                              <img className="client-list-product-image" src={item.image} alt={item.name}/>
                             ) : (
                               <img
                                 className="client-list-product-image"
@@ -199,7 +258,7 @@ const ProductList = () => {
                                 </span>
                               )}
                             </div>
-
+                            
                             {/* Hiển thị trạng thái tồn kho - đã cập nhật */}
                             <div className="stock-status-container">
                               {item.variants && item.variants.some(v => v.quantity > 0) ? (
@@ -223,5 +282,5 @@ const ProductList = () => {
   );
 };
 
-export default ProductList;
 
+export default ProductList;

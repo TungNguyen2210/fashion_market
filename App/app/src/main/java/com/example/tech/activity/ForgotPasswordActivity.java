@@ -9,7 +9,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.SERVER;
 
 import org.json.JSONException;

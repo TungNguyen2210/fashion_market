@@ -61,40 +61,33 @@ const ProductList = () => {
     const [images, setImages] = useState([]);
     const [supplier, setSupplier] = useState([]);
     
-    // Thêm state mới để quản lý các biến thể sản phẩm
     const [variants, setVariants] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
 
-    // Hàm tạo variantId từ productId, size và color
     const generateVariantId = (productId, size, color) => {
         return `${productId}-${size}-${color.replace('#', '')}`;
     };
 
-    // Xử lý khi chọn màu sắc mới
     const handleColorChange = (colors) => {
         setSelectedColors(colors);
         updateVariants(colors, selectedSizes);
     };
 
-    // Xử lý khi chọn kích thước mới
     const handleSizeChange = (sizes) => {
         setSelectedSizes(sizes);
         updateVariants(selectedColors, sizes);
     };
 
-    // Cập nhật danh sách biến thể dựa trên màu sắc và kích thước đã chọn
     const updateVariants = (colors, sizes) => {
         if (!colors.length || !sizes.length) {
             setVariants([]);
             return;
         }
 
-        // Tạo danh sách biến thể từ tổ hợp màu sắc và kích thước
         let newVariants = [];
         colors.forEach(color => {
             sizes.forEach(size => {
-                // Tìm biến thể đã tồn tại để giữ lại số lượng
                 const existingVariant = variants.find(v => v.color === color && v.size === size);
                 
                 newVariants.push({
@@ -108,7 +101,6 @@ const ProductList = () => {
         setVariants(newVariants);
     };
 
-    // Xử lý thay đổi số lượng cho một biến thể cụ thể
     const handleVariantQuantityChange = (color, size, quantity) => {
         const newVariants = variants.map(variant => {
             if (variant.color === color && variant.size === size) {
@@ -119,28 +111,21 @@ const ProductList = () => {
         
         setVariants(newVariants);
         
-        // Tính toán tổng số lượng sản phẩm
         const totalQuantity = newVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
         
-        // Không cần set field quantity nữa vì đã bỏ trường này
     };
 
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            // Tạo một ID tạm thời để sử dụng cho variantId
             const tempProductId = Date.now().toString();
             
-            // Tạo danh sách biến thể với variantId được tạo từ id tạm thời, size và color
             const productVariants = variants.map(variant => ({
                 variantId: generateVariantId(tempProductId, variant.size, variant.color),
                 color: variant.color,
                 size: variant.size,
                 quantity: parseInt(variant.quantity, 10) 
             }));
-            
-            // Tính tổng số lượng từ các biến thể
-            const totalQuantity = productVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
 
             const categoryList = {
                 "name": values.name,
@@ -216,16 +201,14 @@ const ProductList = () => {
     const handleUpdateProduct = async (values) => {
         setLoading(true);
         try {
-            // Tạo danh sách biến thể với variantId
+
             const productVariants = variants.map(variant => ({
                 variantId: generateVariantId(id, variant.size, variant.color),
                 color: variant.color,
                 size: variant.size,
                 quantity: parseInt(variant.quantity, 10)
             }));
-            
-            // Tính tổng số lượng từ các biến thể
-            const totalQuantity = productVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
+
 
             const categoryList = {
                 "name": values.name,
@@ -284,36 +267,47 @@ const ProductList = () => {
     };
 
     const handleDeleteCategory = async (id) => {
-        setLoading(true);
-        try {
-            await productApi.deleteProduct(id).then(response => {
-                if (response === undefined) {
-                    notification["error"]({
-                        message: `Thông báo`,
-                        description:
-                            'Xóa sản phẩm thất bại',
-
-                    });
-                    setLoading(false);
-                }
-                else {
-                    notification["success"]({
-                        message: `Thông báo`,
-                        description:
-                            'Xóa sản phẩm thành công',
-
-                    });
-                    setCurrentPage(1);
-                    handleProductList();
-                    setLoading(false);
-                }
-            }
-            );
-
-        } catch (error) {
-            console.log('Failed to fetch event list:' + error);
+    setLoading(true);
+    try {
+        const response = await productApi.deleteProduct(id);
+        
+        // Success case
+        if (response?.success) {
+            notification.success({
+                message: 'Thành công',
+                description: response.message
+            });
+            setCurrentPage(1);
+            handleProductList();
         }
+        
+    } catch (error) {
+        console.log('Delete product error:', error);
+        
+        if (error.response?.status === 400) {
+            // Sản phẩm đã được mua
+            notification.warning({
+                message: 'Không thể xóa',
+                description: error.response.data.message,
+                duration: 6
+            });
+        } else if (error.response?.status === 404) {
+            // Sản phẩm không tồn tại  
+            notification.error({
+                message: 'Không tìm thấy',
+                description: 'Sản phẩm không tồn tại'
+            });
+        } else {
+            // Lỗi khác
+            notification.error({
+                message: 'Lỗi',
+                description: error.response?.data?.message || 'Không thể xóa sản phẩm'
+            });
+        }
+    } finally {
+        setLoading(false);
     }
+};
 
     const handleProductEdit = (id) => {
         setOpenModalUpdate(true);
@@ -322,12 +316,10 @@ const ProductList = () => {
                 const response = await productApi.getDetailProduct(id);
                 console.log(response);
                 setId(id);
-                
-                // Lưu màu sắc và kích thước từ sản phẩm
+             
                 setSelectedColors(response.product.color || []);
                 setSelectedSizes(response.product.sizes || []);
                 
-                // Lưu các biến thể từ sản phẩm
                 if (response.product.variants && response.product.variants.length > 0) {
                     setVariants(response.product.variants.map(v => ({
                         color: v.color,
@@ -335,7 +327,6 @@ const ProductList = () => {
                         quantity: v.quantity
                     })));
                 } else {
-                    // Nếu chưa có biến thể, tạo biến thể từ màu sắc và kích thước
                     updateVariants(response.product.color || [], response.product.sizes || []);
                 }
 
@@ -542,8 +533,6 @@ const ProductList = () => {
 
         XLSX.writeFile(wb, 'danh_sach_san_pham.xlsx');
     };
-
-    // Render bảng biến thể sản phẩm chỉ khi đã chọn màu sắc và kích thước
     const renderVariantsTable = () => {
         if (!selectedColors.length || !selectedSizes.length) {
             return (
@@ -598,7 +587,6 @@ const ProductList = () => {
         );
     };
 
-    // Reset lại state khi mở modal tạo mới sản phẩm
     const handleOpenCreate = () => {
         setVisible(true);
         setSelectedColors([]);
@@ -776,8 +764,6 @@ const ProductList = () => {
                                 <Select.Option key="XXL" value="XXL">XXL</Select.Option>
                             </Select>
                         </Form.Item>
-
-                        {/* Bảng biến thể sản phẩm chỉ hiện khi đã chọn màu sắc và kích thước */}
                         {renderVariantsTable()}
 
                         <Divider />

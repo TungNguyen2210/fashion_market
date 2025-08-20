@@ -218,14 +218,130 @@
                     android:textSize="14sp"
                     android:textColor="#FF0000" />
 
-                <EditText
-                    android:id="@+id/etAddress"
+                <!-- Address input with GPS button -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Nhập địa chỉ giao hàng"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <EditText
+                        android:id="@+id/etAddress"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Nhập địa chỉ giao hàng"
+                        android:padding="12dp"
+                        android:background="@drawable/edit_text_border"
+                        android:minHeight="48dp" />
+
+                    <ImageButton
+                        android:id="@+id/btnGetLocation"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_location"
+                        android:contentDescription="Lấy vị trí hiện tại"
+                        android:padding="12dp"
+                        android:scaleType="centerInside" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Nhấn biểu tượng GPS để tự động lấy vị trí hiện tại"
+                    android:textSize="12sp"
+                    android:textColor="#666666"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Promotion Code Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mã khuyến mãi"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:layout_marginBottom="16dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/etPromotionCode"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Nhập mã khuyến mãi"
                     android:padding="12dp"
                     android:background="@drawable/edit_text_border"
-                    android:layout_marginTop="4dp" />
+                    android:textAllCaps="true"
+                    android:minHeight="48dp" />
+
+                <Button
+                    android:id="@+id/btnApplyPromotion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:backgroundTint="@color/teal_700"
+                    android:text="Áp dụng"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Promotion Status -->
+            <LinearLayout
+                android:id="@+id/layoutPromotionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivPromotionIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/ic_check_circle"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/tvPromotionStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Mã khuyến mãi: 10% đã được áp dụng"
+                    android:textSize="14sp"
+                    android:textColor="#4CAF50" />
+
+                <TextView
+                    android:id="@+id/btnRemovePromotion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Xóa"
+                    android:textColor="#FF5722"
+                    android:textStyle="bold"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp"
+                    android:clickable="true"
+                    android:focusable="true" />
             </LinearLayout>
         </LinearLayout>
 
@@ -334,6 +450,32 @@
                     android:layout_height="wrap_content"
                     android:textSize="16sp"
                     android:text="0đ" />
+            </LinearLayout>
+
+            <!-- Promotion Discount Row -->
+            <LinearLayout
+                android:id="@+id/layoutPromotionDiscount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Giảm giá khuyến mãi:"
+                    android:textSize="16sp"
+                    android:textColor="#4CAF50" />
+
+                <TextView
+                    android:id="@+id/tvPromotionDiscount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textColor="#4CAF50"
+                    android:text="-0đ" />
             </LinearLayout>
 
             <LinearLayout

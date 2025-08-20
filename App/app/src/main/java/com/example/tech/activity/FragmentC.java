@@ -25,7 +25,7 @@ import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.adapter.NewsAdapter;
 import com.example.tech.model.News;
 import com.google.gson.Gson;

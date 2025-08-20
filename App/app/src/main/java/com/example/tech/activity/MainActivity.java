@@ -11,7 +11,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.utils.UserManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;

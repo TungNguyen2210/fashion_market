@@ -24,7 +24,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.SERVER;
 import com.example.tech.utils.JWTUtils;
 import com.example.tech.utils.UserManager;

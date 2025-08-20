@@ -1,6 +1,7 @@
 const ProductModel = require('../models/product');
 const CategoryModel = require('../models/category');
 const ReviewModel = require('../models/review');
+const OrderModel = require('../models/order');
 const Supplier = require('../models/supplier');
 const jwt = require('jsonwebtoken');
 const _const = require('../config/constant');
@@ -140,13 +141,64 @@ const productController = {
 
     deleteProduct: async (req, res) => {
         try {
-            const product = await ProductModel.findByIdAndDelete(req.params.id);
+            const productId = req.params.id;
+            
+            // Kiểm tra sản phẩm có tồn tại không
+            const product = await ProductModel.findById(productId);
             if (!product) {
-                return res.status(200).json("Product does not exist");
+                return res.status(404).json({
+                    success: false,
+                    message: "Sản phẩm không tồn tại"
+                });
             }
-            res.status(200).json("Delete product success");
+
+            // Kiểm tra xem sản phẩm đã được mua chưa (chỉ count, không lấy toàn bộ data)
+            const orderCount = await OrderModel.countDocuments({
+                'products.product': productId
+            });
+
+            if (orderCount > 0) {
+                // Nếu cần thông tin chi tiết, chỉ lấy một số đơn hàng gần nhất
+                const recentOrders = await OrderModel.find({
+                    'products.product': productId
+                })
+                .populate('user', 'username email')
+                .select('_id user status createdAt')
+                .sort({ createdAt: -1 })
+                .limit(5); // Chỉ lấy 5 đơn hàng gần nhất
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Không thể xóa sản phẩm này vì đã có khách hàng mua",
+                    details: {
+                        productName: product.name,
+                        totalOrders: orderCount,
+                        recentOrders: recentOrders.map(order => ({
+                            orderId: order._id,
+                            customerName: order.user?.username || 'N/A',
+                            status: order.status,
+                            orderDate: order.createdAt
+                        })),
+                        note: orderCount > 5 ? `Và ${orderCount - 5} đơn hàng khác` : null
+                    }
+                });
+            }
+
+            // Sản phẩm chưa được mua, có thể xóa
+            await ProductModel.findByIdAndDelete(productId);
+            
+            res.status(200).json({
+                success: true,
+                message: `Xóa sản phẩm "${product.name}" thành công`
+            });
+
         } catch (err) {
-            res.status(500).json(err);
+            console.error("Lỗi khi xóa sản phẩm:", err);
+            res.status(500).json({
+                success: false,
+                message: "Lỗi server khi xóa sản phẩm",
+                error: err.message
+            });
         }
     },
 

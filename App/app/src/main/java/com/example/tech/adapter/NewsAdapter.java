@@ -14,7 +14,7 @@ import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.model.News;
 
 import java.text.ParseException;

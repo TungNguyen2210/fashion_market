@@ -6,12 +6,15 @@ router.post('/search', orderController.getAllOrder);
 router.get("/searchByName", middleware.checkLogin, orderController.searchOrderByName);
 router.get("/user", middleware.checkLogin, orderController.getOrderByUser);
 
+// Đặt các route có prefix cụ thể TRƯỚC route với tham số động
+router.get('/shipping/:id', orderController.getOrderDetailForShipping);
+router.post('/:orderId/rate-products', middleware.checkLogin, orderController.rateProductsInOrder);
+router.get("/reviews/:productId", middleware.checkLogin, orderController.getReviewsByProductId);
+
+// Các route với tham số động đặt SAU cùng
 router.get('/:id', middleware.checkLogin, middleware.getOrder, orderController.getOrderById);
-router.post('/', orderController.createOrder)
-router.put('/:id', middleware.checkLogin, orderController.updateOrder)
+router.post('/', orderController.createOrder);
+router.put('/:id', middleware.checkLogin, orderController.updateOrder);
 router.delete("/:id", middleware.checkLogin, orderController.deleteOrder);
-//Thêm phần đánh giá sản phẩm
-router.post('/:orderId/rate-products', middleware.checkLogin,orderController.rateProductsInOrder);
-router.get("/reviews/:productId",middleware.checkLogin, orderController.getReviewsByProductId);
 
 module.exports = router;

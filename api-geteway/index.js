@@ -862,3 +862,23 @@ app.get('/api/statistical/count', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
+app.get("/api/order/shipping/:id", async (req, res) => {
+  try {
+    const response = await axios.get(`http://localhost:3300/api/order/shipping/${req.params.id}`, {
+      headers: {
+        Authorization: req.headers.authorization || ""
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết đơn hàng cho vận chuyển:", error.message);
+    
+    // Trả về lỗi chi tiết và status code từ service
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ message: "Gateway Error: Không thể kết nối đến service" });
+    }
+  }
+});

@@ -13,7 +13,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.tech.R;
+import com.example.apptrangsuc.R;
 import com.example.tech.adapter.CartAdapter;
 import com.example.tech.model.SanPham;
 import com.google.gson.Gson;
