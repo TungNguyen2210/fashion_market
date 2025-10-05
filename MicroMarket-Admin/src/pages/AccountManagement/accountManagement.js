@@ -151,12 +151,6 @@ const AccountManagement = () => {
                                     okText="Yes"
                                     cancelText="No"
                                 >
-                                    <Button
-                                        size="small"
-                                        icon={<CheckCircleOutlined />}
-                                        style={{ width: 190, borderRadius: 15, height: 30 }}
-                                    >{"Mở chặn tài khoản"}
-                                    </Button>
                                 </Popconfirm> : (
                                     // Kiểm tra nếu người dùng không phải là admin thì mới hiển thị nút chặn tài khoản
                                     !record.role.includes('isAdmin') &&
@@ -166,12 +160,6 @@ const AccountManagement = () => {
                                         okText="Yes"
                                         cancelText="No"
                                     >
-                                        <Button
-                                            size="small"
-                                            icon={<StopOutlined />}
-                                            style={{ width: 190, borderRadius: 15, height: 30 }}
-                                        >{"Chặn tài khoản"}
-                                        </Button>
                                     </Popconfirm>
                                 )}
                             </div>
