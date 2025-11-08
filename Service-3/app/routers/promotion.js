@@ -3,53 +3,46 @@ const promotionController = require('../controllers/promotionController');
 
 const router = express.Router();
 
-
+// ===== PATCH/POST ROUTES TRƯỚC =====
+router.patch('/:id/use', promotionController.incrementUsage);
 router.patch('/:id/increment-usage', promotionController.incrementUsage);
-
-// 🔥 Lấy nhiều promotions cùng lúc (cho email)
 router.post('/batch', promotionController.getBatchPromotions);
+router.post('/voucher/validate', promotionController.validateVoucher);
+router.post('/voucher/calculate-discount', promotionController.calculateVoucherDiscount);
+router.post('/free-shipping/check', promotionController.checkFreeShipping);
+router.post('/', promotionController.createPromotion);
+router.post('/:promotionId/products/:productId', promotionController.applyPromotionToProduct);
+
+// ===== GET ROUTES - THỨ TỰ QUAN TRỌNG! =====
+// Routes CỤ THỂ phải đặt TRƯỚC routes TỔNG QUÁT
+
+router.get('/search', (req, res, next) => {
+    console.log('🟢 SEARCH ROUTE HIT!', req.query);
+    next();
+}, promotionController.searchPromotions);
+
+router.get('/active', (req, res, next) => {
+    console.log('🔵 ACTIVE ROUTE HIT!', req.query);
+    next();
+}, promotionController.getActivePromotions);
 
 router.get('/products/active', promotionController.getActiveProductPromotions);
-
-// Validate voucher code
-router.post('/voucher/validate', promotionController.validateVoucher);
-
-// Tính discount amount cho voucher
-router.post('/voucher/calculate-discount', promotionController.calculateVoucherDiscount);
-
-// Check free shipping promotion
-router.post('/free-shipping/check', promotionController.checkFreeShipping);
-
-// Lấy promotion theo loại
 router.get('/by-type/:type', promotionController.getPromotionsByType);
-
-// Check promotion availability
 router.get('/:id/availability', promotionController.checkPromotionAvailability);
 
-// ===== EXISTING ROUTES =====
+// ===== ROUTES TỔNG QUÁT PHẢI ĐẶT CUỐI =====
+router.get('/:id', (req, res, next) => {
+    console.log('🟡 ID ROUTE HIT!', req.params);
+    next();
+}, promotionController.getPromotionById);
 
-// Tìm kiếm promotions
-router.get('/search', promotionController.searchPromotions);
+router.get('/', (req, res, next) => {
+    console.log('🔴 ROOT ROUTE HIT!', req.query);
+    next();
+}, promotionController.getAllPromotions);
 
-// Lấy promotions đang active
-router.get('/active', promotionController.getActivePromotions);
-
-// Lấy tất cả promotions (có filter)
-router.get('/', promotionController.getAllPromotions);
-
-// Lấy promotion theo ID
-router.get('/:id', promotionController.getPromotionById);
-
-// Tạo promotion mới
-router.post('/', promotionController.createPromotion);
-
-// Cập nhật promotion
+// ===== PUT/DELETE ROUTES =====
 router.put('/:id', promotionController.updatePromotion);
-
-// Xóa promotion
 router.delete('/:id', promotionController.deletePromotion);
-
-// Áp dụng promotion cho sản phẩm cụ thể
-router.post('/:promotionId/products/:productId', promotionController.applyPromotionToProduct);
 
 module.exports = router;

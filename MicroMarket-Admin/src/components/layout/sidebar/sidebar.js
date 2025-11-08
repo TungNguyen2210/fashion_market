@@ -63,12 +63,6 @@ function Sidebar() {
       icon: <ShoppingCartOutlined />
     },
     {
-      key: "shipping",
-      title: "Quản lý vận chuyển",
-      link: "/shipping",
-      icon: <CarOutlined />
-    },
-    {
       key: "news-list",
       title: "Tin tức",
       link: "/news-list",

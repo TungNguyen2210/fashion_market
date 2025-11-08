@@ -144,407 +144,483 @@ const orderController = {
     },
 
     createOrder: async (req, res) => {
-        try {
-            console.log("🛒 Dữ liệu đơn hàng nhận được:", JSON.stringify(req.body, null, 2));
+    try {
+        console.log("🛒 Dữ liệu đơn hàng nhận được:", JSON.stringify(req.body, null, 2));
+        
+        const {
+            userId,
+            products,
+            address,
+            billing = 'cod',
+            description = '',
+            status = 'pending',
             
-            const {
-                userId,
-                products,
-                address,
-                billing = 'cod',
-                description = '',
-                status = 'pending',
-                
-                // Thông tin promotion IDs
-                voucherPromotionID,
-                freeShipPromotionID,
-                
-                // Thông tin tính toán
-                orderTotal,
-                discountAmount = 0,
-                shippingFee = 0,
-                finalAmount,
-                
-                // Thông tin shipping (từ frontend)
-                distanceKm,
-                shipping
-            } = req.body;
+            // Thông tin promotion IDs
+            voucherPromotionID,
+            freeShipPromotionID,
+            
+            // Thông tin tính toán
+            orderTotal,
+            discountAmount = 0,
+            shippingFee = 0,
+            finalAmount,
+            
+            // Thông tin shipping (từ frontend)
+            distanceKm,
+            shipping
+        } = req.body;
 
-            const insufficientQuantityProducts = [];
-            const processedProducts = [];
-            
-            // Validate dữ liệu cơ bản
-            if (!products || products.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Không có sản phẩm trong đơn hàng'
+        const insufficientQuantityProducts = [];
+        const processedProducts = [];
+        
+        // Validate dữ liệu cơ bản
+        if (!products || products.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không có sản phẩm trong đơn hàng'
+            });
+        }
+
+        console.log("💰 Thông tin promotion và tính toán:", {
+            voucherPromotionID,
+            freeShipPromotionID,
+            orderTotal,
+            discountAmount,
+            shippingFee,
+            finalAmount
+        });
+
+        // Xử lý từng sản phẩm
+        for (const productItem of products) {
+            const productId = productItem.product;
+            const quantity = productItem.quantity;
+            const size = productItem.size || null;
+            const color = productItem.color || null;
+            const variantId = productItem.variantId || null;
+            const productPromotionID = productItem.productPromotionID || null;
+
+            console.log(`🔍 Xử lý sản phẩm: ${productId}, size: ${size}, color: ${color}, variantId: ${variantId}, promotionID: ${productPromotionID}`);
+
+            // Tìm sản phẩm trong database
+            const product = await Product.findById(productId);
+
+            if (!product) {
+                console.log(`❌ Không tìm thấy sản phẩm: ${productId}`);
+                insufficientQuantityProducts.push({
+                    productId,
+                    quantity: 0,
                 });
+                continue;
             }
 
-            console.log("💰 Thông tin promotion và tính toán:", {
-                voucherPromotionID,
-                freeShipPromotionID,
-                orderTotal,
-                discountAmount,
-                shippingFee,
-                finalAmount
-            });
+            // Kiểm tra số lượng tồn kho (logic giống như cũ)
+            let variantQuantity = 0;
+            let variant = null;
 
-            // Xử lý từng sản phẩm
-            for (const productItem of products) {
-                const productId = productItem.product;
-                const quantity = productItem.quantity;
-                const size = productItem.size || null;
-                const color = productItem.color || null;
-                const variantId = productItem.variantId || null;
-                const productPromotionID = productItem.productPromotionID || null;
-
-                console.log(`🔍 Xử lý sản phẩm: ${productId}, size: ${size}, color: ${color}, variantId: ${variantId}, promotionID: ${productPromotionID}`);
-
-                // Tìm sản phẩm trong database
-                const product = await Product.findById(productId);
-
-                if (!product) {
-                    console.log(`❌ Không tìm thấy sản phẩm: ${productId}`);
-                    insufficientQuantityProducts.push({
-                        productId,
-                        quantity: 0,
-                    });
-                    continue;
+            // Tìm variant theo các cách khác nhau
+            if (variantId && product.variants && product.variants.length > 0) {
+                variant = product.variants.find(v => v.variantId === variantId);
+                if (variant) {
+                    variantQuantity = variant.quantity;
+                    console.log(`✅ Tìm thấy biến thể trong variants với số lượng: ${variantQuantity}`);
                 }
+            }
 
-                // Kiểm tra số lượng tồn kho (logic giống như cũ)
-                let variantQuantity = 0;
-                let variant = null;
-
-                // Tìm variant theo các cách khác nhau
-                if (variantId && product.variants && product.variants.length > 0) {
-                    variant = product.variants.find(v => v.variantId === variantId);
-                    if (variant) {
-                        variantQuantity = variant.quantity;
-                        console.log(`✅ Tìm thấy biến thể trong variants với số lượng: ${variantQuantity}`);
-                    }
+            if (!variant && variantId && product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
+                variant = product.inventory.variantStock.find(v => v.variantId === variantId);
+                if (variant) {
+                    variantQuantity = variant.quantity;
+                    console.log(`✅ Tìm thấy biến thể trong inventory.variantStock với số lượng: ${variantQuantity}`);
                 }
+            }
 
-                if (!variant && variantId && product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
-                    variant = product.inventory.variantStock.find(v => v.variantId === variantId);
-                    if (variant) {
-                        variantQuantity = variant.quantity;
-                        console.log(`✅ Tìm thấy biến thể trong inventory.variantStock với số lượng: ${variantQuantity}`);
-                    }
-                }
-
-                if (!variant) {
-                    if (product.variants && product.variants.length > 0 && (size || color)) {
-                        variant = product.variants.find(v => 
-                            (!size || v.size === size) && 
-                            (!color || v.color === color)
-                        );
-                        
-                        if (variant) {
-                            variantQuantity = variant.quantity;
-                            console.log(`✅ Tìm thấy biến thể trong variants bằng size/color với số lượng: ${variantQuantity}`);
-                        }
-                    }
+            if (!variant) {
+                if (product.variants && product.variants.length > 0 && (size || color)) {
+                    variant = product.variants.find(v => 
+                        (!size || v.size === size) && 
+                        (!color || v.color === color)
+                    );
                     
-                    if (!variant && product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0 && (size || color)) {
-                        variant = product.inventory.variantStock.find(v => 
-                            (!size || v.size === size) && 
-                            (!color || v.color === color)
-                        );
-                        
-                        if (variant) {
-                            variantQuantity = variant.quantity;
-                            console.log(`✅ Tìm thấy biến thể trong inventory.variantStock bằng size/color với số lượng: ${variantQuantity}`);
-                        }
+                    if (variant) {
+                        variantQuantity = variant.quantity;
+                        console.log(`✅ Tìm thấy biến thể trong variants bằng size/color với số lượng: ${variantQuantity}`);
                     }
                 }
-
-                if (!variant) {
-                    console.log(`❌ Không tìm thấy thông tin biến thể cho sản phẩm: ${productId}`);
-                    insufficientQuantityProducts.push({
-                        productId,
-                        variantId: variantId || null,
-                        size: size || null,
-                        color: color || null,
-                        availableQuantity: 0,
-                        requestedQuantity: quantity
-                    });
-                    continue;
-                }
-
-                if (variantQuantity < quantity) {
-                    console.log(`❌ Không đủ số lượng cho sản phẩm: ${productId}, biến thể: ${variantId || 'none'}, Có sẵn: ${variantQuantity}, Yêu cầu: ${quantity}`);
-                    insufficientQuantityProducts.push({
-                        productId,
-                        variantId: variantId || null,
-                        size: size || null,
-                        color: color || null,
-                        availableQuantity: variantQuantity,
-                        requestedQuantity: quantity
-                    });
-                    continue;
-                }
-
-                // Thêm vào danh sách sản phẩm đã xử lý
-                processedProducts.push({
-                    product: productId,
-                    quantity,
-                    price: productItem.price,
-                    size: size,
-                    color: color,
-                    variantId: variantId,
-                    productPromotionID: productPromotionID 
-                });
                 
-                console.log(`✅ Đã thêm vào sản phẩm đã xử lý với promotionID: ${productPromotionID}`);
+                if (!variant && product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0 && (size || color)) {
+                    variant = product.inventory.variantStock.find(v => 
+                        (!size || v.size === size) && 
+                        (!color || v.color === color)
+                    );
+                    
+                    if (variant) {
+                        variantQuantity = variant.quantity;
+                        console.log(`✅ Tìm thấy biến thể trong inventory.variantStock bằng size/color với số lượng: ${variantQuantity}`);
+                    }
+                }
             }
 
-            if (insufficientQuantityProducts.length > 0) {
-                console.log("❌ Sản phẩm không đủ số lượng:", insufficientQuantityProducts);
-                return res.status(200).json({
-                    error: 'Insufficient quantity for one or more products.',
-                    insufficientQuantityProducts,
+            if (!variant) {
+                console.log(`❌ Không tìm thấy thông tin biến thể cho sản phẩm: ${productId}`);
+                insufficientQuantityProducts.push({
+                    productId,
+                    variantId: variantId || null,
+                    size: size || null,
+                    color: color || null,
+                    availableQuantity: 0,
+                    requestedQuantity: quantity
                 });
+                continue;
             }
 
-            const calculatedFinalAmount = finalAmount || (orderTotal - discountAmount + shippingFee);
+            if (variantQuantity < quantity) {
+                console.log(`❌ Không đủ số lượng cho sản phẩm: ${productId}, biến thể: ${variantId || 'none'}, Có sẵn: ${variantQuantity}, Yêu cầu: ${quantity}`);
+                insufficientQuantityProducts.push({
+                    productId,
+                    variantId: variantId || null,
+                    size: size || null,
+                    color: color || null,
+                    availableQuantity: variantQuantity,
+                    requestedQuantity: quantity
+                });
+                continue;
+            }
 
-            console.log("📊 Tính toán cuối cùng:", {
-                orderTotal,
-                discountAmount,
-                shippingFee,
-                calculatedFinalAmount
+            // Thêm vào danh sách sản phẩm đã xử lý
+            processedProducts.push({
+                product: productId,
+                quantity,
+                price: productItem.price,
+                size: size,
+                color: color,
+                variantId: variantId,
+                productPromotionID: productPromotionID 
             });
+            
+            console.log(`✅ Đã thêm vào sản phẩm đã xử lý với promotionID: ${productPromotionID}`);
+        }
 
-            const order = new OrderModel({
-                user: userId,
-                products: processedProducts,
-                
-                address,
-                billing,
-                description,
-                status,
-                
-                voucherPromotionID: voucherPromotionID || null,
-                freeShipPromotionID: freeShipPromotionID || null,
-                
-                orderTotal,
-                discountAmount,
-                shippingFee,
-                finalAmount: calculatedFinalAmount
+        if (insufficientQuantityProducts.length > 0) {
+            console.log("❌ Sản phẩm không đủ số lượng:", insufficientQuantityProducts);
+            return res.status(200).json({
+                error: 'Insufficient quantity for one or more products.',
+                insufficientQuantityProducts,
             });
+        }
 
-            console.log("📦 Đã tạo đơn hàng với promotion IDs");
+        const calculatedFinalAmount = finalAmount || (orderTotal - discountAmount + shippingFee);
 
-            // Cập nhật số lượng sản phẩm (logic giống như cũ)
-            for (const productItem of processedProducts) {
-                const productId = productItem.product;
-                const quantity = productItem.quantity;
-                const variantId = productItem.variantId;
-                const size = productItem.size;
-                const color = productItem.color;
+        console.log("📊 Tính toán cuối cùng:", {
+            orderTotal,
+            discountAmount,
+            shippingFee,
+            calculatedFinalAmount
+        });
+
+        const order = new OrderModel({
+            user: userId,
+            products: processedProducts,
+            
+            address,
+            billing,
+            description,
+            status,
+            
+            voucherPromotionID: voucherPromotionID || null,
+            freeShipPromotionID: freeShipPromotionID || null,
+            
+            orderTotal,
+            discountAmount,
+            shippingFee,
+            finalAmount: calculatedFinalAmount
+        });
+
+        console.log("📦 Đã tạo đơn hàng với promotion IDs");
+
+        // Cập nhật số lượng sản phẩm (logic giống như cũ)
+        for (const productItem of processedProducts) {
+            const productId = productItem.product;
+            const quantity = productItem.quantity;
+            const variantId = productItem.variantId;
+            const size = productItem.size;
+            const color = productItem.color;
+            
+            if (variantId) {
+                const variantsResult = await Product.updateOne(
+                    { _id: productId, "variants.variantId": variantId },
+                    { $inc: { "variants.$.quantity": -quantity } }
+                );
                 
-                if (variantId) {
-                    const variantsResult = await Product.updateOne(
-                        { _id: productId, "variants.variantId": variantId },
+                console.log(`📉 Cập nhật số lượng trong variants: ${JSON.stringify(variantsResult)}`);
+                
+                const variantStockResult = await Product.updateOne(
+                    { _id: productId, "inventory.variantStock.variantId": variantId },
+                    { $inc: { "inventory.variantStock.$.quantity": -quantity } }
+                );
+                
+                console.log(`📉 Cập nhật số lượng trong variantStock: ${JSON.stringify(variantStockResult)}`);
+            } 
+            else if (size || color) {
+                if (size && color) {
+                    await Product.updateOne(
+                        { 
+                            _id: productId, 
+                            "variants.size": size, 
+                            "variants.color": color 
+                        },
                         { $inc: { "variants.$.quantity": -quantity } }
                     );
                     
-                    console.log(`📉 Cập nhật số lượng trong variants: ${JSON.stringify(variantsResult)}`);
-                    
-                    const variantStockResult = await Product.updateOne(
-                        { _id: productId, "inventory.variantStock.variantId": variantId },
+                    await Product.updateOne(
+                        { 
+                            _id: productId, 
+                            "inventory.variantStock.size": size, 
+                            "inventory.variantStock.color": color 
+                        },
                         { $inc: { "inventory.variantStock.$.quantity": -quantity } }
                     );
-                    
-                    console.log(`📉 Cập nhật số lượng trong variantStock: ${JSON.stringify(variantStockResult)}`);
-                } 
-                else if (size || color) {
-                    if (size && color) {
-                        await Product.updateOne(
-                            { 
-                                _id: productId, 
-                                "variants.size": size, 
-                                "variants.color": color 
-                            },
-                            { $inc: { "variants.$.quantity": -quantity } }
-                        );
-                        
-                        await Product.updateOne(
-                            { 
-                                _id: productId, 
-                                "inventory.variantStock.size": size, 
-                                "inventory.variantStock.color": color 
-                            },
-                            { $inc: { "inventory.variantStock.$.quantity": -quantity } }
-                        );
-                    }
-                    else if (size) {
-                        await Product.updateOne(
-                            { _id: productId, "variants.size": size },
-                            { $inc: { "variants.$.quantity": -quantity } }
-                        );
-                        
-                        await Product.updateOne(
-                            { _id: productId, "inventory.variantStock.size": size },
-                            { $inc: { "inventory.variantStock.$.quantity": -quantity } }
-                        );
-                    }
-                    else if (color) {
-                        await Product.updateOne(
-                            { _id: productId, "variants.color": color },
-                            { $inc: { "variants.$.quantity": -quantity } }
-                        );
-                        
-                        await Product.updateOne(
-                            { _id: productId, "inventory.variantStock.color": color },
-                            { $inc: { "inventory.variantStock.$.quantity": -quantity } }
-                        );
-                    }
                 }
-            }
-
-            const savedOrder = await order.save();
-            console.log("✅ Đơn hàng đã được lưu thành công:", savedOrder._id);
-
-            // 🔥 Cập nhật số lượng đã sử dụng cho các promotion qua API
-            try {
-                if (voucherPromotionID) {
-                    await callPromotionAPI(`/${voucherPromotionID}/increment-usage`, 'PATCH');
-                    console.log(`✅ Đã cập nhật số lượng sử dụng cho voucher: ${voucherPromotionID}`);
-                }
-
-                if (freeShipPromotionID) {
-                    await callPromotionAPI(`/${freeShipPromotionID}/increment-usage`, 'PATCH');
-                    console.log(`✅ Đã cập nhật số lượng sử dụng cho freeship: ${freeShipPromotionID}`);
-                }
-
-                // Cập nhật cho product promotions
-                const productPromotionIDs = processedProducts
-                    .filter(p => p.productPromotionID)
-                    .map(p => p.productPromotionID);
-                
-                if (productPromotionIDs.length > 0) {
-                    for (const promotionId of productPromotionIDs) {
-                        await callPromotionAPI(`/${promotionId}/increment-usage`, 'PATCH');
-                    }
-                    console.log(`✅ Đã cập nhật số lượng sử dụng cho ${productPromotionIDs.length} product promotion`);
-                }
-            } catch (promotionError) {
-                console.error('❌ Error updating promotion usage:', promotionError);
-                // Không throw error để không làm fail việc tạo order
-            }
-
-            // Gửi email thông báo (với thông tin promotion chi tiết)
-            try {
-                const customer = await User.findById(userId);
-                console.log("👤 Tìm thấy khách hàng:", customer ? customer.email : "Không tìm thấy khách hàng");
-                
-                if (customer && customer.email) {
-                    // 🔥 Lấy thông tin promotion để hiển thị trong email qua API
-                    const promotionInfo = await getPromotionDetailsForEmail(
-                        voucherPromotionID, 
-                        freeShipPromotionID, 
-                        processedProducts.filter(p => p.productPromotionID).map(p => p.productPromotionID)
+                else if (size) {
+                    await Product.updateOne(
+                        { _id: productId, "variants.size": size },
+                        { $inc: { "variants.$.quantity": -quantity } }
                     );
-
-                    const transporter = nodemailer.createTransporter({
-                        host: 'smtp.gmail.com',
-                        port: 587,
-                        secure: false,
-                        auth: {
-                            user: 'h5studiogl@gmail.com',
-                            pass: 'ubqq hfra cduj tlnq',
-                        },
-                    });
-
-                    // Tạo nội dung chi tiết sản phẩm
-                    let productsHtml = '';
-                    for (const item of processedProducts) {
-                        const productDetail = await Product.findById(item.product);
-                        const productPromotion = promotionInfo.productPromotions.find(p => 
-                            p._id.toString() === item.productPromotionID?.toString()
-                        );
-                        
-                        productsHtml += `
-                            <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                                <p><strong>${productDetail ? productDetail.name : 'Sản phẩm'}</strong> x ${item.quantity}</p>
-                                <p>Giá: ${item.price.toLocaleString()} VND</p>
-                                ${productPromotion ? `<p>🎁 Khuyến mãi: ${productPromotion.tenKhuyenMai}</p>` : ''}
-                                ${item.size ? `<p>Kích thước: ${item.size}</p>` : ''}
-                                ${item.color ? `<p>Màu sắc: ${item.color}</p>` : ''}
-                            </div>
-                        `;
-                    }
-
-                    // Tạo thông tin chi tiết về giá
-                    const priceBreakdown = `
-                        <h3>Chi tiết thanh toán:</h3>
-                        <p>Tạm tính: ${orderTotal.toLocaleString()} VND</p>
-                        ${discountAmount > 0 ? `<p>🎫 Giảm giá: -${discountAmount.toLocaleString()} VND</p>` : ''}
-                        ${promotionInfo.voucher ? `<p>Voucher: ${promotionInfo.voucher.tenKhuyenMai}</p>` : ''}
-                        ${shippingFee > 0 ? `<p>Phí vận chuyển: ${shippingFee.toLocaleString()} VND</p>` : ''}
-                        ${promotionInfo.freeShip ? `<p>🚚 Miễn phí vận chuyển: ${promotionInfo.freeShip.tenKhuyenMai}</p>` : ''}
-                        <p><strong>Tổng cộng: ${calculatedFinalAmount.toLocaleString()} VND</strong></p>
-                    `;
-
-                    const mailOptions = {
-                        from: '"MicroMarket" <h5studiogl@gmail.com>',
-                        to: customer.email,
-                        subject: 'Xác nhận đơn hàng của bạn tại MicroMarket',
-                        html: `
-                            <h1>Cảm ơn bạn đã đặt hàng!</h1>
-                            <p>Đơn hàng với mã số <strong>${savedOrder._id}</strong> của bạn đã được đặt thành công.</p>
-                            
-                            <h2>Chi tiết đơn hàng:</h2>
-                            ${productsHtml}
-                            
-                            ${priceBreakdown}
-                            
-                            <p>Phương thức thanh toán: ${savedOrder.billing === 'cod' ? 'Thanh toán khi nhận hàng' : 'PayPal'}</p>
-                            <p>Địa chỉ giao hàng: ${savedOrder.address}</p>
-                            
-                            <p>Chúng tôi sẽ thông báo cho bạn khi đơn hàng bắt đầu được giao.</p>
-                            <p>Cảm ơn bạn đã mua sắm tại MicroMarket!</p>
-                        `,
-                    };
-
-                    transporter.sendMail(mailOptions, (error, info) => {
-                        if (error) {
-                            console.error('❌ Lỗi gửi email:', error);
-                        } else {
-                            console.log('✅ Email đã gửi: ' + info.response);
-                        }
-                    });
+                    
+                    await Product.updateOne(
+                        { _id: productId, "inventory.variantStock.size": size },
+                        { $inc: { "inventory.variantStock.$.quantity": -quantity } }
+                    );
                 }
-            } catch (emailError) {
-                console.error('❌ Không thể gửi email xác nhận đơn hàng:', emailError);
+                else if (color) {
+                    await Product.updateOne(
+                        { _id: productId, "variants.color": color },
+                        { $inc: { "variants.$.quantity": -quantity } }
+                    );
+                    
+                    await Product.updateOne(
+                        { _id: productId, "inventory.variantStock.color": color },
+                        { $inc: { "inventory.variantStock.$.quantity": -quantity } }
+                    );
+                }
+            }
+        }
+
+        const savedOrder = await order.save();
+        console.log("✅ Đơn hàng đã được lưu thành công:", savedOrder._id);
+
+        // 🔥 GIẢI PHÁP: Cập nhật promotion usedCount qua API thay vì trực tiếp DB
+        try {
+            console.log("🐛 DEBUG: Bắt đầu cập nhật promotions qua API");
+            console.log("🐛 voucherPromotionID:", voucherPromotionID);
+            console.log("🐛 freeShipPromotionID:", freeShipPromotionID);
+            
+            const promotionUpdatePromises = [];
+
+            // Cập nhật voucher promotion
+            if (voucherPromotionID) {
+                console.log(`📊 Đang cập nhật voucher: ${voucherPromotionID}`);
+                promotionUpdatePromises.push(
+                    callPromotionAPI(`/${voucherPromotionID}/use`, 'PATCH')
+                        .then(result => {
+                            console.log(`✅ Voucher updated: ${result.data?.tenKhuyenMai}, usedCount: ${result.data?.usedCount}`);
+                            return result;
+                        })
+                        .catch(error => {
+                            console.error(`❌ Failed to update voucher: ${voucherPromotionID}`, error.message);
+                            return null;
+                        })
+                );
             }
 
-            // Trả về response
-            res.status(200).json({
-                success: true,
-                data: {
-                    orderId: savedOrder._id,
-                    orderTotal: savedOrder.orderTotal,
-                    discountAmount: savedOrder.discountAmount,
-                    shippingFee: savedOrder.shippingFee,
-                    finalAmount: savedOrder.finalAmount,
-                    status: savedOrder.status
-                },
-                message: 'Đặt hàng thành công'
+            // Cập nhật freeship promotion  
+            if (freeShipPromotionID) {
+                console.log(`🚚 Đang cập nhật freeship: ${freeShipPromotionID}`);
+                promotionUpdatePromises.push(
+                    callPromotionAPI(`/${freeShipPromotionID}/use`, 'PATCH')
+                        .then(result => {
+                            console.log(`✅ Freeship updated: ${result.data?.tenKhuyenMai}, usedCount: ${result.data?.usedCount}`);
+                            return result;
+                        })
+                        .catch(error => {
+                            console.error(`❌ Failed to update freeship: ${freeShipPromotionID}`, error.message);
+                            return null;
+                        })
+                );
+            }
+
+            // Cập nhật product promotions
+            const productPromotionIDs = processedProducts
+                .filter(p => p.productPromotionID)
+                .map(p => p.productPromotionID);
+            
+            console.log("🐛 Product promotion IDs found:", productPromotionIDs);
+
+            // Đếm số lần sử dụng cho mỗi promotion ID
+            const promotionUsageCount = {};
+            productPromotionIDs.forEach(id => {
+                promotionUsageCount[id] = (promotionUsageCount[id] || 0) + 1;
             });
 
-        } catch (err) {
-            console.log("❌ Lỗi tạo đơn hàng:", err);
-            res.status(500).json({
-                success: false,
-                message: err.message,
-                error: err
-            });
+            console.log("🐛 Promotion usage count:", promotionUsageCount);
+
+            // Cập nhật từng product promotion
+            for (const [promotionId, count] of Object.entries(promotionUsageCount)) {
+                console.log(`🎁 Đang cập nhật product promotion: ${promotionId}, count: ${count}`);
+                
+                // Gọi API nhiều lần theo số lượng count
+                for (let i = 0; i < count; i++) {
+                    promotionUpdatePromises.push(
+                        callPromotionAPI(`/${promotionId}/use`, 'PATCH')
+                            .then(result => {
+                                console.log(`✅ Product promotion updated (${i+1}/${count}): ${result.data?.tenKhuyenMai}, usedCount: ${result.data?.usedCount}`);
+                                return result;
+                            })
+                            .catch(error => {
+                                console.error(`❌ Failed to update product promotion (${i+1}/${count}): ${promotionId}`, error.message);
+                                return null;
+                            })
+                    );
+                }
+            }
+
+            console.log("🐛 Total promotion API calls to execute:", promotionUpdatePromises.length);
+
+            if (promotionUpdatePromises.length > 0) {
+                // Thực hiện tất cả API calls đồng thời
+                const results = await Promise.allSettled(promotionUpdatePromises);
+                
+                const successCount = results.filter(r => r.status === 'fulfilled' && r.value !== null).length;
+                const failedCount = results.length - successCount;
+                
+                console.log(`✅ Promotion updates completed: ${successCount} success, ${failedCount} failed`);
+                
+                // Log chi tiết kết quả
+                results.forEach((result, index) => {
+                    if (result.status === 'fulfilled' && result.value && result.value.data) {
+                        const promotion = result.value.data;
+                        console.log(`📈 ${promotion.tenKhuyenMai}: usedCount = ${promotion.usedCount}/${promotion.soLuong || 'unlimited'}`);
+                    } else if (result.status === 'rejected') {
+                        console.log(`⚠️ Promotion update ${index} failed:`, result.reason?.message || 'Unknown error');
+                    }
+                });
+            } else {
+                console.log("⚠️ Không có promotion nào để cập nhật!");
+            }
+
+        } catch (promotionError) {
+            console.error('❌ Error updating promotion usedCount via API:', promotionError);
+            console.error('❌ Error stack:', promotionError.stack);
         }
-    },
+
+        // Gửi email thông báo (với thông tin promotion chi tiết)
+        try {
+            const customer = await User.findById(userId);
+            console.log("👤 Tìm thấy khách hàng:", customer ? customer.email : "Không tìm thấy khách hàng");
+            
+            if (customer && customer.email) {
+                // 🔥 Lấy thông tin promotion để hiển thị trong email qua API
+                const promotionInfo = await getPromotionDetailsForEmail(
+                    voucherPromotionID, 
+                    freeShipPromotionID, 
+                    processedProducts.filter(p => p.productPromotionID).map(p => p.productPromotionID)
+                );
+
+                const transporter = nodemailer.createTransport({  // 🔥 SỬA: createTransporter → createTransport
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    secure: false,
+                    auth: {
+                        user: 'h5studiogl@gmail.com',
+                        pass: 'ubqq hfra cduj tlnq',
+                    },
+                });
+
+                // Tạo nội dung chi tiết sản phẩm
+                let productsHtml = '';
+                for (const item of processedProducts) {
+                    const productDetail = await Product.findById(item.product);
+                    const productPromotion = promotionInfo.productPromotions.find(p => 
+                        p._id.toString() === item.productPromotionID?.toString()
+                    );
+                    
+                    productsHtml += `
+                        <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                            <p><strong>${productDetail ? productDetail.name : 'Sản phẩm'}</strong> x ${item.quantity}</p>
+                            <p>Giá: ${item.price.toLocaleString()} VND</p>
+                            ${productPromotion ? `<p>🎁 Khuyến mãi: ${productPromotion.tenKhuyenMai}</p>` : ''}
+                            ${item.size ? `<p>Kích thước: ${item.size}</p>` : ''}
+                            ${item.color ? `<p>Màu sắc: ${item.color}</p>` : ''}
+                        </div>
+                    `;
+                }
+
+                // Tạo thông tin chi tiết về giá
+                const priceBreakdown = `
+                    <h3>Chi tiết thanh toán:</h3>
+                    <p>Tạm tính: ${orderTotal.toLocaleString()} VND</p>
+                    ${discountAmount > 0 ? `<p>🎫 Giảm giá: -${discountAmount.toLocaleString()} VND</p>` : ''}
+                    ${promotionInfo.voucher ? `<p>Voucher: ${promotionInfo.voucher.tenKhuyenMai}</p>` : ''}
+                    ${shippingFee > 0 ? `<p>Phí vận chuyển: ${shippingFee.toLocaleString()} VND</p>` : ''}
+                    ${promotionInfo.freeShip ? `<p>🚚 Miễn phí vận chuyển: ${promotionInfo.freeShip.tenKhuyenMai}</p>` : ''}
+                    <p><strong>Tổng cộng: ${calculatedFinalAmount.toLocaleString()} VND</strong></p>
+                `;
+
+                const mailOptions = {
+                    from: '"MicroMarket" <h5studiogl@gmail.com>',
+                    to: customer.email,
+                    subject: 'Xác nhận đơn hàng của bạn tại MicroMarket',
+                    html: `
+                        <h1>Cảm ơn bạn đã đặt hàng!</h1>
+                        <p>Đơn hàng với mã số <strong>${savedOrder._id}</strong> của bạn đã được đặt thành công.</p>
+                        
+                        <h2>Chi tiết đơn hàng:</h2>
+                        ${productsHtml}
+                        
+                        ${priceBreakdown}
+                        
+                        <p>Phương thức thanh toán: ${savedOrder.billing === 'cod' ? 'Thanh toán khi nhận hàng' : 'PayPal'}</p>
+                        <p>Địa chỉ giao hàng: ${savedOrder.address}</p>
+                        
+                        <p>Chúng tôi sẽ thông báo cho bạn khi đơn hàng bắt đầu được giao.</p>
+                        <p>Cảm ơn bạn đã mua sắm tại MicroMarket!</p>
+                    `,
+                };
+
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error('❌ Lỗi gửi email:', error);
+                    } else {
+                        console.log('✅ Email đã gửi: ' + info.response);
+                    }
+                });
+            }
+        } catch (emailError) {
+            console.error('❌ Không thể gửi email xác nhận đơn hàng:', emailError);
+        }
+
+        // Trả về response
+        res.status(200).json({
+            success: true,
+            data: {
+                orderId: savedOrder._id,
+                orderTotal: savedOrder.orderTotal,
+                discountAmount: savedOrder.discountAmount,
+                shippingFee: savedOrder.shippingFee,
+                finalAmount: savedOrder.finalAmount,
+                status: savedOrder.status
+            },
+            message: 'Đặt hàng thành công'
+        });
+
+    } catch (err) {
+        console.log("❌ Lỗi tạo đơn hàng:", err);
+        res.status(500).json({
+            success: false,
+            message: err.message,
+            error: err
+        });
+    }
+},
 
     deleteOrder: async (req, res) => {
         try {
@@ -644,112 +720,48 @@ const orderController = {
 
     // 🔥 FIXED getOrderByUser function - Remove populate, use API calls
     getOrderByUser: async (req, res) => {
-        try {
-            console.log("🔍 Headers received:", req.headers.authorization);
-            
-            // ✅ Check if authorization header exists
-            if (!req.headers.authorization) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Missing authorization header',
-                    data: []
-                });
-            }
-            
-            // ✅ Handle both Bearer token and direct token
-            let token = req.headers.authorization;
-            if (token.startsWith('Bearer ')) {
-                token = token.slice(7); // Remove "Bearer " prefix
-            }
-            
-            console.log("🎯 Token to verify:", token.substring(0, 20) + "...");
-            
-            const decodedToken = jwt.verify(token, _const.JWT_ACCESS_KEY);
-            console.log("✅ Decoded token:", decodedToken.user._id);
-            
-            // 🔥 Fetch orders without promotion populate
-            const orders = await OrderModel.find({ user: decodedToken.user._id })
-                .populate('products.product')
-                .populate("user", "username")
-                // 🔥 Removed all promotion populates
-                .sort({ createdAt: -1 });
-                
-            console.log(`📦 Found ${orders.length} orders for user`);
-            
-            // 🔥 Fetch promotion details for all orders via API
-            for (const order of orders) {
-                try {
-                    const promotionIDs = [
-                        order.voucherPromotionID,
-                        order.freeShipPromotionID,
-                        ...order.products.map(p => p.productPromotionID)
-                    ].filter(Boolean);
-
-                    if (promotionIDs.length > 0) {
-                        const promotionResult = await callPromotionAPI('/batch', 'POST', { ids: promotionIDs });
-                        if (promotionResult.success) {
-                            const promotions = promotionResult.data;
-                            
-                            // 🔥 Manually attach promotion data to order object
-                            if (order.voucherPromotionID) {
-                                order._doc.voucherPromotion = promotions.find(p => p._id === order.voucherPromotionID.toString());
-                            }
-                            if (order.freeShipPromotionID) {
-                                order._doc.freeShipPromotion = promotions.find(p => p._id === order.freeShipPromotionID.toString());
-                            }
-                            
-                            // Attach product promotion data
-                            order.products.forEach(product => {
-                                if (product.productPromotionID) {
-                                    product._doc.productPromotion = promotions.find(p => p._id === product.productPromotionID.toString());
-                                }
-                            });
-                        }
-                    }
-                } catch (promotionError) {
-                    console.error('❌ Error fetching promotions for order:', order._id, promotionError);
-                    // Continue without promotion data
-                }
-            }
-            
-            // ✅ Always return consistent JSON structure
-            res.status(200).json({ 
-                success: true,
-                data: orders,
-                count: orders.length
-            });
-            
-        } catch (err) {
-            console.error("❌ getOrderByUser error:", err.message);
-            
-            // ✅ Return JSON error response instead of text
-            if (err.name === 'JsonWebTokenError') {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid token',
-                    data: [],
-                    error: err.message
-                });
-            }
-            
-            if (err.name === 'TokenExpiredError') {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Token expired',
-                    data: [],
-                    error: err.message
-                });
-            }
-            
-            // Generic server error
-            res.status(500).json({
+    try {
+        console.log("🔍 [ORDER] Headers received:", req.headers.authorization);
+        console.log("📋 [ORDER] req.user structure:", JSON.stringify(req.user, null, 2));
+        
+        // ✅ Get user ID từ cấu trúc chuẩn hóa
+        const userId = req.user.user._id;
+        
+        if (!userId) {
+            console.error("❌ [ORDER] User ID not found in request");
+            return res.status(400).json({
                 success: false,
-                message: 'Server error while fetching orders',
-                data: [],
-                error: err.message
+                message: 'User ID not found',
+                data: []
             });
         }
-    },
+        
+        console.log("✅ [ORDER] Fetching orders for user:", userId);
+        
+        // Fetch orders for this user
+        const orders = await OrderModel.find({ user: userId })
+            .populate('products.product')
+            .populate("user", "username")
+            .sort({ createdAt: -1 });
+            
+        console.log(`📦 [ORDER] Found ${orders.length} orders for user ${userId}`);
+        
+        res.status(200).json({ 
+            success: true,
+            message: `Found ${orders.length} orders`,
+            data: orders 
+        });
+        
+    } catch (err) {
+        console.error("❌ [ORDER] getOrderByUser error:", err);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching orders',
+            data: [],
+            error: err.message
+        });
+    }
+},
     
     // Đánh giá đơn hàng (giữ nguyên)
     rateOrder: async (req, res) => {

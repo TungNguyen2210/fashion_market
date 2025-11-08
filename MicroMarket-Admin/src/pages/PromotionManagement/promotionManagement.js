@@ -446,49 +446,31 @@ const PromotionManagement = () => {
         setSelectedKeys([]);
     };
 
-    const handlePromotionList = async () => {
-        try {
-            setLoading(true);
-            
-            const params = {
-                _t: Date.now()
-            };
-            
-            if (searchKeyword && searchKeyword.trim()) {
-                params.keyword = searchKeyword.trim();
-            }
-            
-            if (filterType !== 'all') {
-                params.loai = filterType;
-            }
-            if (filterStatus !== 'all') {
-                params.trangThai = filterStatus;
-            }
-            
-            console.log('🔍 handlePromotionList params:', params);
-            
-            const res = await promotionManagementApi.searchPromotionManagement(params);
-            console.log('🔍 handlePromotionList response:', res);
-            
-            if (res && (res.success || res.data)) {
-                const promotionsData = res.data?.docs || res.data || [];
-                console.log('🔍 Setting promotions:', promotionsData.length, 'items');
-                setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
-            } else {
-                console.log('🔍 No data, clearing promotions');
-                setPromotions([]);
-            }
-        } catch (error) {
-            console.error('Failed to fetch promotion list:', error);
+    // Hàm load tất cả (không search)
+const handlePromotionList = async () => {
+    try {
+        setLoading(true);
+        const params = { _t: Date.now() };
+        
+        if (filterType !== 'all') params.loai = filterType;
+        if (filterStatus !== 'all') params.trangThai = filterStatus;
+        
+        const res = await promotionManagementApi.listPromotionManagement(params);
+        
+        if (res && (res.success || res.data)) {
+            const promotionsData = res.data?.docs || res.data || [];
+            setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
+        } else {
             setPromotions([]);
-            notification.error({
-                message: 'Lỗi tải dữ liệu',
-                description: 'Không thể tải danh sách khuyến mãi: ' + error.message,
-            });
-        } finally {
-            setLoading(false);
         }
-    };
+    } catch (error) {
+        console.error('Failed to fetch promotion list:', error);
+        setPromotions([]);
+    } finally {
+        setLoading(false);
+    }
+};
+
 
     const handleDeactivatePromotion = async (id) => {
         setLoading(true);
@@ -581,72 +563,104 @@ const PromotionManagement = () => {
     };
 
     const handleSearch = async (value) => {
-        console.log('🔍 === FRONTEND SEARCH TRIGGERED ===');
-        console.log('🔍 Search value from Input.Search:', value);
-        console.log('🔍 Type of value:', typeof value);
+    console.log('🔍 === FRONTEND SEARCH DEBUG START ===');
+    console.log('🔍 Search value from Input.Search:', `"${value}"`);
+    console.log('🔍 Type of value:', typeof value);
+    console.log('🔍 Value length:', value?.length);
+    console.log('🔍 Current searchKeyword state:', `"${searchKeyword}"`);
+    console.log('🔍 Current filterType:', `"${filterType}"`);
+    console.log('🔍 Current filterStatus:', `"${filterStatus}"`);
+    
+    try {
+        setLoading(true);
         
-        try {
-            setLoading(true);
+        const params = {
+            _t: Date.now()
+        };
+        
+        const keyword = value || '';
+        console.log('🔍 Final keyword after fallback:', `"${keyword}"`);
+        
+        setSearchKeyword(keyword);
+        console.log('🔍 Updated searchKeyword state to:', `"${keyword}"`);
+        
+        if (keyword && keyword.trim() !== '') {
+            params.keyword = keyword.trim();
+            console.log('🔍 Adding keyword to params:', `"${params.keyword}"`);
+        } else {
+            console.log('🔍 No keyword to search - will get all promotions');
+        }
+        
+        if (filterType !== 'all') {
+            params.loai = filterType;
+            console.log('🔍 Adding loai filter:', `"${filterType}"`);
+        } else {
+            console.log('🔍 No loai filter (filterType = "all")');
+        }
+        
+        if (filterStatus !== 'all') {
+            params.trangThai = filterStatus;
+            console.log('🔍 Adding trangThai filter:', `"${filterStatus}"`);
+        } else {
+            console.log('🔍 No trangThai filter (filterStatus = "all")');
+        }
+        
+        console.log('🔍 Final params object before API call:', JSON.stringify(params, null, 2));
+        console.log('🔍 Params object keys:', Object.keys(params));
+        console.log('🔍 Calling promotionManagementApi.searchPromotionManagement...');
+        
+        const res = await promotionManagementApi.searchPromotionManagement(params);
+        
+        console.log('🔍 Raw API response received:', res);
+        console.log('🔍 Response type:', typeof res);
+        console.log('🔍 Response keys:', Object.keys(res || {}));
+        
+        if (res && (res.success || res.data)) {
+            const searchData = res.data?.docs || res.data || [];
+            console.log('🔍 Extracted search data:', searchData);
+            console.log('🔍 Found', searchData.length, 'total results');
             
-            const params = {
-                _t: Date.now()
-            };
-            
-            const keyword = value || '';
-            
-            setSearchKeyword(keyword);
-            
-            if (keyword && keyword.trim() !== '') {
-                params.keyword = keyword.trim();
-                console.log('🔍 Adding keyword to params:', params.keyword);
-            } else {
-                console.log('🔍 No keyword to search');
-            }
-            
-            if (filterType !== 'all') {
-                params.loai = filterType;
-                console.log('🔍 Adding loai filter:', filterType);
-            }
-            
-            if (filterStatus !== 'all') {
-                params.trangThai = filterStatus;
-                console.log('🔍 Adding trangThai filter:', filterStatus);
-            }
-            
-            console.log('🔍 Final params to send:', params);
-            
-            const res = await promotionManagementApi.searchPromotionManagement(params);
-            console.log('🔍 Search API response:', res);
-            
-            if (res && (res.success || res.data)) {
-                const searchData = res.data?.docs || res.data || [];
-                console.log('🔍 Found', searchData.length, 'results');
-                
+            if (searchData.length > 0) {
+                console.log('🔍 First 3 results from API:');
                 searchData.slice(0, 3).forEach((item, index) => {
-                    console.log(`🔍 Result ${index + 1}:`, {
+                    console.log(`🔍 Frontend Result ${index + 1}:`, {
                         id: item._id,
                         ma: item.maKhuyenMai,
-                        ten: item.tenKhuyenMai
+                        ten: item.tenKhuyenMai,
+                        loai: item.loai,
+                        trangThai: item.trangThai
                     });
                 });
-                
-                setPromotions(searchData);
             } else {
-                console.log('🔍 No data in response');
-                setPromotions([]);
+                console.log('🔍 No results found in searchData array');
             }
             
-        } catch (error) {
-            console.error('❌ Search error:', error);
+            setPromotions(searchData);
+            console.log('🔍 Updated promotions state with', searchData.length, 'items');
+            
+        } else {
+            console.log('🔍 Invalid response structure - no data found');
+            console.log('🔍 Response.success:', res?.success);
+            console.log('🔍 Response.data:', res?.data);
             setPromotions([]);
-            notification.error({
-                message: 'Lỗi tìm kiếm',
-                description: 'Không thể tìm kiếm khuyến mãi: ' + error.message,
-            });
-        } finally {
-            setLoading(false);
         }
-    };
+        
+    } catch (error) {
+        console.error('❌ Frontend search error:', error);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error response:', error.response?.data);
+        console.error('❌ Error status:', error.response?.status);
+        
+        setPromotions([]);
+        notification.error({
+            message: 'Lỗi tìm kiếm',
+            description: 'Không thể tìm kiếm khuyến mãi: ' + error.message,
+        });
+    } finally {
+        setLoading(false);
+        console.log('🔍 === FRONTEND SEARCH DEBUG END ===');
+    }
+};
 
     const handleFilterTypeChange = async (value) => {
         console.log('🔍 Filter type changed to:', value);
@@ -767,9 +781,6 @@ const PromotionManagement = () => {
                 }
                 if (record.giamToiDa) {
                     conditions.push(`Tối đa: ${record.giamToiDa.toLocaleString()}đ`);
-                }
-                if (record.soLuong) {
-                    conditions.push(`SL: ${record.soLuong}`);
                 }
                 
                 return conditions.length > 0 ? (
@@ -965,7 +976,7 @@ const PromotionManagement = () => {
                             <Select 
                                 placeholder="Chọn loại khuyến mãi"
                                 onChange={(value) => handlePromotionTypeChange(value, formInstance)}
-                                disabled={isEdit} // Không cho phép đổi loại khi edit
+                                disabled={isEdit} 
                             >
                                 <Option value="voucher">
                                     <TagOutlined /> Voucher

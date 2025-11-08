@@ -3,13 +3,14 @@ import axiosClient from "./axiosClient";
 const promotionManagementApi = {
     async listPromotionManagement(params = {}) {
         const url = 'promotions';
+        console.log('🚨 LIST API CALLED!');
+        console.log('🚨 LIST params:', params);
         try {
-            console.log('📤 List promotions API call:', { url, params });
-            const response = await axiosClient.get(url, { params }); // ✅ CORRECT
-            console.log('📥 List promotions response:', response);
+            const response = await axiosClient.get(url, { params });
+            console.log('🚨 LIST response:', response);
             return response;
         } catch (error) {
-            console.error('❌ List promotions error:', error);
+            console.error('❌ LIST error:', error);
             throw error;
         }
     },
@@ -43,15 +44,14 @@ const promotionManagementApi = {
     // ✅ FIX: Search function - Support both keyword and filters
     async searchPromotionManagement(searchParams = {}) {
         const url = 'promotions/search';
+        console.log('🚨 SEARCH API CALLED!');
+        console.log('🚨 SEARCH params:', searchParams);
         try {
-            console.log('📤 Search promotions API call:', { url, searchParams });
-            
-            // ✅ FIX: Use params object instead of query string
             const response = await axiosClient.get(url, { params: searchParams });
-            console.log('📥 Search promotions response:', response);
+            console.log('🚨 SEARCH response:', response);
             return response;
         } catch (error) {
-            console.error('❌ Search promotions error:', error);
+            console.error('❌ SEARCH error:', error);
             throw error;
         }
     },

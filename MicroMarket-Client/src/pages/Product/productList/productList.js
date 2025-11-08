@@ -630,7 +630,6 @@ const ProductList = () => {
                 {/* Pagination riêng biệt */}
                 {!loading && productDetail.length > 0 && (
                   <div style={{ textAlign: 'center', marginTop: 40 }}>
-                    {/* Bạn có thể thêm pagination manual ở đây nếu cần */}
                   </div>
                 )}
               </div>

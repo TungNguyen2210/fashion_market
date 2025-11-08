@@ -14,6 +14,7 @@ const productRoute = require('./app/routers/product');
 const categoryRoute = require('./app/routers/category');
 const orderRoute = require('./app/routers/order');
 const colorRoute = require('./app/routers/colors');
+const shippingRoutes = require('./app/routers/shipping');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -33,6 +34,7 @@ app.use('/api/category', categoryRoute);
 app.use('/api/order', orderRoute);
 app.use('/api/color', colorRoute);
 app.use('/uploads', express.static('uploads'));
+app.use('/shipping', shippingRoutes);
 
 // sendEmailNotification();
 

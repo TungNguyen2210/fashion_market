@@ -28,7 +28,8 @@ import {
 import {
   LeftSquareOutlined,
   EnvironmentOutlined,
-  PercentageOutlined
+  PercentageOutlined,
+  GlobalOutlined
 } from "@ant-design/icons";
 import { numberWithCommas } from "../../../utils/common";
 
@@ -40,10 +41,12 @@ const { TextArea } = Input;
 const RATE_VND_USD = 26144.38;
 
 const Pay = () => {
+  // ===== STATES =====
   const [productDetail, setProductDetail] = useState([]);
   const [productNames, setProductNames] = useState({});
-  const [userData, setUserData] = useState([]);
+  const [userData, setUserData] = useState(null); // ✅ CHANGE: null thay vì []
   const [loading, setLoading] = useState(true);
+  const [userDataLoading, setUserDataLoading] = useState(true); // ✅ NEW: Loading state riêng cho userData
   const [orderTotal, setOrderTotal] = useState(0);
   const [originalTotal, setOriginalTotal] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -63,249 +66,609 @@ const Pay = () => {
   const [selectedLL, setSelectedLL] = useState(null);
   const [pendingFormValues, setPendingFormValues] = useState(null);
 
-  // === PROMOTION STATES - Updated ===
+  // === PROMOTION STATES ===
   const [voucherPromotionID, setVoucherPromotionID] = useState(null);
   const [freeShipPromotionID, setFreeShipPromotionID] = useState(null);
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherDiscountAmount, setVoucherDiscountAmount] = useState(0);
-
-  // ✅ THÊM STATES CHO PROMOTION TỪ PRODUCTLIST
   const [activePromotions, setActivePromotions] = useState([]);
-  const [productPromotionDiscounts, setProductPromotionDiscounts] = useState({}); // Lưu discount cho từng sản phẩm
+  const [productPromotionDiscounts, setProductPromotionDiscounts] = useState({});
+  const [promotionLoaded, setPromotionLoaded] = useState(false);
 
   const debounceRef = useRef(null);
 
-  // ✅ Thêm state để track promotion loading
-  const [promotionLoaded, setPromotionLoaded] = useState(false);
+  // ===== SHIPPING STATES =====
+  const [distKm, setDistKm] = useState(null);
+  const [shipFee, setShipFee] = useState(0);
+  const [grandTotal, setGrandTotal] = useState(0);
+  const [shippingDetails, setShippingDetails] = useState({
+    basePrice: 0,
+    distancePrice: 0,
+    totalPrice: 0,
+    estimatedDays: 0,
+    shippingMethod: ''
+  });
 
-  // ✅ COPY PROMOTION FUNCTIONS TỪ PRODUCTLIST.JS
-  // Hàm tính giá sau khi áp dụng khuyến mãi
-  const calculateDiscountedPrice = (product) => {
-    const now = new Date();
-    let finalPrice = product.price;
-    let maxDiscountPercent = 0;
-    let appliedPromotion = null;
+  // ===== INTERNATIONAL SHIPPING STATES =====
+  const [selectedCountry, setSelectedCountry] = useState('VN');
+  const [isInternational, setIsInternational] = useState(false);
+  const [internationalZone, setInternationalZone] = useState(null);
 
-    console.log('=== DEBUG PROMOTION PAY ===');
-    console.log('Product ID:', product.product || product._id);
-    console.log('Product name:', product.productName || product.name);
-    console.log('Active promotions:', activePromotions.length);
+  // Store coordinates
+  const STORE_COORD = { lat: 10.870319219700491, lng: 106.79061359058457 };
 
-    // Tìm tất cả các đợt giảm giá active và còn hạn
-    const validPromotions = activePromotions.filter(promotion => {
-      console.log('Checking promotion:', promotion.tenKhuyenMai);
-      
-      // Kiểm tra loại khuyến mãi
-      if (promotion.loai !== 'dot_giam_gia') {
-        console.log('-> Not dot_giam_gia, actual:', promotion.loai);
-        return false;
-      }
-      
-      // Kiểm tra trạng thái
-      if (promotion.trangThai !== 'active') {
-        console.log('-> Not active, actual:', promotion.trangThai);
-        return false;
-      }
-      
-      // Kiểm tra thời gian hiệu lực
-      const startDate = new Date(promotion.thoiGianBD);
-      const endDate = new Date(promotion.thoiGianKT);
-      console.log('-> Time check:', { 
-        now: now.toISOString(), 
-        startDate: startDate.toISOString(), 
-        endDate: endDate.toISOString() 
-      });
-      
-      if (now < startDate || now > endDate) {
-        console.log('-> Time invalid');
-        return false;
-      }
-      
-      // Kiểm tra sản phẩm có trong danh sách áp dụng không
-      if (!promotion.sanPhamApDung || promotion.sanPhamApDung.length === 0) {
-        console.log('-> No products applied');
-        return false;
-      }
-      
-      console.log('-> Products in promotion:', promotion.sanPhamApDung);
-      
-      const productInPromotion = promotion.sanPhamApDung.some(productId => {
-        // Xử lý trường hợp productId có thể là string, object với $oid, hoặc object với _id
-        let id;
-        
-        if (typeof productId === 'string') {
-          id = productId;
-        } else if (productId && productId.$oid) {
-          id = productId.$oid;
-        } else if (productId && productId._id) {
-          id = productId._id;
-        } else if (typeof productId === 'object' && productId.toString) {
-          id = productId.toString();
-        } else {
-          id = productId;
+  // ===== SHIPPING CONFIGURATION (giữ nguyên) =====
+  const SHIPPING_CONFIG = {
+    domestic: {
+      regions: {
+        hcm_inner: {
+          name: 'Nội thành TP.HCM',
+          districts: ['quận 1', 'quận 3', 'quận 4', 'quận 5', 'quận 6', 'quận 7', 
+                     'quận 8', 'quận 10', 'quận 11', 'phú nhuận', 'tân bình', 
+                     'tân phú', 'bình thạnh', 'gò vấp'],
+          baseFee: 16500,
+          estimatedHours: '2-4 giờ',
+          estimatedDays: 0
+        },
+        hcm_suburban: {
+          name: 'Ngoại thành TP.HCM',
+          districts: ['quận 2', 'quận 9', 'quận 12', 'thủ đức', 'bình tân', 
+                     'bình chánh', 'hóc môn', 'củ chi', 'nhà bè', 'cần giờ'],
+          baseFee: 22000,
+          estimatedHours: '4-6 giờ',
+          estimatedDays: 0
+        },
+        nearby_province: {
+          name: 'Tỉnh lân cận',
+          provinces: ['bình dương', 'đồng nai', 'long an', 'bà rịa vũng tàu', 'tây ninh'],
+          baseFee: 30000,
+          estimatedDays: 1
+        },
+        south_region: {
+          name: 'Miền Nam',
+          provinces: ['tiền giang', 'bến tre', 'vĩnh long', 'cần thơ', 'an giang',
+                     'kiên giang', 'cà mau', 'bạc liêu', 'sóc trăng', 'trà vinh',
+                     'hậu giang', 'đồng tháp'],
+          baseFee: 35000,
+          estimatedDays: 2
+        },
+        central_coast: {
+          name: 'Miền Trung - Duyên hải',
+          provinces: ['bình thuận', 'ninh thuận', 'khánh hòa', 'phú yên', 'bình định',
+                     'quảng ngãi', 'quảng nam', 'đà nẵng', 'thừa thiên huế'],
+          baseFee: 35000,
+          estimatedDays: 2
+        },
+        central_highland: {
+          name: 'Miền Trung - Tây Nguyên',
+          provinces: ['lâm đồng', 'đắk lắk', 'đắk nông', 'gia lai', 'kon tum'],
+          baseFee: 35000,
+          estimatedDays: 2
+        },
+        north_region: {
+          name: 'Miền Bắc',
+          provinces: ['hà nội', 'hải phòng', 'quảng ninh', 'hải dương', 'hưng yên',
+                     'thái bình', 'nam định', 'ninh bình', 'hà nam', 'bắc ninh',
+                     'bắc giang', 'vĩnh phúc', 'phú thọ', 'thái nguyên', 'lạng sơn',
+                     'cao bằng', 'bắc kạn', 'tuyên quang', 'lào cai', 'yên bái',
+                     'điện biên', 'lai châu', 'sơn la', 'hòa bình', 'thanh hóa',
+                     'nghệ an', 'hà tĩnh', 'quảng bình', 'quảng trị'],
+          baseFee: 35000,
+          estimatedDays: 3
         }
-        
-        // So sánh với product._id hoặc product.product (có thể là string hoặc object)
-        let currentProductId;
-        const productIdToCheck = product.product || product._id;
-        if (typeof productIdToCheck === 'string') {
-          currentProductId = productIdToCheck;
-        } else if (productIdToCheck && productIdToCheck.$oid) {
-          currentProductId = productIdToCheck.$oid;
-        } else if (productIdToCheck && productIdToCheck.toString) {
-          currentProductId = productIdToCheck.toString();
-        } else {
-          currentProductId = productIdToCheck;
+      },
+      surcharges: {
+        remote_area: {
+          districts: ['cần giờ', 'củ chi', 'côn đảo', 'phú quốc', 'tây nguyên'],
+          fee: 10000
+        },
+        peak_hour: {
+          hours: [11, 12, 17, 18, 19],
+          fee: 5000
+        },
+        weekend: {
+          fee: 5000
         }
-        
-        console.log('-> Comparing:', { 
-          promotionProductId: id, 
-          currentProductId: currentProductId, 
-          match: id === currentProductId 
-        });
-        
-        return id === currentProductId;
-      });
-      
-      console.log('-> Product in promotion:', productInPromotion);
-      return productInPromotion;
-    });
-
-    console.log('Valid promotions found:', validPromotions.length);
-
-    // Tìm khuyến mãi có phần trăm giảm cao nhất
-    validPromotions.forEach(promotion => {
-      console.log('-> Applying promotion:', promotion.tenKhuyenMai, promotion.phanTramKhuyenMai + '%');
-      if (promotion.phanTramKhuyenMai > maxDiscountPercent) {
-        maxDiscountPercent = promotion.phanTramKhuyenMai;
-        appliedPromotion = promotion;
       }
-    });
+    },
+    international: {
+      zones: {
+        zone1: {
+          name: 'Đông Nam Á',
+          countries: ['SG', 'MY', 'TH', 'ID', 'PH', 'LA', 'KH', 'MM', 'BN'],
+          countryNames: {
+            'SG': 'Singapore',
+            'MY': 'Malaysia', 
+            'TH': 'Thái Lan',
+            'ID': 'Indonesia',
+            'PH': 'Philippines',
+            'LA': 'Lào',
+            'KH': 'Campuchia',
+            'MM': 'Myanmar',
+            'BN': 'Brunei'
+          },
+          baseFee: 450000,
+          estimatedDays: '3-5',
+          customsClearance: 2
+        },
+        zone2: {
+          name: 'Đông Á',
+          countries: ['CN', 'JP', 'KR', 'TW', 'HK', 'MO'],
+          countryNames: {
+            'CN': 'Trung Quốc',
+            'JP': 'Nhật Bản',
+            'KR': 'Hàn Quốc',
+            'TW': 'Đài Loan',
+            'HK': 'Hong Kong',
+            'MO': 'Macau'
+          },
+          baseFee: 550000,
+          estimatedDays: '5-7',
+          customsClearance: 3
+        },
+        zone3: {
+          name: 'Nam Á & Trung Đông',
+          countries: ['IN', 'PK', 'BD', 'LK', 'AE', 'SA', 'QA', 'KW', 'IL'],
+          countryNames: {
+            'IN': 'Ấn Độ',
+            'PK': 'Pakistan',
+            'BD': 'Bangladesh',
+            'LK': 'Sri Lanka',
+            'AE': 'UAE',
+            'SA': 'Saudi Arabia',
+            'QA': 'Qatar',
+            'KW': 'Kuwait',
+            'IL': 'Israel'
+          },
+          baseFee: 650000,
+          estimatedDays: '7-10',
+          customsClearance: 4
+        },
+        zone4: {
+          name: 'Châu Úc & Thái Bình Dương',
+          countries: ['AU', 'NZ', 'FJ', 'PG'],
+          countryNames: {
+            'AU': 'Úc',
+            'NZ': 'New Zealand',
+            'FJ': 'Fiji',
+            'PG': 'Papua New Guinea'
+          },
+          baseFee: 750000,
+          estimatedDays: '7-10',
+          customsClearance: 3
+        },
+        zone5: {
+          name: 'Châu Âu',
+          countries: ['GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'SE', 'NO', 'DK', 'FI', 'PL', 'CZ', 'AT', 'CH', 'PT', 'GR', 'RU'],
+          countryNames: {
+            'GB': 'Anh',
+            'FR': 'Pháp',
+            'DE': 'Đức',
+            'IT': 'Ý',
+            'ES': 'Tây Ban Nha',
+            'NL': 'Hà Lan',
+            'BE': 'Bỉ',
+            'SE': 'Thụy Điển',
+            'NO': 'Na Uy',
+            'DK': 'Đan Mạch',
+            'FI': 'Phần Lan',
+            'PL': 'Ba Lan',
+            'CZ': 'Séc',
+            'AT': 'Áo',
+            'CH': 'Thụy Sĩ',
+            'PT': 'Bồ Đào Nha',
+            'GR': 'Hy Lạp',
+            'RU': 'Nga'
+          },
+          baseFee: 850000,
+          estimatedDays: '10-14',
+          customsClearance: 5
+        },
+        zone6: {
+          name: 'Bắc Mỹ',
+          countries: ['US', 'CA', 'MX'],
+          countryNames: {
+            'US': 'Hoa Kỳ',
+            'CA': 'Canada',
+            'MX': 'Mexico'
+          },
+          baseFee: 950000,
+          estimatedDays: '12-15',
+          customsClearance: 5
+        },
+        zone7: {
+          name: 'Nam Mỹ & Châu Phi',
+          countries: ['BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'ZA', 'EG', 'NG', 'KE', 'MA'],
+          countryNames: {
+            'BR': 'Brazil',
+            'AR': 'Argentina',
+            'CL': 'Chile',
+            'CO': 'Colombia',
+            'PE': 'Peru',
+            'VE': 'Venezuela',
+            'ZA': 'Nam Phi',
+            'EG': 'Ai Cập',
+            'NG': 'Nigeria',
+            'KE': 'Kenya',
+            'MA': 'Maroc'
+          },
+          baseFee: 1100000,
+          estimatedDays: '15-20',
+          customsClearance: 7
+        }
+      },
+      services: {
+        express: {
+          name: 'Giao hàng nhanh quốc tế',
+          feeMultiplier: 1.5,
+          reduceDays: '30%'
+        },
+        economy: {
+          name: 'Giao hàng tiết kiệm',
+          feeMultiplier: 0.7,
+          addDays: '50%'
+        },
+        insurance: {
+          name: 'Bảo hiểm quốc tế',
+          rate: 2,
+          minFee: 50000,
+          maxFee: 500000
+        },
+        tracking: {
+          name: 'Theo dõi chi tiết',
+          fee: 50000
+        },
+        signature: {
+          name: 'Yêu cầu chữ ký nhận hàng',
+          fee: 30000
+        }
+      },
+      additionalFees: {
+        fuelSurcharge: 0.15,
+        remoteSurcharge: 200000,
+        customsHandling: 150000,
+        documentFee: 100000
+      },
+      restrictedItems: [
+        'weapons', 'drugs', 'explosives', 'perishables', 'liquids', 'batteries'
+      ],
+      disclaimer: {
+        vi: 'Giá vận chuyển chưa bao gồm thuế nhập khẩu và phí hải quan tại nước đến. Khách hàng có trách nhiệm thanh toán các khoản phí này khi nhận hàng.',
+        en: 'Shipping price does not include import taxes and customs duties at destination country. Customer is responsible for these charges upon delivery.'
+      }
+    },
+    services: {
+      cod: {
+        name: 'Thu hộ COD',
+        fee: 0,
+        rate: 0,
+        availableFor: ['domestic']
+      },
+      careful: {
+        name: 'Giao hàng cẩn thận',
+        fee: 5000,
+        availableFor: ['domestic', 'international']
+      }
+    }
+  };
 
-    // Tính giá sau giảm
-    if (maxDiscountPercent > 0) {
-      const discountAmount = (product.price * maxDiscountPercent) / 100;
-      finalPrice = product.price - discountAmount;
-      console.log('-> Final calculation:', {
-        originalPrice: product.price,
-        discountPercent: maxDiscountPercent,
-        discountAmount,
-        finalPrice: Math.round(finalPrice)
-      });
+  const COUNTRIES_LIST = [
+    { code: 'VN', name: 'Việt Nam', flag: '🇻🇳' },
+    { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+    { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
+    { code: 'TH', name: 'Thái Lan', flag: '🇹🇭' },
+    { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
+    { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
+    { code: 'LA', name: 'Lào', flag: '🇱🇦' },
+    { code: 'KH', name: 'Campuchia', flag: '🇰🇭' },
+    { code: 'MM', name: 'Myanmar', flag: '🇲🇲' },
+    { code: 'BN', name: 'Brunei', flag: '🇧🇳' },
+    { code: 'CN', name: 'Trung Quốc', flag: '🇨🇳' },
+    { code: 'JP', name: 'Nhật Bản', flag: '🇯🇵' },
+    { code: 'KR', name: 'Hàn Quốc', flag: '🇰🇷' },
+    { code: 'TW', name: 'Đài Loan', flag: '🇹🇼' },
+    { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
+    { code: 'MO', name: 'Macau', flag: '🇲🇴' },
+    { code: 'IN', name: 'Ấn Độ', flag: '🇮🇳' },
+    { code: 'PK', name: 'Pakistan', flag: '🇵🇰' },
+    { code: 'BD', name: 'Bangladesh', flag: '🇧🇩' },
+    { code: 'LK', name: 'Sri Lanka', flag: '🇱🇰' },
+    { code: 'AE', name: 'UAE', flag: '🇦🇪' },
+    { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
+    { code: 'QA', name: 'Qatar', flag: '🇶🇦' },
+    { code: 'KW', name: 'Kuwait', flag: '🇰🇼' },
+    { code: 'IL', name: 'Israel', flag: '🇮🇱' },
+    { code: 'AU', name: 'Úc', flag: '🇦🇺' },
+    { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
+    { code: 'FJ', name: 'Fiji', flag: '🇫🇯' },
+    { code: 'GB', name: 'Anh', flag: '🇬🇧' },
+    { code: 'FR', name: 'Pháp', flag: '🇫🇷' },
+    { code: 'DE', name: 'Đức', flag: '🇩🇪' },
+    { code: 'IT', name: 'Ý', flag: '🇮🇹' },
+    { code: 'ES', name: 'Tây Ban Nha', flag: '🇪🇸' },
+    { code: 'NL', name: 'Hà Lan', flag: '🇳🇱' },
+    { code: 'BE', name: 'Bỉ', flag: '🇧🇪' },
+    { code: 'SE', name: 'Thụy Điển', flag: '🇸🇪' },
+    { code: 'NO', name: 'Na Uy', flag: '🇳🇴' },
+    { code: 'DK', name: 'Đan Mạch', flag: '🇩🇰' },
+    { code: 'FI', name: 'Phần Lan', flag: '🇫🇮' },
+    { code: 'PL', name: 'Ba Lan', flag: '🇵🇱' },
+    { code: 'CZ', name: 'Séc', flag: '🇨🇿' },
+    { code: 'AT', name: 'Áo', flag: '🇦🇹' },
+    { code: 'CH', name: 'Thụy Sĩ', flag: '🇨🇭' },
+    { code: 'PT', name: 'Bồ Đào Nha', flag: '🇵🇹' },
+    { code: 'GR', name: 'Hy Lạp', flag: '🇬🇷' },
+    { code: 'RU', name: 'Nga', flag: '🇷🇺' },
+    { code: 'US', name: 'Hoa Kỳ', flag: '🇺🇸' },
+    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
+    { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+    { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+    { code: 'CL', name: 'Chile', flag: '🇨🇱' },
+    { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
+    { code: 'PE', name: 'Peru', flag: '🇵🇪' },
+    { code: 'VE', name: 'Venezuela', flag: '🇻🇪' },
+    { code: 'ZA', name: 'Nam Phi', flag: '🇿🇦' },
+    { code: 'EG', name: 'Ai Cập', flag: '🇪🇬' },
+    { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
+    { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
+    { code: 'MA', name: 'Maroc', flag: '🇲🇦' }
+  ];
+
+  // ===== HELPER FUNCTIONS =====
+  const normalizeVietnamese = (str) => {
+    if (!str) return '';
+    return str.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  };
+
+  const determineInternationalZone = (countryCode) => {
+    for (const [zoneKey, zone] of Object.entries(SHIPPING_CONFIG.international.zones)) {
+      if (zone.countries.includes(countryCode)) {
+        return { key: zoneKey, ...zone };
+      }
+    }
+    return null;
+  };
+
+  const calculateInternationalShippingFee = (countryCode, orderValue, options = {}) => {
+    const {
+      serviceType = 'standard',
+      insurance = true,
+      tracking = true,
+      signature = false
+    } = options;
+
+    const zone = determineInternationalZone(countryCode);
+    if (!zone) {
+      return {
+        error: true,
+        message: 'Quốc gia không được hỗ trợ giao hàng'
+      };
     }
 
-    console.log('=== END DEBUG PAY ===');
+    let baseFee = zone.baseFee;
+    let totalFee = baseFee;
+    let additionalFees = [];
+    let estimatedDays = zone.estimatedDays;
+
+    if (serviceType === 'express') {
+      totalFee *= SHIPPING_CONFIG.international.services.express.feeMultiplier;
+      additionalFees.push(`Giao hàng nhanh: x${SHIPPING_CONFIG.international.services.express.feeMultiplier}`);
+      
+      const [minDays, maxDays] = estimatedDays.split('-').map(Number);
+      const reducedMin = Math.ceil(minDays * 0.7);
+      const reducedMax = Math.ceil(maxDays * 0.7);
+      estimatedDays = `${reducedMin}-${reducedMax}`;
+    } else if (serviceType === 'economy') {
+      totalFee *= SHIPPING_CONFIG.international.services.economy.feeMultiplier;
+      additionalFees.push(`Giao hàng tiết kiệm: x${SHIPPING_CONFIG.international.services.economy.feeMultiplier}`);
+      
+      const [minDays, maxDays] = estimatedDays.split('-').map(Number);
+      const increasedMin = Math.ceil(minDays * 1.5);
+      const increasedMax = Math.ceil(maxDays * 1.5);
+      estimatedDays = `${increasedMin}-${increasedMax}`;
+    }
+
+    const fuelSurcharge = totalFee * SHIPPING_CONFIG.international.additionalFees.fuelSurcharge;
+    totalFee += fuelSurcharge;
+    additionalFees.push(`Phụ phí nhiên liệu (15%): +${numberWithCommas(Math.round(fuelSurcharge))}đ`);
+
+    totalFee += SHIPPING_CONFIG.international.additionalFees.customsHandling;
+    additionalFees.push(`Phí xử lý hải quan: +${numberWithCommas(SHIPPING_CONFIG.international.additionalFees.customsHandling)}đ`);
+
+    totalFee += SHIPPING_CONFIG.international.additionalFees.documentFee;
+    additionalFees.push(`Phí chứng từ: +${numberWithCommas(SHIPPING_CONFIG.international.additionalFees.documentFee)}đ`);
+
+    if (insurance) {
+      const insuranceFee = Math.min(
+        Math.max(
+          orderValue * SHIPPING_CONFIG.international.services.insurance.rate / 100,
+          SHIPPING_CONFIG.international.services.insurance.minFee
+        ),
+        SHIPPING_CONFIG.international.services.insurance.maxFee
+      );
+      totalFee += insuranceFee;
+      additionalFees.push(`Bảo hiểm (2%): +${numberWithCommas(Math.round(insuranceFee))}đ`);
+    }
+
+    if (tracking) {
+      totalFee += SHIPPING_CONFIG.international.services.tracking.fee;
+      additionalFees.push(`Theo dõi chi tiết: +${numberWithCommas(SHIPPING_CONFIG.international.services.tracking.fee)}đ`);
+    }
+
+    if (signature) {
+      totalFee += SHIPPING_CONFIG.international.services.signature.fee;
+      additionalFees.push(`Yêu cầu chữ ký: +${numberWithCommas(SHIPPING_CONFIG.international.services.signature.fee)}đ`);
+    }
+
+    const totalEstimatedDays = `${estimatedDays} ngày + ${zone.customsClearance} ngày thông quan`;
 
     return {
-      originalPrice: product.price,
-      finalPrice: Math.round(finalPrice),
-      discountPercent: maxDiscountPercent,
-      appliedPromotion: appliedPromotion,
-      hasDiscount: maxDiscountPercent > 0
+      basePrice: baseFee,
+      additionalFees: additionalFees,
+      totalPrice: Math.round(totalFee),
+      estimatedDays: totalEstimatedDays,
+      shippingMethod: `Vận chuyển quốc tế - ${zone.name}`,
+      zone: zone.name,
+      serviceType: serviceType,
+      hasInsurance: insurance,
+      hasTracking: tracking,
+      hasSignature: signature,
+      customsNote: SHIPPING_CONFIG.international.disclaimer.vi
     };
   };
 
-  // Hàm tải danh sách khuyến mãi đang hoạt động - COPY TỪ PRODUCTLIST
-  const fetchActivePromotions = async () => {
-    try {
-      console.log('=== FETCHING PROMOTIONS DEBUG PAY ===');
-      console.log('Starting to fetch active promotions...');
-      
-      // Thử các endpoint khác nhau để tìm đúng API
-      const possibleEndpoints = [
-        '/promotion-management',
-        '/promotions',
-        '/promotion',
-        '/khuyenmai',
-        '/promotion-management/search'
-      ];
-      
-      for (const endpoint of possibleEndpoints) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          
-          // Thử GET với params
-          const response = await axiosClient.get(endpoint, {
-            params: {
-              trangThai: 'active',
-              loai: 'dot_giam_gia'
-            }
-          });
-          
-          console.log(`Response from ${endpoint}:`, response);
-          
-          if (response && response.data) {
-            const promotionsData = response.data.docs || response.data || [];
-            
-            if (Array.isArray(promotionsData) && promotionsData.length > 0) {
-              console.log(`Success with ${endpoint}! Found ${promotionsData.length} promotions`);
-              setActivePromotions(promotionsData);
-              return;
-            }
-          }
-        } catch (error) {
-          console.log(`Failed with ${endpoint}:`, error.message);
-          continue;
-        }
+  const determineDomesticShippingRegion = (address) => {
+    if (!address) return null;
+    
+    const normalizedAddr = normalizeVietnamese(address);
+    
+    for (const district of SHIPPING_CONFIG.domestic.regions.hcm_inner.districts) {
+      if (normalizedAddr.includes(normalizeVietnamese(district))) {
+        return SHIPPING_CONFIG.domestic.regions.hcm_inner;
       }
-      
-      // Nếu tất cả endpoints đều fail, thử lấy tất cả rồi filter
-      try {
-        console.log('Trying to get all promotions and filter...');
-        const response = await axiosClient.get('/promotion-management');
-        console.log('All promotions response:', response);
-        
-        if (response && response.data) {
-          const allPromotions = response.data.docs || response.data || [];
-          console.log('All promotions:', allPromotions);
-          
-          if (Array.isArray(allPromotions)) {
-            const now = new Date();
-            const activePromotions = allPromotions.filter(promotion => {
-              const startDate = new Date(promotion.thoiGianBD);
-              const endDate = new Date(promotion.thoiGianKT);
-              
-              return promotion.trangThai === 'active' && 
-                     promotion.loai === 'dot_giam_gia' &&
-                     now >= startDate && 
-                     now <= endDate;
-            });
-            
-            console.log('Filtered active promotions:', activePromotions);
-            setActivePromotions(activePromotions);
-            return;
-          }
-        }
-      } catch (error) {
-        console.log('Failed to get all promotions:', error.message);
-      }
-      
-      // LAST RESORT: Hardcode data tạm thời để test
-      console.log('Using hardcoded test data for promotion...');
-      const testPromotion = {
-        _id: "68e2258768ec6627f9194d3c",
-        maKhuyenMai: "test4",
-        tenKhuyenMai: "test4", 
-        loai: "dot_giam_gia",
-        phanTramKhuyenMai: 50,
-        giaTriToiThieu: 0,
-        giamToiDa: null,
-        soLuong: null,
-        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"], // Đảm bảo format string đơn giản
-        thoiGianBD: "2025-10-02T00:00:00.000Z",
-        thoiGianKT: "2025-10-28T00:00:00.000Z",
-        trangThai: "active",
-        moTa: "test4"
-      };
-      
-      setActivePromotions([testPromotion]);
-      console.log('Using test data - promotion set successfully');
-      
-    } catch (error) {
-      console.error('=== PROMOTION FETCH ERROR PAY ===');
-      console.error('Error details:', error);
-      setActivePromotions([]);
     }
+    
+    for (const district of SHIPPING_CONFIG.domestic.regions.hcm_suburban.districts) {
+      if (normalizedAddr.includes(normalizeVietnamese(district))) {
+        return SHIPPING_CONFIG.domestic.regions.hcm_suburban;
+      }
+    }
+    
+    for (const [regionKey, region] of Object.entries(SHIPPING_CONFIG.domestic.regions)) {
+      if (region.provinces) {
+        for (const province of region.provinces) {
+          if (normalizedAddr.includes(normalizeVietnamese(province))) {
+            return region;
+          }
+        }
+      }
+    }
+    
+    return SHIPPING_CONFIG.domestic.regions.north_region;
+  };
+
+  const isRemoteArea = (address) => {
+    const normalizedAddr = normalizeVietnamese(address);
+    return SHIPPING_CONFIG.domestic.surcharges.remote_area.districts.some(
+      district => normalizedAddr.includes(normalizeVietnamese(district))
+    );
+  };
+
+  const calculateDomesticShippingFee = (address, orderValue, options = {}) => {
+    const { 
+      express = false, 
+      insurance = false,
+      cod = true,
+      deliveryTime = new Date() 
+    } = options;
+    
+    const region = determineDomesticShippingRegion(address);
+    if (!region) {
+      return {
+        basePrice: 0,
+        totalPrice: 0,
+        estimatedDays: 0,
+        shippingMethod: 'Không xác định được khu vực'
+      };
+    }
+    
+    let baseFee = region.baseFee;
+    let totalFee = baseFee;
+    let estimatedDays = region.estimatedDays;
+    let additionalFees = [];
+    
+    if (freeShipPromotionID) {
+      return {
+        basePrice: baseFee,
+        additionalFees: [],
+        totalPrice: 0,
+        estimatedDays: estimatedDays,
+        estimatedTime: estimatedDays === 0 ? (region.estimatedHours || 'Trong ngày') : `${estimatedDays} ngày`,
+        shippingMethod: region.name + ' (Miễn phí vận chuyển)',
+        isCOD: cod,
+        hasInsurance: insurance,
+        isExpress: express,
+        isFreeShip: true
+      };
+    }
+    
+    if (isRemoteArea(address)) {
+      totalFee += SHIPPING_CONFIG.domestic.surcharges.remote_area.fee;
+      additionalFees.push('Phụ phí vùng xa: +' + numberWithCommas(SHIPPING_CONFIG.domestic.surcharges.remote_area.fee) + 'đ');
+    }
+    
+    const currentHour = deliveryTime.getHours();
+    if (SHIPPING_CONFIG.domestic.surcharges.peak_hour.hours.includes(currentHour)) {
+      totalFee += SHIPPING_CONFIG.domestic.surcharges.peak_hour.fee;
+      additionalFees.push('Phụ phí giờ cao điểm: +' + numberWithCommas(SHIPPING_CONFIG.domestic.surcharges.peak_hour.fee) + 'đ');
+    }
+    
+    const dayOfWeek = deliveryTime.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      totalFee += SHIPPING_CONFIG.domestic.surcharges.weekend.fee;
+      additionalFees.push('Phụ phí cuối tuần: +' + numberWithCommas(SHIPPING_CONFIG.domestic.surcharges.weekend.fee) + 'đ');
+    }
+    
+    totalFee = Math.max(totalFee, 15000);
+    
+    let estimatedTime = '';
+    if (estimatedDays === 0) {
+      estimatedTime = region.estimatedHours || 'Trong ngày';
+    } else {
+      estimatedTime = `${estimatedDays} ngày`;
+    }
+    
+    return {
+      basePrice: baseFee,
+      additionalFees: additionalFees,
+      totalPrice: Math.round(totalFee),
+      estimatedDays: estimatedDays,
+      estimatedTime: estimatedTime,
+      shippingMethod: region.name,
+      isCOD: cod,
+      hasInsurance: insurance,
+      isExpress: express
+    };
+  };
+
+  const calculateShippingFee = (country, address, orderValue, options = {}) => {
+    if (country === 'VN') {
+      return calculateDomesticShippingFee(address, orderValue, options);
+    } else {
+      return calculateInternationalShippingFee(country, orderValue, options);
+    }
+  };
+
+  const getDrivingDistanceKm = async (from, to) => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('osrm fail');
+      const j = await res.json();
+      const meters = j?.routes?.[0]?.distance;
+      if (!meters && meters !== 0) throw new Error('no distance');
+      return meters / 1000;
+    } catch {
+      return null;
+    }
+  };
+
+  const haversineKm = (a, b) => {
+    const R = 6371;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const x =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
   };
 
   async function geocodeAddress(q) {
@@ -336,7 +699,21 @@ const Pay = () => {
     form.setFieldsValue({ address: v, lat: undefined, lng: undefined });
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => geocodeAddress(v), 1500);
+    debounceRef.current = setTimeout(() => {
+      if (selectedCountry === 'VN') {
+        geocodeAddress(v);
+      }
+    }, 1500);
+  };
+
+  const onCountryChange = (value) => {
+    setSelectedCountry(value);
+    setIsInternational(value !== 'VN');
+    
+    if (value !== 'VN') {
+      form.setFieldsValue({ lat: undefined, lng: undefined });
+      setSelectedLL(null);
+    }
   };
 
   const reverseGeocode = async (lat, lng) => {
@@ -355,6 +732,13 @@ const Pay = () => {
   const handleUseMyLocation = () => {
     if (!('geolocation' in navigator)) {
       notification.warning({ message: 'Trình duyệt của bạn không hỗ trợ định vị.' });
+      return;
+    }
+
+    if (selectedCountry !== 'VN') {
+      notification.warning({ 
+        message: 'Chức năng này chỉ khả dụng cho địa chỉ trong Việt Nam.' 
+      });
       return;
     }
 
@@ -391,17 +775,7 @@ const Pay = () => {
         if (err.code === err.PERMISSION_DENIED) {
           notification.error({
             message: 'Không lấy được vị trí',
-            description: 'Bạn đã từ chối cấp quyền truy cập vị trí. Vui lòng cấp quyền trong cài đặt trình duyệt hoặc nhập địa chỉ thủ công.',
-          });
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          notification.error({
-            message: 'Không lấy được vị trí',
-            description: 'Không thể xác định vị trí hiện tại. Vui lòng thử lại hoặc nhập địa chỉ thủ công.',
-          });
-        } else if (err.code === err.TIMEOUT) {
-          notification.error({
-            message: 'Hết thời gian lấy vị trí',
-            description: 'Yêu cầu lấy vị trí mất quá nhiều thời gian. Vui lòng thử lại.',
+            description: 'Bạn đã từ chối cấp quyền truy cập vị trí.',
           });
         } else {
           notification.error({
@@ -414,84 +788,246 @@ const Pay = () => {
     );
   };
 
-  const STORE_COORD = { lat: 10.870319219700491, lng: 106.79061359058457 };
+  const addressWatch = Form.useWatch('address', form);
+  const latWatch = Form.useWatch('lat', form);
+  const lngWatch = Form.useWatch('lng', form);
+  const countryWatch = Form.useWatch('country', form);
 
-  const [distKm, setDistKm] = useState(null);
-  const [shipFee, setShipFee] = useState(0);
-  const [grandTotal, setGrandTotal] = useState(0);
+  useEffect(() => {
+    const calculateShipping = async () => {
+      const address = form.getFieldValue('address');
+      const country = form.getFieldValue('country') || selectedCountry;
+      
+      if (address && address.length > 10) {
+        const shippingCalc = calculateShippingFee(country, address, orderTotal || 0, {
+          express: false,
+          insurance: country !== 'VN',
+          cod: country === 'VN',
+          tracking: country !== 'VN',
+          deliveryTime: new Date()
+        });
+        
+        setShippingDetails(shippingCalc);
+        
+        const finalShipFee = (freeShipPromotionID && country === 'VN') ? 0 : shippingCalc.totalPrice;
+        setShipFee(finalShipFee);
+        
+        setGrandTotal((orderTotal || 0) + finalShipFee);
+        
+        if (country === 'VN') {
+          const lat = form.getFieldValue('lat');
+          const lng = form.getFieldValue('lng');
+          if (lat && lng) {
+            const to = { lat: Number(lat), lng: Number(lng) };
+            let km = await getDrivingDistanceKm(STORE_COORD, to);
+            if (km == null) km = haversineKm(STORE_COORD, to);
+            setDistKm(km);
+          }
+        } else {
+          setDistKm(null);
+        }
+      } else {
+        setShippingDetails({
+          basePrice: 0,
+          totalPrice: 0,
+          estimatedDays: 0,
+          shippingMethod: ''
+        });
+        setShipFee(0);
+        setGrandTotal(orderTotal || 0);
+      }
+    };
+    
+    calculateShipping();
+  }, [addressWatch, orderTotal, freeShipPromotionID, selectedCountry, countryWatch]);
 
-  const getDrivingDistanceKm = async (from, to) => {
+  // ===== PROMOTION FUNCTIONS =====
+  const calculateDiscountedPrice = (product) => {
+    const now = new Date();
+    let finalPrice = product.price;
+    let maxDiscountPercent = 0;
+    let appliedPromotion = null;
+
+    const validPromotions = activePromotions.filter(promotion => {
+      if (promotion.loai !== 'dot_giam_gia') return false;
+      if (promotion.trangThai !== 'active') return false;
+      
+      const startDate = new Date(promotion.thoiGianBD);
+      const endDate = new Date(promotion.thoiGianKT);
+      
+      if (now < startDate || now > endDate) return false;
+      
+      if (!promotion.sanPhamApDung || promotion.sanPhamApDung.length === 0) return false;
+      
+      const productInPromotion = promotion.sanPhamApDung.some(productId => {
+        let id = typeof productId === 'string' ? productId : 
+                productId?.$oid || productId?._id || productId?.toString();
+        
+        let currentProductId = product.product || product._id;
+        if (typeof currentProductId === 'object') {
+          currentProductId = currentProductId.$oid || currentProductId._id || currentProductId.toString();
+        }
+        
+        return id === currentProductId;
+      });
+      
+      return productInPromotion;
+    });
+
+    validPromotions.forEach(promotion => {
+      if (promotion.phanTramKhuyenMai > maxDiscountPercent) {
+        maxDiscountPercent = promotion.phanTramKhuyenMai;
+        appliedPromotion = promotion;
+      }
+    });
+
+    if (maxDiscountPercent > 0) {
+      const discountAmount = (product.price * maxDiscountPercent) / 100;
+      finalPrice = product.price - discountAmount;
+    }
+
+    return {
+      originalPrice: product.price,
+      finalPrice: Math.round(finalPrice),
+      discountPercent: maxDiscountPercent,
+      appliedPromotion: appliedPromotion,
+      hasDiscount: maxDiscountPercent > 0
+    };
+  };
+
+  const fetchActivePromotions = async () => {
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('osrm fail');
-      const j = await res.json();
-      const meters = j?.routes?.[0]?.distance;
-      if (!meters && meters !== 0) throw new Error('no distance');
-      return meters / 1000;
-    } catch {
-      return null;
+      const possibleEndpoints = [
+        '/promotion-management',
+        '/promotions',
+        '/promotion',
+        '/khuyenmai',
+        '/promotion-management/search'
+      ];
+      
+      for (const endpoint of possibleEndpoints) {
+        try {
+          const response = await axiosClient.get(endpoint, {
+            params: {
+              trangThai: 'active',
+              loai: 'dot_giam_gia'
+            }
+          });
+          
+          if (response?.data) {
+            const promotionsData = response.data.docs || response.data || [];
+            
+            if (Array.isArray(promotionsData) && promotionsData.length > 0) {
+              setActivePromotions(promotionsData);
+              return;
+            }
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+      
+      setActivePromotions([]);
+    } catch (error) {
+      console.error('Error fetching promotions:', error);
+      setActivePromotions([]);
     }
   };
 
-  const haversineKm = (a, b) => {
-    const R = 6371;
-    const toRad = (d) => (d * Math.PI) / 180;
-    const dLat = toRad(b.lat - a.lat);
-    const dLon = toRad(b.lng - a.lng);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-    const x =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(x));
-  };
-
-  const calcShipFee = (km) => {
-    if (km == null) return 0;
-
-    const baseKm = 30;
-    const baseFee = 15000;
-    const outFee = 30000;
-
-    return km <= baseKm ? baseFee : outFee;
-  };
-
-  const latWatch = Form.useWatch('lat', form);
-  const lngWatch = Form.useWatch('lng', form);
-
-  useEffect(() => {
-    const run = async () => {
-      setDistKm(null);
+  const loadPromotionsFromStorage = () => {
+    try {
+      const voucherID = localStorage.getItem("appliedVoucherID");
+      const freeshipID = localStorage.getItem("appliedFreeshipID");
+      const voucherData = localStorage.getItem("appliedVoucher");
       
-      // Check for freeship promotion
-      let finalShipFee = 0;
-      
-      const lat = form.getFieldValue('lat');
-      const lng = form.getFieldValue('lng');
-      
-      if (lat && lng) {
-        const to = { lat: Number(lat), lng: Number(lng) };
-        let km = await getDrivingDistanceKm(STORE_COORD, to);
-        if (km == null) km = haversineKm(STORE_COORD, to);
-        
-        setDistKm(km);
-        const calculatedFee = calcShipFee(km);
-        
-        // Apply freeship if available
-        finalShipFee = freeShipPromotionID ? 0 : calculatedFee;
+      if (voucherID) {
+        setVoucherPromotionID(voucherID);
       }
       
-      setShipFee(finalShipFee);
-      setGrandTotal((orderTotal || 0) + finalShipFee);
-    };
-    run();
-  }, [latWatch, lngWatch, orderTotal, freeShipPromotionID]);
-
-  const hideModal = () => {
-    setVisible(false);
+      if (freeshipID) {
+        setFreeShipPromotionID(freeshipID);
+      }
+      
+      if (voucherData) {
+        const voucher = JSON.parse(voucherData);
+        setAppliedVoucher(voucher);
+      }
+      
+      setPromotionLoaded(true);
+    } catch (error) {
+      console.error("Error loading promotions from storage:", error);
+      setPromotionLoaded(true);
+    }
   };
 
+  const calculateVoucherDiscount = (baseTotal, voucher) => {
+    if (!voucher || !voucher.phanTramKhuyenMai) return 0;
+    
+    let discount = (baseTotal * voucher.phanTramKhuyenMai) / 100;
+    
+    if (voucher.giamToiDa && discount > voucher.giamToiDa) {
+      discount = voucher.giamToiDa;
+    }
+    
+    return discount;
+  };
+
+  const calculateTotalWithPromotions = (products) => {
+    if (!Array.isArray(products) || products.length === 0) {
+      return {
+        originalTotal: 0,
+        totalWithProductPromotions: 0,
+        productPromotionDiscount: 0
+      };
+    }
+    
+    let totalOriginal = 0;
+    let totalWithProductPromotions = 0;
+    const discounts = {};
+    
+    products.forEach((product) => {
+      if (!product || typeof product.price !== 'number' || typeof product.quantity !== 'number') {
+        return;
+      }
+      
+      const priceInfo = calculateDiscountedPrice(product);
+      const originalPrice = priceInfo.originalPrice * product.quantity;
+      const finalPrice = priceInfo.finalPrice * product.quantity;
+      
+      totalOriginal += originalPrice;
+      totalWithProductPromotions += finalPrice;
+      
+      discounts[product.product || product._id] = {
+        originalPrice: originalPrice,
+        discountedPrice: finalPrice,
+        discountAmount: originalPrice - finalPrice,
+        discountPercent: priceInfo.discountPercent,
+        appliedPromotion: priceInfo.appliedPromotion,
+        hasDiscount: priceInfo.hasDiscount
+      };
+    });
+    
+    setProductPromotionDiscounts(discounts);
+    
+    return {
+      originalTotal: totalOriginal,
+      totalWithProductPromotions: totalWithProductPromotions,
+      productPromotionDiscount: totalOriginal - totalWithProductPromotions
+    };
+  };
+
+  useEffect(() => {
+    if (promotionLoaded && originalTotal > 0) {
+      const voucherDiscount = calculateVoucherDiscount(originalTotal, appliedVoucher);
+      setVoucherDiscountAmount(voucherDiscount);
+      setDiscountAmount(voucherDiscount);
+      
+      const finalOrderTotal = originalTotal - voucherDiscount;
+      setOrderTotal(Math.max(0, finalOrderTotal));
+    }
+  }, [originalTotal, appliedVoucher, promotionLoaded]);
+
+  // ===== PAYPAL FUNCTIONS =====
   async function fetchUsdVndRate() {
     try {
       const response = await fetch('https://open.er-api.com/v6/latest/USD');
@@ -534,150 +1070,6 @@ const Pay = () => {
     }
   };
 
-  // ✅ UPDATED PROMOTION FUNCTIONS - Fixed logic
-  const loadPromotionsFromStorage = () => {
-    try {
-      const voucherID = localStorage.getItem("appliedVoucherID");
-      const freeshipID = localStorage.getItem("appliedFreeshipID");
-      const voucherData = localStorage.getItem("appliedVoucher");
-      
-      console.log("🎫 Loading promotions from storage:", { voucherID, freeshipID, voucherData });
-      
-      if (voucherID) {
-        setVoucherPromotionID(voucherID);
-      }
-      
-      if (freeshipID) {
-        setFreeShipPromotionID(freeshipID);
-      }
-      
-      if (voucherData) {
-        const voucher = JSON.parse(voucherData);
-        console.log("🎫 Parsed voucher:", voucher);
-        setAppliedVoucher(voucher);
-      }
-      
-      setPromotionLoaded(true);
-    } catch (error) {
-      console.error("Error loading promotions from storage:", error);
-      setPromotionLoaded(true);
-    }
-  };
-
-  // ✅ FIXED: Calculate voucher discount correctly
-  const calculateVoucherDiscount = (baseTotal, voucher) => {
-    if (!voucher || !voucher.phanTramKhuyenMai) {
-      console.log("🚫 No voucher or no discount percentage");
-      return 0;
-    }
-    
-    console.log("💰 Calculating voucher discount:", {
-      baseTotal,
-      phanTramKhuyenMai: voucher.phanTramKhuyenMai,
-      giamToiDa: voucher.giamToiDa
-    });
-    
-    let discount = (baseTotal * voucher.phanTramKhuyenMai) / 100;
-    
-    // Apply maximum discount limit if exists
-    if (voucher.giamToiDa && discount > voucher.giamToiDa) {
-      discount = voucher.giamToiDa;
-      console.log("🔝 Applied maximum discount limit:", discount);
-    }
-    
-    console.log("✅ Final voucher discount:", discount);
-    return discount;
-  };
-
-  // ✅ THÊM HÀM TÍNH TỔNG GIÁ VỚI PROMOTION
-  // ✅ Sử dụng totalWithProductPromotions làm originalTotal thay vì tổng giá gốc
-const calculateTotalWithPromotions = (products) => {
-  console.log("🧮 Calculating total with promotions for products:", products);
-  
-  if (!Array.isArray(products) || products.length === 0) {
-    console.log("❌ Products is not an array or empty");
-    return {
-      originalTotal: 0, // Tổng giá gốc (chưa áp dụng promotion nào)
-      totalWithProductPromotions: 0, // ✅ Tổng sau khi áp dụng promotion sản phẩm
-      productPromotionDiscount: 0
-    };
-  }
-  
-  let totalOriginal = 0; // Tổng giá gốc thật sự
-  let totalWithProductPromotions = 0; // Tổng sau promotion sản phẩm
-  const discounts = {};
-  
-  products.forEach((product, index) => {
-    if (!product || typeof product.price !== 'number' || typeof product.quantity !== 'number') {
-      console.log(`❌ Invalid product at index ${index}:`, product);
-      return;
-    }
-    
-    const priceInfo = calculateDiscountedPrice(product);
-    const originalPrice = priceInfo.originalPrice * product.quantity;
-    const finalPrice = priceInfo.finalPrice * product.quantity;
-    
-    totalOriginal += originalPrice;
-    totalWithProductPromotions += finalPrice; // ✅ Đây là số tiền thực tế sau promotion sản phẩm
-    
-    discounts[product.product || product._id] = {
-      originalPrice: originalPrice,
-      discountedPrice: finalPrice,
-      discountAmount: originalPrice - finalPrice,
-      discountPercent: priceInfo.discountPercent,
-      appliedPromotion: priceInfo.appliedPromotion,
-      hasDiscount: priceInfo.hasDiscount
-    };
-    
-    console.log(`Product ${index + 1} calculation:`, {
-      productName: product.productName,
-      quantity: product.quantity,
-      unitPrice: product.price,
-      originalTotal: originalPrice,
-      discountedTotal: finalPrice,
-      priceInfo
-    });
-  });
-  
-  console.log("📊 Final calculation:", {
-    totalOriginal,
-    totalWithProductPromotions,
-    productPromotionDiscount: totalOriginal - totalWithProductPromotions
-  });
-  
-  setProductPromotionDiscounts(discounts);
-  
-  return {
-    originalTotal: totalOriginal, // Giá gốc thật sự (để hiển thị so sánh)
-    totalWithProductPromotions: totalWithProductPromotions, // ✅ Giá sau promotion sản phẩm
-    productPromotionDiscount: totalOriginal - totalWithProductPromotions
-  };
-};
-
-  // ✅ Separate useEffect for voucher calculation
-  useEffect(() => {
-    if (promotionLoaded && originalTotal > 0) {
-      console.log("🔄 Recalculating voucher discount:", {
-        originalTotal,
-        appliedVoucher,
-        promotionLoaded
-      });
-      
-      const voucherDiscount = calculateVoucherDiscount(originalTotal, appliedVoucher);
-      setVoucherDiscountAmount(voucherDiscount);
-      setDiscountAmount(voucherDiscount);
-      
-      const finalOrderTotal = originalTotal - voucherDiscount;
-      setOrderTotal(Math.max(0, finalOrderTotal));
-      
-      console.log("📊 Updated totals:", {
-        originalTotal,
-        voucherDiscount,
-        finalOrderTotal
-      });
-    }
-  }, [originalTotal, appliedVoucher, promotionLoaded]);
-
   const confirmOrder = async (values) => {
     const urlParams = new URLSearchParams(window.location.search);
     const isPayPalCallback = urlParams.get("paymentId") && urlParams.get("PayerID");
@@ -689,9 +1081,18 @@ const calculateTotalWithPromotions = (products) => {
 
     console.log("🛒 ConfirmOrder called with values:", values);
 
+    if (values.country && values.country !== 'VN' && values.billing === 'cod') {
+      notification["error"]({
+        message: `Thông báo`,
+        description: "Đơn hàng quốc tế không hỗ trợ thanh toán khi nhận hàng (COD). Vui lòng chọn thanh toán PayPal.",
+      });
+      return;
+    }
+
     if (values.billing === "paypal") {
       localStorage.setItem("description", values.description || "");
       localStorage.setItem("address", values.address || "");
+      localStorage.setItem("country", values.country || "VN");
 
       console.log("💳 Processing PayPal payment");
 
@@ -713,11 +1114,14 @@ const calculateTotalWithPromotions = (products) => {
           };
         });
 
-        const totalUSD = processedProducts.reduce(
+        const productsTotal = processedProducts.reduce(
           (sum, p) => sum + (p.price * p.quantity), 0
-        ).toFixed(2);
+        );
+        const shippingUSD = (shipFee / usdToVndRate).toFixed(2);
+        const totalUSD = (parseFloat(productsTotal) + parseFloat(shippingUSD)).toFixed(2);
 
         console.log("🚀 PayPal products:", processedProducts);
+        console.log("📦 Shipping USD:", shippingUSD);
         console.log("💰 Total USD:", totalUSD);
 
         const approvalUrl = await handlePayment(values, totalUSD);
@@ -738,7 +1142,27 @@ const calculateTotalWithPromotions = (products) => {
         });
       }
     } else {
-      console.log("💵 Processing COD order");
+      console.log("💵 Processing COD order (domestic only)");
+      
+      // 🔍 LOG 1: Check userData
+      console.log("🔍 [DEBUG] userData:", userData);
+      console.log("🔍 [DEBUG] userData._id:", userData?._id);
+      console.log("🔍 [DEBUG] typeof userData:", typeof userData);
+      
+      // 🔍 LOG 2: Check localStorage user
+      const localStorageUser = localStorage.getItem("user");
+      console.log("🔍 [DEBUG] localStorage user raw:", localStorageUser);
+      if (localStorageUser) {
+        try {
+          const parsedUser = JSON.parse(localStorageUser);
+          console.log("🔍 [DEBUG] localStorage user parsed:", parsedUser);
+          console.log("🔍 [DEBUG] localStorage user.user:", parsedUser?.user);
+          console.log("🔍 [DEBUG] localStorage user.user._id:", parsedUser?.user?._id);
+        } catch (e) {
+          console.error("🔍 [DEBUG] Error parsing localStorage user:", e);
+        }
+      }
+      
       try {
         const { lat, lng } = form.getFieldsValue(['lat', 'lng']);
         const subtotal = orderTotal || 0;
@@ -746,9 +1170,43 @@ const calculateTotalWithPromotions = (products) => {
         const distanceKm = distKm ?? null;
         const total = (grandTotal || (subtotal + shippingFee));
 
+        // 🔍 LOG 3: Check all state variables
+        console.log("🔍 [DEBUG] State variables:", {
+          orderTotal,
+          shipFee,
+          distKm,
+          grandTotal,
+          originalTotal,
+          discountAmount,
+          voucherPromotionID,
+          freeShipPromotionID,
+          productDetail,
+          shippingDetails
+        });
+
+        // 🔍 LOG 4: Try to get user ID from different sources
+        let userId = userData?._id;
+        console.log("🔍 [DEBUG] userId from userData:", userId);
+        
+        if (!userId && localStorageUser) {
+          const parsed = JSON.parse(localStorageUser);
+          userId = parsed?.user?._id || parsed?._id;
+          console.log("🔍 [DEBUG] userId from localStorage:", userId);
+        }
+
+        if (!userId) {
+          console.error("❌ [DEBUG] No user ID found!");
+          notification["error"]({
+            message: `Lỗi`,
+            description: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
+          });
+          return;
+        }
+
         const formatData = {
-          userId: userData._id,
+          userId: userData?.id || userData?._id, 
           address: values.address,
+          country: values.country || 'VN',
           billing: values.billing,
           description: values.description,
           status: "pending",
@@ -773,56 +1231,89 @@ const calculateTotalWithPromotions = (products) => {
           
           shipping: {
             address: values.address,
+            country: values.country || 'VN',
             lat,
-            lng
+            lng,
+            method: shippingDetails.shippingMethod,
+            estimatedDays: shippingDetails.estimatedDays,
+            estimatedTime: shippingDetails.estimatedTime,
+            isInternational: false
           }
         };
 
+        // 🔍 LOG 5: Final data check
         console.log("📦 Order data being sent:", formatData);
+        console.log("🔍 [DEBUG] formatData.user:", formatData.user);
+        console.log("🔍 [DEBUG] formatData JSON:", JSON.stringify(formatData, null, 2));
 
-        await axiosClient.post("/order", formatData).then((response) => {
-          console.log("✅ Server response:", response);
+        await axiosClient.post("/order", formatData)
+          .then((response) => {
+            console.log("✅ Server response:", response);
+            console.log("🔍 [DEBUG] Response data:", response.data);
+            console.log("🔍 [DEBUG] Response status:", response.status);
 
-          if (response.error === "Insufficient quantity for one or more products.") {
-            let errorMessage = "Sản phẩm đã hết hàng!";
-            if (response.insufficientQuantityProducts && response.insufficientQuantityProducts.length > 0) {
-              errorMessage += " Chi tiết:\n";
-              response.insufficientQuantityProducts.forEach(p => {
-                const productName = productNames[p.productId]?.name || `Sản phẩm ID: ${p.productId}`;
-                errorMessage += `\n- ${productName}`;
-                if (p.size) errorMessage += `, kích cỡ: ${p.size}`;
-                if (p.color) errorMessage += `, màu: ${p.color}`;
-                errorMessage += `\n  Số lượng hiện có: ${p.availableQuantity}, Yêu cầu: ${p.requestedQuantity}`;
+            if (response.error === "Insufficient quantity for one or more products.") {
+              let errorMessage = "Sản phẩm đã hết hàng!";
+              if (response.insufficientQuantityProducts && response.insufficientQuantityProducts.length > 0) {
+                errorMessage += " Chi tiết:\n";
+                response.insufficientQuantityProducts.forEach(p => {
+                  const productName = productNames[p.productId]?.name || `Sản phẩm ID: ${p.productId}`;
+                  errorMessage += `\n- ${productName}`;
+                  if (p.size) errorMessage += `, kích cỡ: ${p.size}`;
+                  if (p.color) errorMessage += `, màu: ${p.color}`;
+                  errorMessage += `\n  Số lượng hiện có: ${p.availableQuantity}, Yêu cầu: ${p.requestedQuantity}`;
+                });
+              }
+
+              return notification["error"]({
+                message: `Thông báo`,
+                description: errorMessage,
+                duration: 10
               });
             }
 
-            return notification["error"]({
-              message: `Thông báo`,
-              description: errorMessage,
+            if (response == undefined) {
+              notification["error"]({
+                message: `Thông báo`,
+                description: "Đặt hàng thất bại",
+              });
+            } else {
+              notification["success"]({
+                message: `Thông báo`,
+                description: "Đặt hàng thành công",
+              });
+              form.resetFields();
+              history.push("/final-pay");
+              
+              localStorage.removeItem("cart");
+              localStorage.removeItem("cartLength");
+              localStorage.removeItem("appliedVoucherID");
+              localStorage.removeItem("appliedFreeshipID");
+              localStorage.removeItem("appliedVoucher");
+            }
+          })
+          .catch((error) => {
+            // 🔍 LOG 6: Detailed error logging
+            console.error("❌ COD order error - Full error:", error);
+            console.error("🔍 [DEBUG] Error response:", error.response);
+            console.error("🔍 [DEBUG] Error response data:", error.response?.data);
+            console.error("🔍 [DEBUG] Error response status:", error.response?.status);
+            console.error("🔍 [DEBUG] Error message:", error.message);
+            
+            // Show detailed error from server
+            const serverError = error.response?.data?.message || 
+                               error.response?.data?.error || 
+                               error.message || 
+                               "Lỗi không xác định";
+            
+            notification["error"]({
+              message: `Lỗi đặt hàng`,
+              description: `Chi tiết: ${serverError}`,
               duration: 10
             });
-          }
-
-          if (response == undefined) {
-            notification["error"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thất bại",
-            });
-          } else {
-            notification["success"]({
-              message: `Thông báo`,
-              description: "Đặt hàng thành công",
-            });
-            form.resetFields();
-            history.push("/final-pay");
             
-            localStorage.removeItem("cart");
-            localStorage.removeItem("cartLength");
-            localStorage.removeItem("appliedVoucherID");
-            localStorage.removeItem("appliedFreeshipID");
-            localStorage.removeItem("appliedVoucher");
-          }
-        });
+            throw error;
+          });
       } catch (error) {
         console.error("❌ COD order error:", error);
         notification["error"]({
@@ -849,15 +1340,11 @@ const calculateTotalWithPromotions = (products) => {
       const paymentId = queryParams.get("paymentId");
       const PayerID = queryParams.get("PayerID");
 
-      console.log("🔄 Modal confirm - PaymentId:", paymentId, "PayerID:", PayerID);
-      console.log("📝 Modal confirm - PendingFormValues:", pendingFormValues);
-
       if (paymentId && PayerID) {
         const token = localStorage.getItem("session_paypal");
         const description = localStorage.getItem("description");
         const address = localStorage.getItem("address");
-
-        console.log("💳 Processing PayPal payment:", { paymentId, PayerID, token, description, address });
+        const country = localStorage.getItem("country") || "VN";
 
         if (!token) {
           notification["error"]({
@@ -875,8 +1362,6 @@ const calculateTotalWithPromotions = (products) => {
             PayerID,
           },
         });
-
-        console.log("💰 PayPal execute response:", response);
 
         if (response) {
           const local = localStorage.getItem("user");
@@ -897,6 +1382,7 @@ const calculateTotalWithPromotions = (products) => {
           const formatData = {
             userId: currentUser.user._id,
             address: address,
+            country: country,
             billing: "paypal",
             description: description,
             status: "pending",
@@ -904,18 +1390,24 @@ const calculateTotalWithPromotions = (products) => {
             products: processedProducts,
             
             voucherPromotionID: voucherPromotionID || null,
-            freeShipPromotionID: freeShipPromotionID || null,
+            freeShipPromotionID: (freeShipPromotionID && country === 'VN') ? freeShipPromotionID : null,
             
             orderTotal: originalTotal,
             discountAmount: discountAmount,
-            shippingFee: 0,
-            finalAmount: orderTotal
+            shippingFee: country === 'VN' ? 0 : shipFee,
+            finalAmount: grandTotal || orderTotal,
+            
+            shipping: {
+              address: address,
+              country: country,
+              method: shippingDetails.shippingMethod || (country !== 'VN' ? 'International Shipping' : 'Domestic Shipping'),
+              estimatedDays: shippingDetails.estimatedDays || '',
+              estimatedTime: shippingDetails.estimatedTime || '',
+              isInternational: country !== 'VN'
+            }
           };
 
-          console.log("📦 PayPal order data:", formatData);
-
           const orderResponse = await axiosClient.post("/order", formatData);
-          console.log("✅ Order API response:", orderResponse);
 
           if (orderResponse.error === "Insufficient quantity for one or more products.") {
             let errorMessage = "Sản phẩm đã hết hàng!";
@@ -961,6 +1453,7 @@ const calculateTotalWithPromotions = (products) => {
           localStorage.removeItem("session_paypal");
           localStorage.removeItem("description");
           localStorage.removeItem("address");
+          localStorage.removeItem("country");
 
           form.resetFields();
           history.push("/final-pay");
@@ -972,7 +1465,6 @@ const calculateTotalWithPromotions = (products) => {
           });
         }
       } else if (pendingFormValues) {
-        console.log("📝 Processing normal form submission:", pendingFormValues);
         await confirmOrder(pendingFormValues);
       } else {
         notification["warning"]({
@@ -994,112 +1486,127 @@ const calculateTotalWithPromotions = (products) => {
     }
   };
 
-  const CancelPay = () => {
-    form.resetFields();
-    history.push("/cart");
-  };
-
+  
   useEffect(() => {
     (async () => {
       try {
+        console.log("🚀 [PAY] Starting data loading...");
+        
         const urlParams = new URLSearchParams(window.location.search);
         const paymentId = urlParams.get("paymentId");
         const PayerID = urlParams.get("PayerID");
 
         if (paymentId && PayerID) {
+          console.log("💳 [PAY] Detected PayPal callback");
           setShowModal(true);
-          const savedDescription = localStorage.getItem("description");
-          const savedAddress = localStorage.getItem("address");
-
-          console.log("🔄 PayPal callback detected:", { paymentId, PayerID });
-          console.log("📁 Restored data:", { savedDescription, savedAddress });
         }
 
-        // ✅ Load promotions FIRST
+        // Load promotions
+        console.log("🎁 [PAY] Loading promotions...");
         loadPromotionsFromStorage();
-        
-        // ✅ THÊM: Fetch active promotions cho sản phẩm
         await fetchActivePromotions();
 
-        await productApi.getDetailProduct(id).then((item) => {
-          setProductDetail(item);
-        });
-        
+        // ✅ Load user profile
+        console.log("👤 [PAY] Loading user profile...");
         const response = await userApi.getProfile();
-        localStorage.setItem("user", JSON.stringify(response));
-        console.log("👤 User profile:", response);
+        console.log("✅ [PAY] User profile response:", response);
         
+        if (!response || !response.user) {
+          console.error("❌ [PAY] Invalid user response:", response);
+          throw new Error("Không thể lấy thông tin người dùng");
+        }
+
+        localStorage.setItem("user", JSON.stringify(response));
+        setUserData(response.user);
+        console.log("✅ [PAY] User data set:", response.user);
+        
+        // ✅ Set form initial values
         const formData = {
           name: response.user.username,
           email: response.user.email,
           phone: response.user.phone,
+          country: 'VN',
         };
+        
+        console.log("📝 [PAY] Setting form data:", formData);
         
         if (paymentId && PayerID) {
           const savedDescription = localStorage.getItem("description");
           const savedAddress = localStorage.getItem("address");
+          const savedCountry = localStorage.getItem("country");
           if (savedAddress) {
             formData.address = savedAddress;
             formData.billing = "paypal";
             formData.description = savedDescription;
+            formData.country = savedCountry || 'VN';
             setAddrQuery(savedAddress);
+            setSelectedCountry(savedCountry || 'VN');
+            setIsInternational((savedCountry || 'VN') !== 'VN');
           }
         }
 
         form.setFieldsValue(formData);
-
-        const cart = JSON.parse(localStorage.getItem("cart")) || [];
-        console.log("🛒 Cart data:", cart);
-
-        const transformedData = cart.map(item => {
-          console.log("🔄 Processing cart item:", item);
-          return {
-            product: item._id,
-            productName: item.name || null,
-            quantity: item.quantity,
-            price: item.price,
-            image: item.image || null, // ✅ Add image field
-            selectedSize: item.selectedSize || item.size || item.productSize ||
-              (item.details && item.details.size) ||
-              (item.options && item.options.size) || null,
-            selectedColor: item.selectedColor || item.color || null,
-            variantId: item.variantId ||
-              (item.selectedSize && item.selectedColor ?
-                `${item._id}-${item.selectedSize}-${item.selectedColor.replace('#', '')}` :
-                null)
-          };
-        });
-
-        console.log("✨ Transformed cart data:", transformedData);
-
-        // ✅ THAY ĐỔI: Tính toán giá với promotion
-        const totalCalculation = calculateTotalWithPromotions(transformedData);
+        console.log("✅ [PAY] Form values set");
         
-        console.log("💰 Calculated totals with promotions:", totalCalculation);
+        setUserDataLoading(false);
+
+        // ✅ Load cart
+        console.log("🛒 [PAY] Loading cart from localStorage...");
+        const cart = JSON.parse(localStorage.getItem("cart")) || [];
+        console.log("🛒 [PAY] Cart data:", cart);
+        
+        if (!Array.isArray(cart) || cart.length === 0) {
+          console.warn("⚠️ [PAY] Cart is empty!");
+          notification.warning({
+            message: 'Giỏ hàng trống',
+            description: 'Bạn chưa có sản phẩm nào trong giỏ hàng.',
+            duration: 5
+          });
+        }
+        
+        const transformedData = cart.map(item => ({
+          product: item._id,
+          productName: item.name || null,
+          quantity: item.quantity,
+          price: item.price,
+          image: item.image || null,
+          selectedSize: item.selectedSize || item.size || item.productSize || null,
+          selectedColor: item.selectedColor || item.color || null,
+          variantId: item.variantId || null
+        }));
+
+        console.log("✅ [PAY] Transformed product data:", transformedData);
+
+        const totalCalculation = calculateTotalWithPromotions(transformedData);
+        console.log("💰 [PAY] Total calculation:", totalCalculation);
+        
         setOriginalTotal(totalCalculation.totalWithProductPromotions);
-
         setProductDetail(transformedData);
-        setUserData(response.user);
 
         setLoading(false);
+        console.log("✅ [PAY] Data loading completed!");
       } catch (error) {
-        console.log("❌ Failed to fetch data:" + error);
+        console.error("❌ [PAY] Failed to fetch data:", error);
+        notification.error({
+          message: 'Lỗi tải dữ liệu',
+          description: error.message || 'Không thể tải thông tin thanh toán. Vui lòng thử lại.',
+          duration: 5
+        });
         setLoading(false);
+        setUserDataLoading(false);
       }
     })();
     window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
-  if (Array.isArray(activePromotions) && activePromotions.length > 0 && 
-      Array.isArray(productDetail) && productDetail.length > 0) {
-    console.log("🔄 Recalculating totals with updated promotions");
-    const totalCalculation = calculateTotalWithPromotions(productDetail);
-    setOriginalTotal(totalCalculation.totalWithProductPromotions);
-  }
-}, [activePromotions, productDetail]);
-
-  return (
+    if (Array.isArray(activePromotions) && activePromotions.length > 0 && 
+        Array.isArray(productDetail) && productDetail.length > 0) {
+      const totalCalculation = calculateTotalWithPromotions(productDetail);
+      setOriginalTotal(totalCalculation.totalWithProductPromotions);
+    }
+  }, [activePromotions, productDetail]);
+    return (
     <div className="py-5">
       <Spin spinning={loading}>
         <Card className="container">
@@ -1136,44 +1643,71 @@ const calculateTotalWithPromotions = (products) => {
               <div className="information_pay">
                 <Form form={form} onFinish={accountCreate} layout="vertical">
                   <Row gutter={24}>
-                    <Col xs={24} lg={16} >
-                      <Card bordered style={{ marginBottom: 16 }} title={<span style={{ fontWeight: 600 }}>Thông tin khách hàng</span>}>
-                        <Row gutter={16} style={{ padding: '0 10px' }}>
-                          <Col xs={24} md={12}>
-                            <Form.Item
-                              name="name"
-                              label="Tên"
-                              hasFeedback
-                              style={{ marginBottom: 10 }}
-                            >
-                              <Input disabled placeholder="Tên" />
-                            </Form.Item>
-                          </Col>
-                          <Col xs={24} md={12} >
-                            <Form.Item
-                              name="email"
-                              label="Email"
-                              hasFeedback
-                              style={{ marginBottom: 10 }}
-                            >
-                              <Input disabled placeholder="Email" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                        <Row gutter={16} style={{ padding: '0 10px' }}>
-                          <Col xs={24} md={12}>
-                            <Form.Item
-                              name="phone"
-                              label="Số điện thoại"
-                              hasFeedback
-                              style={{ marginBottom: 10 }}
-                            >
-                              <Input disabled placeholder="Số điện thoại" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
+                    <Col xs={24} lg={16}>
+                      {/* ✅ ✅ ✅ THÔNG TIN KHÁCH HÀNG - THÊM DEBUG & CHECK ✅ ✅ ✅ */}
+                      <Card 
+                        bordered 
+                        style={{ marginBottom: 16 }} 
+                        title={<span style={{ fontWeight: 600 }}>Thông tin khách hàng</span>}
+                        loading={userDataLoading}
+                      >
+                        {!userDataLoading && userData ? (
+                          <Row gutter={16} style={{ padding: '0 10px' }}>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                name="name"
+                                label="Tên"
+                                hasFeedback
+                                style={{ marginBottom: 10 }}
+                              >
+                                <Input 
+                                  placeholder="Tên" 
+                         
+                                  value={userData.username}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                name="email"
+                                label="Email"
+                                hasFeedback
+                                style={{ marginBottom: 10 }}
+                              >
+                                <Input 
+                                  placeholder="Email" 
+                    
+                                  value={userData.email}
+                                />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        ) : (
+                          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                            {userDataLoading ? 'Đang tải thông tin...' : '❌ Không thể tải thông tin người dùng'}
+                          </div>
+                        )}
+                        
+                        {!userDataLoading && userData && (
+                          <Row gutter={16} style={{ padding: '0 10px' }}>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                name="phone"
+                                label="Số điện thoại"
+                                hasFeedback
+                                style={{ marginBottom: 10 }}
+                              >
+                                <Input 
+                                  placeholder="Số điện thoại" 
+                                  value={userData.phone}
+                                />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        )}
                       </Card>
 
+                      {/* ĐỊA CHỈ GIAO HÀNG */}
                       <Card bordered title={<span style={{ fontWeight: 600 }}>Địa chỉ giao hàng</span>}>
                         <Form.Item
                           name="address"
@@ -1271,25 +1805,46 @@ const calculateTotalWithPromotions = (products) => {
                               </>
                             );
                           })()}
+                          
+                          {/* Enhanced Shipping Info Display */}
                           <div
                             style={{
                               marginTop: 12,
-                              padding: '10px 12px',
+                              padding: '12px',
                               borderRadius: 8,
                               border: '1px solid rgba(0,0,0,0.08)',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
+                              backgroundColor: '#fafafa'
                             }}
                           >
-                            <span>Khoảng cách dự tính</span>
-                            <b>{distKm != null ? `${distKm.toFixed(2)} km` : '-'}</b>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontWeight: 500 }}>📍 Khoảng cách từ cửa hàng</span>
+                              <b style={{ color: '#1890ff' }}>{distKm != null ? `${distKm.toFixed(2)} km` : '-'}</b>
+                            </div>
+                            
+                            {shippingDetails.shippingMethod && (
+                              <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                  <span>🚚 Phương thức vận chuyển</span>
+                                  <span style={{ color: '#52c41a', fontWeight: 500 }}>{shippingDetails.shippingMethod}</span>
+                                </div>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span>📅 Thời gian giao hàng dự kiến</span>
+                                  <span style={{ fontWeight: 500 }}>
+                                    {shippingDetails.estimatedDays === 0 
+                                      ? 'Trong ngày' 
+                                      : `${shippingDetails.estimatedDays} ngày`}
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                         <Form.Item name="lat" hidden><Input /></Form.Item>
                         <Form.Item name="lng" hidden><Input /></Form.Item>
                       </Card>
 
+                      {/* GHI CHÚ ĐƠN HÀNG */}
                       <Card bordered title={<span style={{ fontWeight: 600 }}>Ghi chú đơn hàng</span>}>
                         <Form.Item
                           name="description"
@@ -1306,14 +1861,17 @@ const calculateTotalWithPromotions = (products) => {
                       </Card>
                     </Col>
 
-                    {/* ✅ ENHANCED ORDER SUMMARY SECTION WITH PRODUCT PROMOTIONS */}
                     <Col xs={24} lg={8}>
+                      {/* ✅ ✅ ✅ THÔNG TIN ĐƠN HÀNG - THÊM DEBUG ✅ ✅ ✅ */}
                       <Card bordered style={{ marginBottom: 16 }} title={<span style={{ fontWeight: 600 }}>Thông tin đơn hàng</span>}>
                         <div style={{ marginBottom: 12 }}>
+                          {/* ✅ DEBUG: Show cart info */}
+                          {console.log("🛒 [RENDER] ProductDetail:", productDetail)}
+                          {console.log("🛒 [RENDER] ProductDetail length:", productDetail?.length)}
+                          
                           {Array.isArray(productDetail) && productDetail.length > 0 ? (
                             <div className="custom-table-container" style={{ maxHeight: "400px", overflowY: "auto" }}>
                               {productDetail.map((item, index) => {
-                            
                                 const priceInfo = calculateDiscountedPrice(item);
                                 const productDiscount = productPromotionDiscounts[item.product || item._id];
                                 
@@ -1325,7 +1883,6 @@ const calculateTotalWithPromotions = (products) => {
                                     gap: "12px",
                                     alignItems: "flex-start"
                                   }}>
-                                    {/* ✅ Product Image */}
                                     <div style={{ 
                                       width: "60px", 
                                       height: "60px", 
@@ -1360,7 +1917,6 @@ const calculateTotalWithPromotions = (products) => {
                                         </div>
                                       )}
                                       
-                                      {/* ✅ THÊM: Badge giảm giá sản phẩm */}
                                       {priceInfo.hasDiscount && (
                                         <div style={{
                                           position: 'absolute',
@@ -1379,7 +1935,6 @@ const calculateTotalWithPromotions = (products) => {
                                       )}
                                     </div>
 
-                                    {/* ✅ Product Info */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ 
                                         fontWeight: "500", 
@@ -1390,7 +1945,6 @@ const calculateTotalWithPromotions = (products) => {
                                         {item.productName || `Sản phẩm ${index + 1}`}
                                       </div>
                                       
-                                      {/* ✅ THÊM: Hiển thị tên khuyến mãi sản phẩm */}
                                       {priceInfo.appliedPromotion && (
                                         <div style={{ marginBottom: "6px" }}>
                                           <span style={{
@@ -1407,7 +1961,6 @@ const calculateTotalWithPromotions = (products) => {
                                         </div>
                                       )}
                                       
-                                      {/* ✅ Horizontal Product Details */}
                                       <div style={{ 
                                         display: "flex", 
                                         flexWrap: "wrap",
@@ -1455,11 +2008,9 @@ const calculateTotalWithPromotions = (products) => {
                                         )}
                                       </div>
                                       
-                                      {/* ✅ THAY ĐỔI: Price với promotion */}
                                       <div style={{ marginBottom: "4px" }}>
                                         {priceInfo.hasDiscount ? (
                                           <div>
-                                            {/* Giá sau giảm */}
                                             <div style={{ 
                                               fontWeight: "600", 
                                               color: "#ff4d4f",
@@ -1468,7 +2019,6 @@ const calculateTotalWithPromotions = (products) => {
                                             }}>
                                               {numberWithCommas(priceInfo.finalPrice * item.quantity)} đ
                                             </div>
-                                            {/* Giá gốc */}
                                             <div style={{ 
                                               color: "#999",
                                               fontSize: "12px",
@@ -1493,8 +2043,28 @@ const calculateTotalWithPromotions = (products) => {
                               })}
                             </div>
                           ) : (
-                            <div style={{ color: '#999', padding: '20px 0', textAlign: 'center' }}>
-                              Không có sản phẩm
+                            <div style={{ 
+                              color: '#ff4d4f', 
+                              padding: '40px 20px', 
+                              textAlign: 'center',
+                              backgroundColor: '#fff2f0',
+                              borderRadius: '8px',
+                              border: '1px dashed #ffccc7'
+                            }}>
+                              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🛒</div>
+                              <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>
+                                Giỏ hàng trống
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#999' }}>
+                                Không có sản phẩm nào trong giỏ hàng
+                              </div>
+                              <Button 
+                                type="primary" 
+                                style={{ marginTop: '16px' }}
+                                onClick={() => history.push('/shop')}
+                              >
+                                Tiếp tục mua sắm
+                              </Button>
                             </div>
                           )}
                         </div>
@@ -1507,7 +2077,6 @@ const calculateTotalWithPromotions = (products) => {
                             <span>{(originalTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                           </div>
                           
-                          {/* ✅ Enhanced Voucher Display */}
                           {appliedVoucher && (
                             <div style={{ 
                               display: 'flex', 
@@ -1535,70 +2104,98 @@ const calculateTotalWithPromotions = (products) => {
                             <span>{(orderTotal || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</span>
                           </div>
                           
-                          {/* ✅ FIXED: Enhanced Shipping Fee Display */}
+                          {/* Enhanced Shipping Fee Display */}
                           <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            padding: '8px 12px',
+                            padding: '12px',
                             backgroundColor: freeShipPromotionID ? '#f6ffed' : '#fafafa',
-                            borderRadius: '6px',
+                            borderRadius: '8px',
                             border: freeShipPromotionID ? '1px solid #b7eb8f' : '1px solid #f0f0f0'
                           }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ 
-                                fontSize: '14px', 
-                                color: freeShipPromotionID ? '#52c41a' : '#666',
-                                fontWeight: freeShipPromotionID ? '500' : 'normal'
-                              }}>
-                                Phí vận chuyển
-                                {distKm != null && (
-                                  <span style={{ fontSize: '12px', color: '#999', marginLeft: '4px' }}>
-                                    ({distKm.toFixed(2)} km)
-                                  </span>
-                                )}
-                              </div>
-                              {freeShipPromotionID && (
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              marginBottom: shippingDetails.basePrice > 0 ? '8px' : '0'
+                            }}>
+                              <div style={{ flex: 1 }}>
                                 <div style={{ 
-                                  fontSize: '12px', 
-                                  color: '#52c41a',
-                                  fontWeight: '600',
-                                  marginTop: '2px'
+                                  fontSize: '14px', 
+                                  color: freeShipPromotionID ? '#52c41a' : '#666',
+                                  fontWeight: freeShipPromotionID ? '500' : 'normal'
                                 }}>
-                                  🚚 Miễn phí vận chuyển
+                                  Phí vận chuyển
+                                  {distKm != null && (
+                                    <span style={{ fontSize: '12px', color: '#999', marginLeft: '4px' }}>
+                                      ({distKm.toFixed(2)} km)
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            
-                            <div style={{ textAlign: 'right' }}>
-                              {freeShipPromotionID ? (
-                                <div>
+                                {freeShipPromotionID && (
                                   <div style={{ 
                                     fontSize: '12px', 
-                                    color: '#999',
-                                    textDecoration: 'line-through'
-                                  }}>
-                                    {(calcShipFee(distKm) || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
-                                  </div>
-                                  <div style={{ 
-                                    color: '#52c41a', 
+                                    color: '#52c41a',
                                     fontWeight: '600',
+                                    marginTop: '2px'
+                                  }}>
+                                    🚚 Miễn phí vận chuyển
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div style={{ textAlign: 'right' }}>
+                                {freeShipPromotionID ? (
+                                  <div>
+                                    <div style={{ 
+                                      fontSize: '12px', 
+                                      color: '#999',
+                                      textDecoration: 'line-through'
+                                    }}>
+                                      {(shippingDetails.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                                    </div>
+                                    <div style={{ 
+                                      color: '#52c41a', 
+                                      fontWeight: '600',
+                                      fontSize: '14px'
+                                    }}>
+                                      Miễn phí
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ 
+                                    fontWeight: '500',
                                     fontSize: '14px'
                                   }}>
-                                    Miễn phí
+                                    {(shippingDetails.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                                   </div>
-                                </div>
-                              ) : (
-                                <div style={{ 
-                                  fontWeight: '500',
-                                  fontSize: '14px'
-                                }}>
-                                  {(calcShipFee(distKm) || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
+                            
+                            {/* Shipping fee breakdown */}
+                            {!freeShipPromotionID && shippingDetails.basePrice > 0 && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#999',
+                                borderTop: '1px solid #f0f0f0',
+                                paddingTop: '8px',
+                                marginTop: '8px'
+                              }}>
+                                {shippingDetails.distancePrice > 0 && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>Phí khoảng cách:</span>
+                                    <span>{shippingDetails.distancePrice.toLocaleString('vi-VN')} đ</span>
+                                  </div>
+                                )}
+                                {shippingDetails.discount > 0 && (
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52c41a' }}>
+                                    <span>Giảm giá (đơn hàng {originalTotal >= 2000000 ? '>2tr' : originalTotal >= 1000000 ? '>1tr' : '>500k'}):</span>
+                                    <span>-{shippingDetails.discount.toLocaleString('vi-VN')} đ</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          
+
                           <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '6px 0' }} />
                           
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
@@ -1612,7 +2209,6 @@ const calculateTotalWithPromotions = (products) => {
                           </div>
                         </div>
 
-                        {/* ✅ Enhanced Applied Promotions Summary */}
                         {(appliedVoucher || freeShipPromotionID) && (
                           <>
                             <Divider style={{ margin: "16px 0" }} />
@@ -1675,7 +2271,7 @@ const calculateTotalWithPromotions = (products) => {
                                     🚚 Miễn phí vận chuyển
                                   </div>
                                   <div style={{ fontSize: '12px', color: '#666' }}>
-                                    Tiết kiệm: <strong>{(calcShipFee(distKm) || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</strong>
+                                    Tiết kiệm: <strong>{(shippingDetails.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}</strong>
                                   </div>
                                 </div>
                               )}
@@ -1694,7 +2290,13 @@ const calculateTotalWithPromotions = (products) => {
                         </div>
 
                         <Form.Item style={{ marginTop: 16, marginBottom: 0 }}>
-                          <Button type="primary" htmlType="submit" block style={{ height: 44, fontWeight: 600, fontSize: '15px' }}>
+                          <Button 
+                            type="primary" 
+                            htmlType="submit" 
+                            block 
+                            style={{ height: 44, fontWeight: 600, fontSize: '15px' }}
+                            disabled={!productDetail || productDetail.length === 0}
+                          >
                             🛒 Xác nhận đặt hàng
                           </Button>
                         </Form.Item>
@@ -1711,7 +2313,7 @@ const calculateTotalWithPromotions = (products) => {
           </div>
         </Card>
         
-        {/* ✅ ENHANCED MODAL */}
+        {/* MODAL XÁC NHẬN */}
         <Modal
           title="🛒 Xác nhận đặt hàng"
           visible={showModal}
@@ -1790,9 +2392,33 @@ const calculateTotalWithPromotions = (products) => {
                   🚚 Miễn phí vận chuyển
                 </div>
                 <div style={{ fontSize: '13px', color: '#666' }}>
-                  Tiết kiệm: {(calcShipFee(distKm) || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                  Tiết kiệm: {(shippingDetails.totalPrice || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                 </div>
-                  </div>
+              </div>
+            )}
+
+            {/* Shipping Info in Modal */}
+            {shippingDetails.shippingMethod && (
+              <div style={{ 
+                marginBottom: '10px', 
+                padding: '12px', 
+                background: '#f0f8ff', 
+                border: '1px solid #91d5ff', 
+                borderRadius: '8px' 
+              }}>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1890ff' }}>
+                  🚚 Thông tin vận chuyển:
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  <div>Phương thức: <strong>{shippingDetails.shippingMethod}</strong></div>
+                  <div>Khoảng cách: <strong>{distKm?.toFixed(2)} km</strong></div>
+                  <div>Thời gian dự kiến: <strong>
+                    {shippingDetails.estimatedDays === 0 
+                      ? 'Trong ngày' 
+                      : `${shippingDetails.estimatedDays} ngày`}
+                  </strong></div>
+                </div>
+              </div>
             )}
 
             <div style={{ marginTop: '16px', padding: '8px', backgroundColor: '#fff2e8', borderRadius: '6px', fontSize: '13px', color: '#d48806' }}>

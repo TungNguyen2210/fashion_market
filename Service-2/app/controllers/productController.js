@@ -7,28 +7,23 @@ const jwt = require('jsonwebtoken');
 const _const = require('../config/constant');
 
 const calculateCosineSimilarity = (product1, product2) => {
-    // Tính toán tổng số lượng từ variants thay vì sử dụng trường quantity
     const product1Quantity = product1.variants ? 
         product1.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
     
     const product2Quantity = product2.variants ? 
         product2.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
     
-    // Chuyển đổi các đặc trưng của sản phẩm thành vector
-    const vector1 = [product1.price, product1Quantity]; // Sử dụng số lượng từ variants
+    const vector1 = [product1.price, product1Quantity];
     const vector2 = [product2.price, product2Quantity];
   
-    // Tính tổng tích của hai vector
     let dotProduct = 0;
     for (let i = 0; i < vector1.length; i++) {
       dotProduct += vector1[i] * vector2[i];
     }
   
-    // Tính độ dài của vector
     const magnitude1 = Math.sqrt(vector1.reduce((sum, value) => sum + Math.pow(value, 2), 0));
     const magnitude2 = Math.sqrt(vector2.reduce((sum, value) => sum + Math.pow(value, 2), 0));
   
-    // Tính cosine similarity
     const similarity = dotProduct / (magnitude1 * magnitude2);
     return similarity;
 };
@@ -53,11 +48,34 @@ const productController = {
         }
     },
 
+    // ✅ ✅ ✅ SỬA HÀM getProductById ✅ ✅ ✅
     getProductById: (req, res) => {
         try {
-            res.status(200).json(res);
+            console.log('📦 [PRODUCT CONTROLLER] Getting product by ID');
+            
+            // ✅ Middleware đã chuẩn bị sẵn dữ liệu trong req.productData
+            if (req.productData) {
+                console.log('✅ [PRODUCT CONTROLLER] Returning product data from middleware');
+                return res.status(200).json({
+                    success: true,
+                    ...req.productData // Spread toàn bộ data
+                });
+            }
+            
+            // ✅ Fallback nếu middleware không chạy (không nên xảy ra)
+            console.log('⚠️ [PRODUCT CONTROLLER] Middleware data not found');
+            return res.status(500).json({
+                success: false,
+                message: 'Server error: Product data not loaded'
+            });
+            
         } catch (err) {
-            res.status(500).json(err);
+            console.error('❌ [PRODUCT CONTROLLER] Error:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: err.message
+            });
         }
     },
 
@@ -77,23 +95,19 @@ const productController = {
             variants
         } = req.body;
 
-        // Nếu đã có biến thể được gửi đến, sử dụng chúng trực tiếp
         let productVariants = [];
         
         if (variants && variants.length > 0) {
-            // Sử dụng biến thể đã được gửi đến, không phân phối lại số lượng
             productVariants = variants.map(variant => ({
                 variantId: variant.variantId,
                 color: variant.color,
                 size: variant.size,
-                quantity: parseInt(variant.quantity, 10) || 0 // Đảm bảo số lượng là số nguyên
+                quantity: parseInt(variant.quantity, 10) || 0
             }));
         }
-        // Nếu không có biến thể nhưng có màu sắc và kích thước, tạo biến thể mới
         else if (color && sizes && color.length > 0 && sizes.length > 0) {
             const tempId = Date.now().toString();
             
-            // Tạo các biến thể cho tất cả các tổ hợp màu sắc và kích thước
             for (const c of color) {
                 for (const s of sizes) {
                     const variantId = `${tempId}-${s}-${c.replace('#', '')}`;
@@ -102,7 +116,7 @@ const productController = {
                         variantId,
                         color: c,
                         size: s,
-                        quantity: 0 // Mặc định là 0
+                        quantity: 0
                     });
                 }
             }
@@ -119,11 +133,11 @@ const productController = {
             supplier,
             color,
             sizes,
-            variants: productVariants, // Sử dụng biến thể đã xử lý
+            variants: productVariants,
             inventory: {
                 quantityOnHand: inventory?.quantityOnHand || 0,
                 expirationDate: inventory?.expirationDate || null,
-                variantStock: productVariants // Lưu biến thể trong inventory 
+                variantStock: productVariants
             }
         });
 
@@ -143,7 +157,6 @@ const productController = {
         try {
             const productId = req.params.id;
             
-            // Kiểm tra sản phẩm có tồn tại không
             const product = await ProductModel.findById(productId);
             if (!product) {
                 return res.status(404).json({
@@ -152,20 +165,18 @@ const productController = {
                 });
             }
 
-            // Kiểm tra xem sản phẩm đã được mua chưa (chỉ count, không lấy toàn bộ data)
             const orderCount = await OrderModel.countDocuments({
                 'products.product': productId
             });
 
             if (orderCount > 0) {
-                // Nếu cần thông tin chi tiết, chỉ lấy một số đơn hàng gần nhất
                 const recentOrders = await OrderModel.find({
                     'products.product': productId
                 })
                 .populate('user', 'username email')
                 .select('_id user status createdAt')
                 .sort({ createdAt: -1 })
-                .limit(5); // Chỉ lấy 5 đơn hàng gần nhất
+                .limit(5);
 
                 return res.status(400).json({
                     success: false,
@@ -184,7 +195,6 @@ const productController = {
                 });
             }
 
-            // Sản phẩm chưa được mua, có thể xóa
             await ProductModel.findByIdAndDelete(productId);
             
             res.status(200).json({
@@ -225,9 +235,8 @@ const productController = {
                 return res.status(404).json({ message: 'Product not found' });
             }
             
-            // Cập nhật inventory cơ bản
             if (existingProduct.inventory) {
-                existingProduct.inventory.quantityOnHand = 0; // Không cần thiết, sẽ tính từ variants
+                existingProduct.inventory.quantityOnHand = 0;
                 existingProduct.inventory.expirationDate = inventory?.expirationDate || existingProduct.inventory.expirationDate;
             } else {
                 existingProduct.inventory = {
@@ -237,20 +246,17 @@ const productController = {
                 };
             }
 
-            // Cập nhật biến thể nếu được cung cấp
             if (variants && variants.length > 0) {
-                // Sử dụng biến thể đã được gửi đến, không phân phối lại số lượng
                 const updatedVariants = variants.map(variant => ({
                     variantId: variant.variantId || `${id}-${variant.size}-${variant.color.replace('#', '')}`,
                     color: variant.color,
                     size: variant.size,
-                    quantity: parseInt(variant.quantity, 10) || 0 // Đảm bảo số lượng là số nguyên
+                    quantity: parseInt(variant.quantity, 10) || 0
                 }));
                 
                 existingProduct.variants = updatedVariants;
                 existingProduct.inventory.variantStock = updatedVariants;
             }
-            // Nếu không có biến thể nhưng có thay đổi về color hoặc sizes, tạo biến thể mới
             else if ((color && color.length > 0) || (sizes && sizes.length > 0)) {
                 const updatedColor = color || existingProduct.color || [];
                 const updatedSizes = sizes || existingProduct.sizes || [];
@@ -258,12 +264,10 @@ const productController = {
                 if (updatedColor.length > 0 && updatedSizes.length > 0) {
                     const newVariants = [];
                     
-                    // Tạo biến thể mới
                     for (const c of updatedColor) {
                         for (const s of updatedSizes) {
                             const variantId = `${existingProduct._id}-${s}-${c.replace('#', '')}`;
                             
-                            // Tìm biến thể hiện có nếu có
                             const existingVariant = existingProduct.variants?.find(
                                 v => v.color === c && v.size === s
                             );
@@ -282,12 +286,10 @@ const productController = {
                 }
             }
 
-            // Xóa trường quantity (nếu có)
             if (existingProduct.quantity !== undefined) {
                 delete existingProduct.quantity;
             }
 
-            // Cập nhật các trường khác của sản phẩm
             if (name) existingProduct.name = name;
             if (price) existingProduct.price = price;
             if (description) existingProduct.description = description;
@@ -298,7 +300,6 @@ const productController = {
             if (supplier) existingProduct.supplier = supplier;
             if (sizes) existingProduct.sizes = sizes;
 
-            // Lưu sản phẩm đã cập nhật
             const updatedProduct = await existingProduct.save();
 
             res.status(200).json(updatedProduct);
@@ -334,13 +335,11 @@ const productController = {
             const { user } = req;
             const productId = req.params.id;
 
-            // Kiểm tra xem người dùng đã đánh giá sản phẩm này chưa
             const existingReview = await ReviewModel.findOne({ user: user._id, product: productId });
             if (existingReview) {
                 return res.status(201).json('Bạn đã đánh giá sản phẩm này');
             }
 
-            // Tạo mới đánh giá sản phẩm
             const review = new ReviewModel({ user: user._id, product: productId, comment, rating });
             await review.save();
 
@@ -351,59 +350,47 @@ const productController = {
         }
     },
 
-    // Hàm tính cosine similarity giữa hai sản phẩm - cập nhật để sử dụng số lượng từ variants
     calculateCosineSimilarity: (product1, product2) => {
-        // Tính tổng số lượng từ variants thay vì sử dụng trường quantity
         const product1Quantity = product1.variants ? 
             product1.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
         
         const product2Quantity = product2.variants ? 
             product2.variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0) : 0;
         
-        // Chuyển đổi các đặc trưng của sản phẩm thành vector
         const vector1 = [product1.price, product1Quantity];
         const vector2 = [product2.price, product2Quantity];
 
-        // Tính tổng tích của hai vector
         let dotProduct = 0;
         for (let i = 0; i < vector1.length; i++) {
             dotProduct += vector1[i] * vector2[i];
         }
 
-        // Tính độ dài của vector
         const magnitude1 = Math.sqrt(vector1.reduce((sum, value) => sum + Math.pow(value, 2), 0));
         const magnitude2 = Math.sqrt(vector2.reduce((sum, value) => sum + Math.pow(value, 2), 0));
 
-        // Tính cosine similarity
         const similarity = dotProduct / (magnitude1 * magnitude2);
         return similarity;
     },
 
-    // API khuyến nghị sản phẩm dựa trên sản phẩm đã chọn
     recommendProducts: async (req, res) => {
         try {
             const productId = req.params.id;
 
-            // Tìm sản phẩm đã chọn trong CSDL
             const selectedProduct = await ProductModel.findById(productId);
 
             if (!selectedProduct) {
                 return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
             }
 
-            // Lấy tất cả sản phẩm khác trong CSDL
             const allProducts = await ProductModel.find({ _id: { $ne: productId } });
 
-            // Tính toán cosine similarity giữa sản phẩm đã chọn và các sản phẩm khác
             const recommendations = allProducts.map((product) => ({
                 product,
                 similarity: calculateCosineSimilarity(selectedProduct, product),
             }));
 
-            // Sắp xếp danh sách khuyến nghị theo độ tương đồng giảm dần
             recommendations.sort((a, b) => b.similarity - a.similarity);
 
-            // Chỉ lấy top 5 sản phẩm khuyến nghị
             const topRecommendations = recommendations.slice(0, 5).map((item) => item.product);
 
             return res.json({ recommendations: topRecommendations });
@@ -442,7 +429,6 @@ const productController = {
         }
     },
 
-    // Phương thức mới để tìm kiếm theo khoảng giá và danh mục
     getSearchPriceAndCategory: async (req, res) => {
         const page = req.body.page || 1;
         const limit = req.body.limit || 10;
@@ -452,7 +438,6 @@ const productController = {
         
         const query = {};
         
-        // Thêm điều kiện lọc theo giá
         if (minPrice !== undefined && maxPrice !== undefined) {
             query.$and = [
                 { price: { $gte: minPrice } },
@@ -460,7 +445,6 @@ const productController = {
             ];
         }
         
-        // Thêm điều kiện lọc theo danh mục nếu có
         if (categoryId) {
             query.category = categoryId;
         }
@@ -480,7 +464,6 @@ const productController = {
         }
     },
 
-    // Thêm phương thức kiểm tra tồn kho biến thể
     checkVariantStock: async (req, res) => {
         try {
             const { productId, color, size, quantity } = req.body;
@@ -491,7 +474,6 @@ const productController = {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
             }
             
-            // Kiểm tra trong variants nếu có
             if (product.variants && product.variants.length > 0) {
                 const variant = product.variants.find(
                     v => v.color === color && v.size === size
@@ -512,7 +494,6 @@ const productController = {
                     stock: variant.quantity
                 });
             } 
-            // Hoặc kiểm tra trong inventory.variantStock
             else if (product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
                 const variant = product.inventory.variantStock.find(
                     v => v.color === color && v.size === size
@@ -544,7 +525,6 @@ const productController = {
         }
     },
     
-    // Cập nhật tồn kho biến thể
     updateVariantStock: async (req, res) => {
         try {
             const { productId, color, size, quantity } = req.body;
@@ -557,7 +537,6 @@ const productController = {
             
             let updated = false;
             
-            // Cập nhật trong variants nếu có
             if (product.variants && product.variants.length > 0) {
                 for (const variant of product.variants) {
                     if (variant.color === color && variant.size === size) {
@@ -575,7 +554,6 @@ const productController = {
                 }
                 
                 if (updated) {
-                    // Đồng bộ với inventory.variantStock nếu có
                     if (product.inventory && product.inventory.variantStock) {
                         product.inventory.variantStock = product.variants;
                     }
@@ -589,7 +567,6 @@ const productController = {
                     });
                 }
             } 
-            // Hoặc cập nhật trong inventory.variantStock
             else if (product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
                 for (const variant of product.inventory.variantStock) {
                     if (variant.color === color && variant.size === size) {
@@ -607,7 +584,6 @@ const productController = {
                 }
                 
                 if (updated) {
-                    // Đồng bộ với variants nếu có
                     if (product.variants) {
                         product.variants = product.inventory.variantStock;
                     }
@@ -632,7 +608,6 @@ const productController = {
         }
     },
     
-    // Lấy danh sách biến thể có sẵn
     getAvailableVariants: async (req, res) => {
         try {
             const productId = req.params.id;
@@ -647,15 +622,12 @@ const productController = {
             let availableColors = [];
             let availableSizes = [];
             
-            // Lấy từ variants nếu có
             if (product.variants && product.variants.length > 0) {
                 availableVariants = product.variants.filter(v => v.quantity > 0);
             } 
-            // Hoặc lấy từ inventory.variantStock
             else if (product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
                 availableVariants = product.inventory.variantStock.filter(v => v.quantity > 0);
             }
-            // Nếu không có biến thể, tạo biến thể từ color và sizes nếu có
             else if (product.color && product.sizes && product.color.length > 0 && product.sizes.length > 0) {
                 for (const color of product.color) {
                     for (const size of product.sizes) {
@@ -669,7 +641,6 @@ const productController = {
                 }
             }
             
-            // Lấy danh sách màu sắc và kích thước có sẵn
             availableColors = [...new Set(availableVariants.map(v => v.color))];
             availableSizes = [...new Set(availableVariants.map(v => v.size))];
             
@@ -692,7 +663,6 @@ const productController = {
         }
     },
     
-    // Lấy tất cả biến thể (có sẵn và hết hàng)
     getAllVariants: async (req, res) => {
         try {
             const productId = req.params.id;
@@ -705,15 +675,12 @@ const productController = {
             
             let variants = [];
             
-            // Lấy từ variants nếu có
             if (product.variants && product.variants.length > 0) {
                 variants = product.variants;
             } 
-            // Hoặc lấy từ inventory.variantStock
             else if (product.inventory && product.inventory.variantStock && product.inventory.variantStock.length > 0) {
                 variants = product.inventory.variantStock;
             } 
-            // Nếu không có biến thể, tạo biến thể từ color và sizes nếu có
             else if (product.color && product.sizes && product.color.length > 0 && product.sizes.length > 0) {
                 for (const color of product.color) {
                     for (const size of product.sizes) {
@@ -727,7 +694,6 @@ const productController = {
                 }
             }
             
-            // Tính tổng số lượng từ variants
             const totalQuantity = variants.reduce((sum, v) => sum + (parseInt(v.quantity, 10) || 0), 0);
             
             return res.status(200).json({
@@ -750,7 +716,6 @@ const productController = {
         }
     },
 
-    // Phương thức lấy sản phẩm theo danh mục
     getProductByCategory: async (req, res) => {
         try {
             const categoryId = req.params.categoryId;
@@ -763,7 +728,6 @@ const productController = {
                 populate: ['category', 'supplier']
             };
             
-            // Kiểm tra danh mục có tồn tại không
             const category = await CategoryModel.findById(categoryId);
             
             if (!category) {

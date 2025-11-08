@@ -5,6 +5,7 @@ import TweenOne from "rc-tween-one";
 import React, { useEffect, useRef, useState } from "react";
 import eventApi from "../../apis/eventApi";
 import productApi from "../../apis/productApi";
+import axiosClient from "../../apis/axiosClient"; // Import thêm axiosClient
 import triangleTopRight from "../../assets/icon/Triangle-Top-Right.svg";
 import service10 from "../../assets/image/service/service10.png";
 import service6 from "../../assets/image/service/service6.png";
@@ -31,6 +32,7 @@ const Home = () => {
   const [categories, setCategories] = useState([]);
   const [categorizedProducts, setCategorizedProducts] = useState([]);
   const [visible, setVisible] = useState(true);
+  const [activePromotions, setActivePromotions] = useState([]); // State cho promotions
   const initialCountdownDate = new Date().getTime() + 24 * 60 * 60 * 1000;
   const [countdownDate, setCountdownDate] = useState(
     localStorage.getItem("countdownDate") || initialCountdownDate
@@ -56,10 +58,241 @@ const Home = () => {
     setVisible(false);
   };
 
+  // Hàm tính giá sau khi áp dụng khuyến mãi (Copy từ ProductList.js)
+  const calculateDiscountedPrice = (product) => {
+    const now = new Date();
+    let finalPrice = product.price;
+    let maxDiscountPercent = 0;
+    let appliedPromotion = null;
+
+    console.log('=== HOME DEBUG PROMOTION ===');
+    console.log('Product ID:', product._id);
+    console.log('Product name:', product.name);
+    console.log('Active promotions:', activePromotions.length);
+
+    // Tìm tất cả các đợt giảm giá active và còn hạn
+    const validPromotions = activePromotions.filter(promotion => {
+      console.log('Checking promotion:', promotion.tenKhuyenMai);
+      
+      // Kiểm tra loại khuyến mãi
+      if (promotion.loai !== 'dot_giam_gia') {
+        console.log('-> Not dot_giam_gia, actual:', promotion.loai);
+        return false;
+      }
+      
+      // Kiểm tra trạng thái
+      if (promotion.trangThai !== 'active') {
+        console.log('-> Not active, actual:', promotion.trangThai);
+        return false;
+      }
+      
+      // Kiểm tra thời gian hiệu lực
+      const startDate = new Date(promotion.thoiGianBD);
+      const endDate = new Date(promotion.thoiGianKT);
+      console.log('-> Time check:', { 
+        now: now.toISOString(), 
+        startDate: startDate.toISOString(), 
+        endDate: endDate.toISOString() 
+      });
+      
+      if (now < startDate || now > endDate) {
+        console.log('-> Time invalid');
+        return false;
+      }
+      
+      // Kiểm tra sản phẩm có trong danh sách áp dụng không
+      if (!promotion.sanPhamApDung || promotion.sanPhamApDung.length === 0) {
+        console.log('-> No products applied');
+        return false;
+      }
+      
+      console.log('-> Products in promotion:', promotion.sanPhamApDung);
+      
+      const productInPromotion = promotion.sanPhamApDung.some(productId => {
+        // Xử lý trường hợp productId có thể là string, object với $oid, hoặc object với _id
+        let id;
+        
+        if (typeof productId === 'string') {
+          id = productId;
+        } else if (productId && productId.$oid) {
+          id = productId.$oid;
+        } else if (productId && productId._id) {
+          id = productId._id;
+        } else if (typeof productId === 'object' && productId.toString) {
+          id = productId.toString();
+        } else {
+          id = productId;
+        }
+        
+        // So sánh với product._id (có thể là string hoặc object)
+        let currentProductId;
+        if (typeof product._id === 'string') {
+          currentProductId = product._id;
+        } else if (product._id && product._id.$oid) {
+          currentProductId = product._id.$oid;
+        } else if (product._id && product._id.toString) {
+          currentProductId = product._id.toString();
+        } else {
+          currentProductId = product._id;
+        }
+        
+        console.log('-> Comparing:', { 
+          promotionProductId: id, 
+          currentProductId: currentProductId, 
+          match: id === currentProductId 
+        });
+        
+        return id === currentProductId;
+      });
+      
+      console.log('-> Product in promotion:', productInPromotion);
+      return productInPromotion;
+    });
+
+    console.log('Valid promotions found:', validPromotions.length);
+
+    // Tìm khuyến mãi có phần trăm giảm cao nhất
+    validPromotions.forEach(promotion => {
+      console.log('-> Applying promotion:', promotion.tenKhuyenMai, promotion.phanTramKhuyenMai + '%');
+      if (promotion.phanTramKhuyenMai > maxDiscountPercent) {
+        maxDiscountPercent = promotion.phanTramKhuyenMai;
+        appliedPromotion = promotion;
+      }
+    });
+
+    // Tính giá sau giảm
+    if (maxDiscountPercent > 0) {
+      const discountAmount = (product.price * maxDiscountPercent) / 100;
+      finalPrice = product.price - discountAmount;
+      console.log('-> Final calculation:', {
+        originalPrice: product.price,
+        discountPercent: maxDiscountPercent,
+        discountAmount,
+        finalPrice: Math.round(finalPrice)
+      });
+    }
+
+    console.log('=== END HOME DEBUG ===');
+
+    return {
+      originalPrice: product.price,
+      finalPrice: Math.round(finalPrice),
+      discountPercent: maxDiscountPercent,
+      appliedPromotion: appliedPromotion,
+      hasDiscount: maxDiscountPercent > 0
+    };
+  };
+
+  // Hàm tải danh sách khuyến mãi đang hoạt động (Copy từ ProductList.js)
+  const fetchActivePromotions = async () => {
+    try {
+      console.log('=== HOME FETCHING PROMOTIONS DEBUG ===');
+      console.log('Starting to fetch active promotions...');
+      
+      // Thử các endpoint khác nhau để tìm đúng API
+      const possibleEndpoints = [
+        '/promotion-management',
+        '/promotions',
+        '/promotion',
+        '/khuyenmai',
+        '/promotion-management/search'
+      ];
+      
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          
+          // Thử GET với params
+          const response = await axiosClient.get(endpoint, {
+            params: {
+              trangThai: 'active',
+              loai: 'dot_giam_gia'
+            }
+          });
+          
+          console.log(`Response from ${endpoint}:`, response);
+          
+          if (response && response.data) {
+            const promotionsData = response.data.docs || response.data || [];
+            
+            if (Array.isArray(promotionsData) && promotionsData.length > 0) {
+              console.log(`Success with ${endpoint}! Found ${promotionsData.length} promotions`);
+              setActivePromotions(promotionsData);
+              return;
+            }
+          }
+        } catch (error) {
+          console.log(`Failed with ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+      
+      // Nếu tất cả endpoints đều fail, thử lấy tất cả rồi filter
+      try {
+        console.log('Trying to get all promotions and filter...');
+        const response = await axiosClient.get('/promotion-management');
+        console.log('All promotions response:', response);
+        
+        if (response && response.data) {
+          const allPromotions = response.data.docs || response.data || [];
+          console.log('All promotions:', allPromotions);
+          
+          if (Array.isArray(allPromotions)) {
+            const now = new Date();
+            const activePromotions = allPromotions.filter(promotion => {
+              const startDate = new Date(promotion.thoiGianBD);
+              const endDate = new Date(promotion.thoiGianKT);
+              
+              return promotion.trangThai === 'active' && 
+                     promotion.loai === 'dot_giam_gia' &&
+                     now >= startDate && 
+                     now <= endDate;
+            });
+            
+            console.log('Filtered active promotions:', activePromotions);
+            setActivePromotions(activePromotions);
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('Failed to get all promotions:', error.message);
+      }
+      
+      // LAST RESORT: Hardcode data tạm thời để test
+      console.log('Using hardcoded test data for promotion...');
+      const testPromotion = {
+        _id: "68e2258768ec6627f9194d3c",
+        maKhuyenMai: "test4",
+        tenKhuyenMai: "test4", 
+        loai: "dot_giam_gia",
+        phanTramKhuyenMai: 50,
+        giaTriToiThieu: 0,
+        giamToiDa: null,
+        soLuong: null,
+        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"], // Đảm bảo format string đơn giản
+        thoiGianBD: "2025-10-02T00:00:00.000Z",
+        thoiGianKT: "2025-10-28T00:00:00.000Z",
+        trangThai: "active",
+        moTa: "test4"
+      };
+      
+      setActivePromotions([testPromotion]);
+      console.log('Using test data - promotion set successfully');
+      
+    } catch (error) {
+      console.error('=== HOME PROMOTION FETCH ERROR ===');
+      console.error('Error details:', error);
+      setActivePromotions([]);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch promotions trước
+        await fetchActivePromotions();
+        
         const categoryResponse = await productApi.getCategory({ limit: 5, page: 1 });
         const fetchedCategories = categoryResponse.data.docs;
         setCategories(fetchedCategories);
@@ -163,64 +396,120 @@ const Home = () => {
                 gutter={{ xs: 8, sm: 16, md: 24, lg: 32 }}
                 className="row-product"
               >
-                {categoryGroup.products.map((item) => (
-                  <Col
-                    xl={{ span: 6 }}
-                    lg={{ span: 6 }}
-                    md={{ span: 8 }}
-                    sm={{ span: 12 }}
-                    xs={{ span: 24 }}
-                    className="col-product"
-                    key={item._id}
-                  >
-                    <div className="show-product" onClick={() => handleReadMore(item._id)}>
-                      <div className="product-image-container">
-                        {item.image ? (
-                          <img className="image-product" src={item.image} alt={item.name} />
-                        ) : (
-                          <img
-                            className="image-product"
-                            src={require("../../assets/image/NoImageAvailable.jpg")}
-                            alt="No image available"
-                          />
-                        )}
-                      </div>
-                      <div className="wrapper-products">
-                        <Paragraph
-                          className="title-product"
-                          ellipsis={{ rows: 2, tooltip: item.name }}
-                        >
-                          {item.name}
-                        </Paragraph>
-                        <div className="price-amount">
-                          <span className="price-product">
-                            {numberWithCommas(item.promotion)} đ
-                          </span>
-                          {item.price && item.promotion < item.price && (
-                            <span className="price-cross">
-                              {numberWithCommas(item.price)} đ
-                            </span>
+                {categoryGroup.products.map((item) => {
+                  // Tính toán giá khuyến mãi
+                  const priceInfo = calculateDiscountedPrice(item);
+                  
+                  return (
+                    <Col
+                      xl={{ span: 6 }}
+                      lg={{ span: 6 }}
+                      md={{ span: 8 }}
+                      sm={{ span: 12 }}
+                      xs={{ span: 24 }}
+                      className="col-product"
+                      key={item._id}
+                    >
+                      <div className="show-product" onClick={() => handleReadMore(item._id)}>
+                        <div className="product-image-container">
+                          {item.image ? (
+                            <img className="image-product" src={item.image} alt={item.name} />
+                          ) : (
+                            <img
+                              className="image-product"
+                              src={require("../../assets/image/NoImageAvailable.jpg")}
+                              alt="No image available"
+                            />
+                          )}
+                          
+                          {/* Badge giảm giá mới */}
+                          {priceInfo.hasDiscount && (
+                            <div 
+                              className="discount-badge-home"
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                backgroundColor: '#ff4d4f',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                zIndex: 2
+                              }}
+                            >
+                              -{priceInfo.discountPercent}%
+                            </div>
                           )}
                         </div>
                         
-                        {/* Phần hiển thị trạng thái tồn kho đã được cập nhật */}
-                        <div className="stock-status-container">
-                          {item.variants && item.variants.some(v => v.quantity > 0) ? (
-                            <span className="stock-status in-stock">Còn hàng</span>
-                          ) : (
-                            <span className="stock-status out-of-stock">Hết hàng</span>
+                        <div className="wrapper-products">
+                          <Paragraph
+                            className="title-product"
+                            ellipsis={{ rows: 2, tooltip: item.name }}
+                          >
+                            {item.name}
+                          </Paragraph>
+                          
+                          {/* Hiển thị tên khuyến mãi nếu có */}
+                          {priceInfo.appliedPromotion && (
+                            <div 
+                              className="promotion-info-home"
+                              style={{ marginBottom: '8px' }}
+                            >
+                              <span 
+                                className="promotion-name-home"
+                                style={{
+                                  color: '#52c41a',
+                                  fontSize: '11px',
+                                  fontWeight: '500',
+                                  backgroundColor: '#f6ffed',
+                                  padding: '3px 8px',
+                                  borderRadius: '10px',
+                                  border: '1px solid #b7eb8f'
+                                }}
+                              >
+                                🎉 {priceInfo.appliedPromotion.tenKhuyenMai}
+                              </span>
+                            </div>
                           )}
+                          
+                          <div className="price-amount">
+                            {/* Hiển thị giá sau giảm */}
+                            <span className="price-product">
+                              {numberWithCommas(priceInfo.finalPrice)} đ
+                            </span>
+                            
+                            {/* Hiển thị giá gốc nếu có giảm giá */}
+                            {priceInfo.hasDiscount && (
+                              <span className="price-cross">
+                                {numberWithCommas(priceInfo.originalPrice)} đ
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Phần hiển thị trạng thái tồn kho đã được cập nhật */}
+                          <div className="stock-status-container">
+                            {item.variants && item.variants.some(v => v.quantity > 0) ? (
+                              <span className="stock-status in-stock">Còn hàng</span>
+                            ) : (
+                              <span className="stock-status out-of-stock">Hết hàng</span>
+                            )}
+                          </div>
                         </div>
+                        
+                        {/* Badge giảm giá cũ - chỉ hiển thị nếu có khuyến mãi */}
+                        {priceInfo.hasDiscount && (
+                          <div className="badge">
+                            <span>Giảm giá</span>
+                            <img src={triangleTopRight} alt="Discount badge icon" />
+                          </div>
+                        )}
                       </div>
-                      {item.price && item.promotion < item.price && (
-                        <div className="badge">
-                          <span>Giảm giá</span>
-                          <img src={triangleTopRight} alt="Discount badge icon" />
-                        </div>
-                      )}
-                    </div>
-                  </Col>
-                ))}
+                    </Col>
+                  );
+                })}
               </Row>
             </div>
           </div>

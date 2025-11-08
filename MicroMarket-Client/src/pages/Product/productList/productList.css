@@ -268,97 +268,109 @@ hr {
     margin-right: 15px !important;
 }
 
-/* CẢI THIỆN: Tăng kích thước card sản phẩm */
+/* ===== PRODUCT CARD STYLING - GIỐNG HOME.CSS ===== */
+
 .product-list .ant-list-item {
-    padding: 15px !important;
+    padding: 0 !important;
     border: none !important;
-    margin-bottom: 20px;
+    margin-bottom: 0;
 }
 
 .row-product-details {
     margin-top: 20px;
 }
 
-/* CHÍNH: CSS mới cho card sản phẩm lớn hơn và đẹp hơn */
-.client-list-product-card {
+/* ===== DANH SÁCH SẢN PHẨM ===== */
+.list-products {
+    margin-top: 20px;
     background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+.row-product {
+    margin: 20px 0px 10px 0px;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.col-product {
+    position: relative;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.col-product > div {
+    height: 100%;
+}
+
+/* ===== PRODUCT CARD - COPY TỪ HOME.CSS ===== */
+.show-product {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 3px 6px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 380px;
     overflow: hidden;
-    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     cursor: pointer;
     border: 1px solid #f0f0f0;
-    position: relative;
 }
 
-.client-list-product-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 12px 32px rgba(0, 0, 0, 0.08);
+.show-product:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
-/* CHÍNH: Tăng kích thước container ảnh */
-.client-list-product-image-container {
+/* ===== PRODUCT IMAGE CONTAINER - COPY TỪ HOME.CSS ===== */
+.product-image-container {
     width: 100%;
-    padding-top: 85%;
+    padding-top: 100%;
     position: relative;
-    background-color: #fafafa;
-    border-bottom: 1px solid #f0f0f0;
+    background-color: #f9f9f9;
 }
 
-.client-list-product-image {
+.image-product {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    padding: 12px;
+    padding: 8px;
     box-sizing: border-box;
-    transition: transform 0.3s ease;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.client-list-product-card:hover .client-list-product-image {
-    transform: scale(1.05);
-}
-
-/* CHÍNH: Tối ưu phần thông tin sản phẩm */
-.client-list-product-details {
-    padding: 18px 20px 20px;
+/* ===== PRODUCT DETAILS - COPY TỪ HOME.CSS ===== */
+.wrapper-products {
+    padding: 12px 16px 16px;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    text-align: left;
-    justify-content: space-between;
 }
 
-/* CHÍNH: Tăng kích thước tên sản phẩm */
-.client-list-product-name {
-    font-size: 1.1rem !important;
+.title-product {
+    font-size: 0.95rem;
     font-weight: 600;
     line-height: 1.4;
-    color: #333;
-    margin-bottom: 12px !important;
-    min-height: 2.8rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    color: #262626;
+    margin-bottom: 8px;
 }
 
-/* CHÍNH: Cải thiện phần giá */
-.client-list-product-pricing {
+/* ===== PRICE STYLING - COPY TỪ HOME.CSS ===== */
+.price-amount {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
+    align-items: flex-start;
+    margin-top: auto;
+    gap: 4px;
 }
 
-.client-list-product-price-promoted {
-    font-size: 1.3rem !important;
+.price-product {
+    font-size: 1.05rem;
     color: #d70018;
     font-weight: 700;
     margin: 0;
@@ -366,9 +378,9 @@ hr {
     line-height: 1.2;
 }
 
-.client-list-product-price-original {
+.price-cross {
     color: #8c8c8c;
-    font-size: 1rem !important;
+    font-size: 0.85rem;
     font-weight: 500;
     text-decoration: line-through;
     margin: 0;
@@ -376,18 +388,108 @@ hr {
     line-height: 1.2;
 }
 
-.client-list-product-details .ant-typography {
-    margin-bottom: 0;
+/* ===== BADGE STYLING - COPY TỪ HOME.CSS ===== */
+.badge {
+    display: inline-flex;
+    flex-direction: column;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    align-items: flex-start;
 }
 
-.title-product {
-    font-size: 1.1rem;
+.badge > span {
+    font-size: 0.7rem;
+    color: #fff;
+    background-color: #da1b14;
+    padding: 3px 7px;
+    border-radius: 3px;
     font-weight: 600;
-    line-height: 1.4;
-    color: #333;
+    line-height: 1;
 }
 
-/* ===== DISCOUNT BADGE SIÊU ĐẸP ===== */
+.badge > img {
+    width: 8px;
+}
+
+/* ===== STOCK STATUS - COPY TỪ HOME.CSS ===== */
+.stock-status-container {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.stock-status {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.stock-status.in-stock {
+    background-color: #f6ffed;
+    color: #52c41a;
+    border: 1px solid #b7eb8f;
+}
+
+.stock-status.out-of-stock {
+    background-color: #fff2f0;
+    color: #ff4d4f;
+    border: 1px solid #ffccc7;
+}
+
+/* ===== DISCOUNT BADGE - COPY TỪ HOME.CSS ===== */
+.discount-badge-home {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 3px 10px rgba(255, 65, 108, 0.4);
+    animation: pulse-home 2s infinite;
+}
+
+@keyframes pulse-home {
+    0%, 100% { 
+        transform: scale(1); 
+        box-shadow: 0 3px 10px rgba(255, 65, 108, 0.4);
+    }
+    50% { 
+        transform: scale(1.03); 
+        box-shadow: 0 4px 15px rgba(255, 65, 108, 0.6);
+    }
+}
+
+/* ===== PROMOTION INFO - COPY TỪ HOME.CSS ===== */
+.promotion-info-home {
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+.promotion-name-home {
+    font-size: 11px;
+    color: #52c41a;
+    font-weight: 600;
+    background: #f6ffed;
+    padding: 3px 8px;
+    border-radius: 10px;
+    border: 1px solid #b7eb8f;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.promotion-name-home:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(82, 196, 26, 0.2);
+}
+
+/* ===== ADVANCED DISCOUNT BADGES ===== */
 .discount-badge {
     position: absolute;
     top: 10px;
@@ -498,7 +600,6 @@ hr {
     40%, 100% { transform: rotateZ(0); }
 }
 
-/* CSS cho thông tin khuyến mãi - Cải thiện */
 .promotion-info {
     margin-top: 8px;
     margin-bottom: 12px;
@@ -522,42 +623,7 @@ hr {
     box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
 }
 
-/* Cải thiện: Style cho trạng thái tồn kho */
-.stock-status-container {
-    display: flex;
-    align-items: center;
-    margin-top: 12px;
-}
-
-.stock-status {
-    font-size: 13px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    display: inline-block;
-    white-space: nowrap;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-.stock-status:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.stock-status.in-stock {
-    background: #52c41a;  /* Solid green background */
-    color: #ffffff;       /* White text */
-    border: 1px solid #389e0d;
-}
-
-.stock-status.out-of-stock {
-    background: #ff4d4f;  /* Solid red background */
-    color: #ffffff;       /* White text */
-    border: 1px solid #cf1322;
-}
-
-/* Cải thiện bộ lọc giá */
+/* ===== PRICE FILTER ===== */
 .price-filter {
     background-color: #f5f5f5;
     border-radius: 8px;
@@ -596,7 +662,6 @@ hr {
     margin-right: 10px;
 }
 
-/* Thêm style cho sản phẩm không có hình ảnh */
 .no-image-container {
     display: flex;
     justify-content: center;
@@ -606,7 +671,6 @@ hr {
     color: #999;
 }
 
-/* Hiển thị thông báo không tìm thấy sản phẩm */
 .no-products-found {
     text-align: center;
     padding: 50px 0;
@@ -654,7 +718,8 @@ hr {
     min-width: 180px;
 }
 
-/* RESPONSIVE: Cải thiện responsive cho card lớn hơn */
+/* ===== RESPONSIVE DESIGN ===== */
+
 @media only screen and (max-width: 1280px) {
     .container_details {
         max-width: 100%;
@@ -706,20 +771,20 @@ hr {
         margin-top: 10px;
     }
 
-    /* Điều chỉnh card cho tablet */
-    .client-list-product-card {
-        min-height: 350px;
+    /* Điều chỉnh badge cho mobile */
+    .discount-badge-home {
+        padding: 4px 8px;
+        font-size: 11px;
+        top: 6px;
+        right: 6px;
+        border-radius: 12px;
     }
     
-    .client-list-product-name {
-        font-size: 1rem !important;
-    }
-    
-    .client-list-product-price-promoted {
-        font-size: 1.2rem !important;
+    .promotion-name-home {
+        font-size: 10px;
+        padding: 2px 6px;
     }
 
-    /* Điều chỉnh badge cho mobile */
     .discount-badge {
         padding: 6px 10px;
         font-size: 12px;
@@ -762,41 +827,23 @@ hr {
         margin: 10px 0;
         display: block;
     }
-    
-    .client-list-product-card {
-        margin-bottom: 15px;
-        min-height: 320px;
-    }
-    
-    .client-list-product-name {
-        font-size: 0.95rem !important;
-    }
-    
-    .client-list-product-price-promoted {
-        font-size: 1.1rem !important;
-    }
 }
 
-/* Sửa lại hiển thị menu danh mục ở màn hình nhỏ */
 @media only screen and (max-width: 480px) {
     .menu-item-1 {
         flex: 1 1 calc(100% - 10px);
         max-width: calc(100% - 10px);
     }
-    
-    .client-list-product-card {
-        min-height: 300px;
-    }
-    
-    .client-list-product-name {
-        font-size: 0.9rem !important;
-    }
-    
-    .client-list-product-price-promoted {
-        font-size: 1rem !important;
-    }
 
     /* Badge nhỏ hơn cho mobile */
+    .discount-badge-home {
+        padding: 4px 8px;
+        font-size: 11px;
+        top: 6px;
+        right: 6px;
+        border-radius: 12px;
+    }
+
     .discount-badge {
         padding: 4px 8px;
         font-size: 11px;

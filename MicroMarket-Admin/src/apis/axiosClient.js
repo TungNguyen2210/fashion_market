@@ -1,3 +1,4 @@
+// ✅ REVERT axiosClient.js về code cũ
 import axios from 'axios';
 import queryString from 'query-string';
 import { createBrowserHistory } from "history";
@@ -24,8 +25,7 @@ axiosClient.interceptors.response.use((response) => {
     }
     return response;
 }, (error) => {
-   
     return Promise.reject(error);
 });
 
-export default axiosClient; 
+export default axiosClient;

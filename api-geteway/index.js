@@ -4,15 +4,16 @@ const cors = require('cors');
 const app = express();
 const _CONST = require('./app/config/constant')
 const axios = require('axios');
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static('public'));
+
 const multer = require('multer');
 
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
-
 
 const PORT = process.env.PORT || _CONST.PORT;
 
@@ -53,6 +54,95 @@ app.post('/api/auth/register', async (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 });
+
+// ✅ ✅ ✅ THÊM ROUTE GOOGLE LOGIN - BẮT ĐẦU TỪ ĐÂY ✅ ✅ ✅
+app.post('/api/auth/google-login', async (req, res) => {
+    try {
+        console.log('🔐 [API GATEWAY] Forwarding Google login to Service-1...');
+        console.log('📦 [API GATEWAY] Request body:', req.body);
+        
+        const response = await axios.post('http://localhost:3200/api/auth/google-login', {
+            credential: req.body.credential
+        }, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Google login successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Google login error:', error.message);
+        
+        // Forward error từ Service-1
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến authentication service'
+            });
+        }
+    }
+});
+
+// ✅ ✅ ✅ THÊM ROUTE GET /api/auth/me ✅ ✅ ✅
+app.get('/api/auth/me', async (req, res) => {
+    try {
+        console.log('👤 [API GATEWAY] Forwarding /auth/me to Service-1...');
+        console.log('🔑 [API GATEWAY] Authorization header:', req.headers.authorization);
+        
+        const response = await axios.get('http://localhost:3200/api/auth/me', {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] /auth/me successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] /auth/me error:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến authentication service'
+            });
+        }
+    }
+});
+
+// ✅ ✅ ✅ THÊM ROUTE LOGOUT ✅ ✅ ✅
+app.post('/api/auth/logout', async (req, res) => {
+    try {
+        console.log('🚪 [API GATEWAY] Forwarding logout to Service-1...');
+        
+        const response = await axios.post('http://localhost:3200/api/auth/logout', {}, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Logout successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Logout error:', error.message);
+        
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến authentication service'
+            });
+        }
+    }
+});
+// ✅ ✅ ✅ KẾT THÚC PHẦN THÊM MỚI ✅ ✅ ✅
 
 /* ========== API MANAGEMENT USER ============ */
 
@@ -568,7 +658,6 @@ app.post("/api/order/:id/rating", async (req, res) => {
 
 app.get("/api/reviews/:productId", async (req, res) => {
     try {
-        
         const response = await axios.get(`http://localhost:3300/api/order/reviews/${req.params.productId}`, {
             headers: {
                 Authorization: req.headers.authorization
@@ -601,9 +690,25 @@ app.post("/api/order/:orderId/rate-products", async (req, res) => {
   }
 });
 
-
-
-
+app.get("/api/order/shipping/:id", async (req, res) => {
+  try {
+    const response = await axios.get(`http://localhost:3300/api/order/shipping/${req.params.id}`, {
+      headers: {
+        Authorization: req.headers.authorization || ""
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("Lỗi khi lấy chi tiết đơn hàng cho vận chuyển:", error.message);
+    
+    // Trả về lỗi chi tiết và status code từ service
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ message: "Gateway Error: Không thể kết nối đến service" });
+    }
+  }
+});
 
 /* ========== API PRODUCT ============ */
 
@@ -688,6 +793,33 @@ app.get('/api/product/:id', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/api/product/:id/variants', async (req, res) => {
+    try {
+        console.log('🔍 [API GATEWAY] Fetching product variants for ID:', req.params.id);
+        
+        const response = await axios.get(`http://localhost:3300/api/product/${req.params.id}/variants`, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Product variants fetched successfully');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Error fetching product variants:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-2 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến product service'
+            });
+        }
     }
 });
 
@@ -850,7 +982,6 @@ app.get('/api/suppliers/searchByName', async (req, res) => {
     }
 });
 
-/* ========== API STATISTICAL ============ */
 
 // Route để xử lý yêu cầu thống kê
 app.get('/api/statistical/count', async (req, res) => {
@@ -861,24 +992,4 @@ app.get('/api/statistical/count', async (req, res) => {
         console.error(error);
         res.status(500).send('Internal Server Error');
     }
-});
-
-app.get("/api/order/shipping/:id", async (req, res) => {
-  try {
-    const response = await axios.get(`http://localhost:3300/api/order/shipping/${req.params.id}`, {
-      headers: {
-        Authorization: req.headers.authorization || ""
-      }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error("Lỗi khi lấy chi tiết đơn hàng cho vận chuyển:", error.message);
-    
-    // Trả về lỗi chi tiết và status code từ service
-    if (error.response) {
-      res.status(error.response.status).json(error.response.data);
-    } else {
-      res.status(500).json({ message: "Gateway Error: Không thể kết nối đến service" });
-    }
-  }
 });

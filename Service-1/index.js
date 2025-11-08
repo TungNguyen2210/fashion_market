@@ -8,6 +8,9 @@ const path = require('path');
 const DB_MONGO = require('./app/config/db.config')
 const _CONST = require('./app/config/constant')
 
+// ===== THÊM DÒNG NÀY ĐỂ ĐỌC FILE .env ===== 
+require('dotenv').config();
+
 //router
 const authRoute = require('./app/routers/auth');
 const userRoute = require('./app/routers/user');
@@ -17,7 +20,18 @@ const paymentRoute = require('./app/routers/paypal');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(cors());
+
+// ===== SỬA DÒNG CORS NÀY ĐỂ HỖ TRỢ COOKIE =====
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// ===== THÊM DÒNG NÀY ĐỂ PARSE COOKIE =====
+app.use(cookieParser());
+
 app.use(express.static('public'));
 
 mongoose.connect(DB_MONGO.URL, { useNewUrlParser: true, useUnifiedTopology: true })

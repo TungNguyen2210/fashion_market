@@ -16,8 +16,8 @@ const promotionController = {
 
             // Tạo filter object
             const filter = {};
-            if (loai) filter.loai = loai;
-            if (trangThai) filter.trangThai = trangThai;
+            if (loai && loai !== 'all') filter.loai = loai;
+            if (trangThai && trangThai !== 'all') filter.trangThai = trangThai;
 
             // Tạo sort object
             const sort = {};
@@ -34,11 +34,15 @@ const promotionController = {
             };
 
             const promotions = await Promotion.paginate(filter, options);
+            
+            console.log('✅ Retrieved promotions:', promotions.docs?.length || 0);
+
             res.status(200).json({
                 success: true,
                 data: promotions
             });
         } catch (err) {
+            console.error('❌ Get promotions error:', err);
             res.status(500).json({
                 success: false,
                 message: err.message
@@ -59,11 +63,14 @@ const promotionController = {
                 });
             }
 
+            console.log('✅ Retrieved promotion:', promotion.maKhuyenMai);
+
             res.status(200).json({
                 success: true,
                 data: promotion
             });
         } catch (err) {
+            console.error('❌ Get promotion by ID error:', err);
             res.status(500).json({
                 success: false,
                 message: err.message
@@ -75,43 +82,83 @@ const promotionController = {
 
     // 🔥 API tăng số lượng đã sử dụng của promotion
     incrementUsage: async (req, res) => {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
         try {
             const promotionId = req.params.id;
             
             console.log(`🔄 Incrementing usage for promotion: ${promotionId}`);
             
-            const updatedPromotion = await Promotion.findByIdAndUpdate(
-                promotionId,
-                { $inc: { soLuongDaSuDung: 1 } },
-                { new: true }
-            );
-
-            if (!updatedPromotion) {
+            // Kiểm tra promotion có tồn tại và có thể sử dụng không
+            const promotion = await Promotion.findById(promotionId).session(session);
+            
+            if (!promotion) {
+                await session.abortTransaction();
                 return res.status(404).json({
                     success: false,
                     message: 'Promotion not found'
                 });
             }
 
-            console.log(`✅ Updated promotion usage: ${updatedPromotion.soLuongDaSuDung}/${updatedPromotion.soLuong || 'unlimited'}`);
+            // Kiểm tra promotion có đang active không
+            const now = new Date();
+            if (promotion.trangThai !== 'active' || 
+                promotion.thoiGianBD > now || 
+                promotion.thoiGianKT < now) {
+                await session.abortTransaction();
+                return res.status(400).json({
+                    success: false,
+                    message: 'Promotion is not currently active'
+                });
+            }
+
+            // Kiểm tra còn slot không (chỉ áp dụng cho voucher)
+            if (promotion.loai === 'voucher' && promotion.soLuong) {
+                const currentUsed = promotion.usedCount || 0;
+                if (currentUsed >= promotion.soLuong) {
+                    await session.abortTransaction();
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Promotion has reached maximum usage limit'
+                    });
+                }
+            }
+
+            // Cập nhật usedCount với đảm bảo Int32
+            const updatedPromotion = await Promotion.findByIdAndUpdate(
+                promotionId,
+                { 
+                    $inc: { usedCount: 1 }
+                },
+                { new: true, session }
+            );
+
+            await session.commitTransaction();
+
+            console.log(`✅ Updated promotion usage: ${updatedPromotion.usedCount}/${updatedPromotion.soLuong || 'unlimited'}`);
 
             res.status(200).json({
                 success: true,
                 message: 'Promotion usage updated successfully',
                 data: {
                     _id: updatedPromotion._id,
-                    soLuongDaSuDung: updatedPromotion.soLuongDaSuDung,
+                    usedCount: updatedPromotion.usedCount,
                     soLuong: updatedPromotion.soLuong,
-                    tenKhuyenMai: updatedPromotion.tenKhuyenMai
+                    tenKhuyenMai: updatedPromotion.tenKhuyenMai,
+                    soLuongConLai: updatedPromotion.soLuong ? updatedPromotion.soLuong - updatedPromotion.usedCount : null
                 }
             });
         } catch (error) {
+            await session.abortTransaction();
             console.error('❌ Error updating promotion usage:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error updating promotion usage',
                 error: error.message
             });
+        } finally {
+            session.endSession();
         }
     },
 
@@ -131,7 +178,7 @@ const promotionController = {
 
             const promotions = await Promotion.find({
                 _id: { $in: ids }
-            }).select('_id tenKhuyenMai maKhuyenMai phanTramKhuyenMai giamToiDa loai');
+            }).select('_id tenKhuyenMai maKhuyenMai phanTramKhuyenMai giamToiDa loai usedCount soLuong');
 
             console.log(`✅ Found ${promotions.length} promotions`);
 
@@ -149,9 +196,9 @@ const promotionController = {
         }
     },
 
-    // ===== EXISTING METHODS =====
+    // ===== EXISTING METHODS - IMPROVED =====
 
-    // Tạo promotion mới
+    // 🔥 Tạo promotion mới - COMPLETE VERSION
     createPromotion: async (req, res) => {
         const {
             maKhuyenMai,
@@ -164,12 +211,32 @@ const promotionController = {
             sanPhamApDung,
             thoiGianBD,
             thoiGianKT,
-            moTa
+            moTa,
+            trangThai
         } = req.body;
 
         try {
-            // Kiểm tra mã khuyến mãi đã tồn tại
-            const existingPromotion = await Promotion.findOne({ maKhuyenMai });
+            console.log('📝 Creating promotion with data:', {
+                maKhuyenMai,
+                loai,
+                phanTramKhuyenMai,
+                giaTriToiThieu,
+                giamToiDa,
+                soLuong
+            });
+
+            // 1. Validate required fields
+            if (!maKhuyenMai || !tenKhuyenMai || !loai || !thoiGianBD || !thoiGianKT) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thiếu thông tin bắt buộc: mã KM, tên KM, loại, thời gian bắt đầu và kết thúc'
+                });
+            }
+
+            // 2. Kiểm tra mã khuyến mãi đã tồn tại (case-insensitive)
+            const existingPromotion = await Promotion.findOne({ 
+                maKhuyenMai: { $regex: new RegExp(`^${maKhuyenMai.trim()}$`, 'i') }
+            });
             if (existingPromotion) {
                 return res.status(400).json({
                     success: false,
@@ -177,7 +244,7 @@ const promotionController = {
                 });
             }
 
-            // Validate dates trước khi create
+            // 3. Validate và parse dates
             const startDate = new Date(thoiGianBD);
             const endDate = new Date(thoiGianKT);
             
@@ -198,40 +265,129 @@ const promotionController = {
             if (endDate.getTime() <= startDate.getTime()) {
                 return res.status(400).json({
                     success: false,
-                    message: `Thời gian kết thúc (${endDate.toLocaleDateString('vi-VN')}) phải sau thời gian bắt đầu (${startDate.toLocaleDateString('vi-VN')})`
+                    message: 'Thời gian kết thúc phải sau thời gian bắt đầu'
                 });
             }
 
-            // Validate dữ liệu theo loại
-            if (loai === 'voucher' && !giamToiDa) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Voucher phải có giá trị giảm tối đa'
-                });
-            }
-
-            if (loai === 'free_shipping' && phanTramKhuyenMai !== 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Free shipping không có phần trăm khuyến mãi'
-                });
-            }
-
-            const newPromotion = new Promotion({
-                maKhuyenMai,
-                tenKhuyenMai,
+            // 4. Validate theo từng loại promotion
+            let validatedData = {
+                maKhuyenMai: maKhuyenMai.trim().toUpperCase(),
+                tenKhuyenMai: tenKhuyenMai.trim(),
                 loai,
-                phanTramKhuyenMai,
-                giaTriToiThieu: giaTriToiThieu || 0,
-                giamToiDa: loai === 'voucher' ? giamToiDa : null,
-                soLuong: loai === 'voucher' ? soLuong : null,
-                sanPhamApDung: sanPhamApDung || [],
                 thoiGianBD: startDate,
                 thoiGianKT: endDate,
-                moTa
-            });
+                moTa: moTa?.trim() || '',
+                trangThai: trangThai || 'scheduled',
+                usedCount: 0  // 🔥 Khởi tạo usedCount = 0
+            };
 
+            switch (loai) {
+                case 'voucher':
+                    // Validate required fields for voucher
+                    if (!phanTramKhuyenMai || phanTramKhuyenMai <= 0 || phanTramKhuyenMai > 100) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Voucher phải có phần trăm khuyến mãi từ 1-100%'
+                        });
+                    }
+                    if (!giaTriToiThieu || giaTriToiThieu <= 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Voucher phải có giá trị đơn hàng tối thiểu lớn hơn 0'
+                        });
+                    }
+                    if (!giamToiDa || giamToiDa <= 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Voucher phải có giá trị giảm tối đa lớn hơn 0'
+                        });
+                    }
+                    if (giamToiDa > giaTriToiThieu) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Giá trị giảm tối đa không được lớn hơn giá trị đơn hàng tối thiểu'
+                        });
+                    }
+                    if (!soLuong || soLuong <= 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Voucher phải có số lượng lớn hơn 0'
+                        });
+                    }
+
+                    validatedData = {
+                        ...validatedData,
+                        phanTramKhuyenMai,
+                        giaTriToiThieu,
+                        giamToiDa,
+                        soLuong
+                    };
+                    break;
+
+                case 'dot_giam_gia':
+                    // Validate required fields for dot_giam_gia
+                    if (!phanTramKhuyenMai || phanTramKhuyenMai <= 0 || phanTramKhuyenMai > 100) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Đợt giảm giá phải có phần trăm khuyến mãi từ 1-100%'
+                        });
+                    }
+                    if (!sanPhamApDung || !Array.isArray(sanPhamApDung) || sanPhamApDung.length === 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Đợt giảm giá phải chọn ít nhất một sản phẩm áp dụng'
+                        });
+                    }
+
+                    validatedData = {
+                        ...validatedData,
+                        phanTramKhuyenMai,
+                        giaTriToiThieu: 0,
+                        sanPhamApDung,
+                        giamToiDa: giamToiDa || null
+                    };
+                    break;
+
+                case 'free_shipping':
+                    // Validate required fields for free_shipping
+                    if (!giaTriToiThieu || giaTriToiThieu <= 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Miễn phí vận chuyển phải có giá trị đơn hàng tối thiểu lớn hơn 0'
+                        });
+                    }
+                    if (phanTramKhuyenMai && phanTramKhuyenMai !== 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Miễn phí vận chuyển không có phần trăm khuyến mãi'
+                        });
+                    }
+
+                    validatedData = {
+                        ...validatedData,
+                        phanTramKhuyenMai: 0,
+                        giaTriToiThieu
+                    };
+                    break;
+
+                default:
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Loại khuyến mãi không hợp lệ. Chỉ chấp nhận: voucher, dot_giam_gia, free_shipping'
+                    });
+            }
+
+            // 5. Tạo promotion mới
+            console.log('✅ Validated data:', validatedData);
+
+            const newPromotion = new Promotion(validatedData);
             const savedPromotion = await newPromotion.save();
+
+            console.log('🎉 Created promotion successfully:', savedPromotion.maKhuyenMai);
+
+            // 6. Populate san productos if needed
+            await savedPromotion.populate('sanPhamApDung', 'name price image');
+
             res.status(201).json({
                 success: true,
                 data: savedPromotion,
@@ -239,90 +395,114 @@ const promotionController = {
             });
         } catch (err) {
             console.error('❌ Create promotion error:', err);
-            res.status(400).json({
+            
+            // Handle mongoose validation errors
+            if (err.name === 'ValidationError') {
+                const messages = Object.values(err.errors).map(error => error.message);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Dữ liệu không hợp lệ',
+                    details: messages
+                });
+            }
+
+            // Handle duplicate key error
+            if (err.code === 11000) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mã khuyến mãi đã tồn tại'
+                });
+            }
+
+            res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Lỗi server: ' + err.message
             });
         }
     },
 
-    // Cập nhật promotion với date validation fix
+    // Cập nhật promotion với business rules
     updatePromotion: async (req, res) => {
         try {
+            const promotionId = req.params.id;
             const updateData = { ...req.body };
             
             console.log('📥 Update promotion request:', {
-                id: req.params.id,
+                id: promotionId,
                 updateData
             });
-            
-            // Xử lý dates
-            if (updateData.thoiGianBD) {
-                updateData.thoiGianBD = new Date(updateData.thoiGianBD);
-                if (isNaN(updateData.thoiGianBD.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Ngày bắt đầu không hợp lệ: ${req.body.thoiGianBD}`
-                    });
-                }
-            }
-            
-            if (updateData.thoiGianKT) {
-                updateData.thoiGianKT = new Date(updateData.thoiGianKT);
-                if (isNaN(updateData.thoiGianKT.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Ngày kết thúc không hợp lệ: ${req.body.thoiGianKT}`
-                    });
-                }
-            }
-            
-            // Validate dates before update
-            if (updateData.thoiGianBD && updateData.thoiGianKT) {
-                const startTime = updateData.thoiGianBD.getTime();
-                const endTime = updateData.thoiGianKT.getTime();
-                
-                if (endTime <= startTime) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Thời gian kết thúc (${updateData.thoiGianKT.toLocaleDateString('vi-VN')}) phải sau thời gian bắt đầu (${updateData.thoiGianBD.toLocaleDateString('vi-VN')})`
-                    });
-                }
-            } else if (updateData.thoiGianBD || updateData.thoiGianKT) {
-                const currentPromotion = await Promotion.findById(req.params.id);
-                if (!currentPromotion) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'Không tìm thấy khuyến mãi'
-                    });
-                }
-                
-                const finalStartDate = updateData.thoiGianBD || currentPromotion.thoiGianBD;
-                const finalEndDate = updateData.thoiGianKT || currentPromotion.thoiGianKT;
-                
-                if (finalEndDate <= finalStartDate) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Thời gian kết thúc (${finalEndDate.toLocaleDateString('vi-VN')}) phải sau thời gian bắt đầu (${finalStartDate.toLocaleDateString('vi-VN')})`
-                    });
-                }
-            }
 
-            const updatedPromotion = await Promotion.findByIdAndUpdate(
-                req.params.id,
-                updateData,
-                { 
-                    new: true, 
-                    runValidators: false
-                }
-            ).populate('sanPhamApDung', 'name price image');
-
-            if (!updatedPromotion) {
+            // 1. Kiểm tra promotion có tồn tại không
+            const currentPromotion = await Promotion.findById(promotionId);
+            if (!currentPromotion) {
                 return res.status(404).json({
                     success: false,
                     message: 'Không tìm thấy khuyến mãi'
                 });
             }
+
+            // 2. Kiểm tra business rules để xem có thể update không
+            const canUpdate = checkCanUpdatePromotion(currentPromotion);
+            if (!canUpdate.allowed) {
+                return res.status(400).json({
+                    success: false,
+                    message: canUpdate.reason
+                });
+            }
+
+            // 3. Filter allowed fields dựa trên business rules
+            const allowedFields = getAllowedUpdateFields(currentPromotion);
+            const filteredUpdateData = {};
+            
+            Object.keys(updateData).forEach(field => {
+                if (allowedFields.includes(field)) {
+                    filteredUpdateData[field] = updateData[field];
+                }
+            });
+
+            // 4. Validate dates nếu có
+            if (filteredUpdateData.thoiGianBD) {
+                filteredUpdateData.thoiGianBD = new Date(filteredUpdateData.thoiGianBD);
+                if (isNaN(filteredUpdateData.thoiGianBD.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Ngày bắt đầu không hợp lệ: ${updateData.thoiGianBD}`
+                    });
+                }
+            }
+            
+            if (filteredUpdateData.thoiGianKT) {
+                filteredUpdateData.thoiGianKT = new Date(filteredUpdateData.thoiGianKT);
+                if (isNaN(filteredUpdateData.thoiGianKT.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Ngày kết thúc không hợp lệ: ${updateData.thoiGianKT}`
+                    });
+                }
+            }
+
+            // 5. Validate date range
+            const finalStartDate = filteredUpdateData.thoiGianBD || currentPromotion.thoiGianBD;
+            const finalEndDate = filteredUpdateData.thoiGianKT || currentPromotion.thoiGianKT;
+            
+            if (finalEndDate <= finalStartDate) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thời gian kết thúc phải sau thời gian bắt đầu'
+                });
+            }
+
+            // 6. Update với filtered data
+            const updatedPromotion = await Promotion.findByIdAndUpdate(
+                promotionId,
+                filteredUpdateData,
+                { 
+                    new: true, 
+                    runValidators: true
+                }
+            ).populate('sanPhamApDung', 'name price image');
+
+            console.log('✅ Updated promotion:', updatedPromotion.maKhuyenMai);
 
             res.status(200).json({
                 success: true,
@@ -338,23 +518,40 @@ const promotionController = {
         }
     },
 
-    // Xóa promotion
+    // Xóa promotion với business rules
     deletePromotion: async (req, res) => {
         try {
-            const deletedPromotion = await Promotion.findByIdAndDelete(req.params.id);
+            const promotionId = req.params.id;
             
-            if (!deletedPromotion) {
+            // 1. Kiểm tra promotion có tồn tại không
+            const promotion = await Promotion.findById(promotionId);
+            if (!promotion) {
                 return res.status(404).json({
                     success: false,
                     message: 'Không tìm thấy khuyến mãi'
                 });
             }
 
+            // 2. Kiểm tra business rules
+            const canDelete = checkCanDeletePromotion(promotion);
+            if (!canDelete.allowed) {
+                return res.status(400).json({
+                    success: false,
+                    message: canDelete.reason
+                });
+            }
+
+            // 3. Xóa promotion
+            await Promotion.findByIdAndDelete(promotionId);
+            
+            console.log('🗑️ Deleted promotion:', promotion.maKhuyenMai);
+
             res.status(200).json({
                 success: true,
                 message: 'Xóa khuyến mãi thành công'
             });
         } catch (err) {
+            console.error('❌ Delete promotion error:', err);
             res.status(500).json({
                 success: false,
                 message: err.message
@@ -362,72 +559,61 @@ const promotionController = {
         }
     },
 
-    // ENHANCED: Tìm kiếm promotion với debug logs và workaround
-    searchPromotions: async (req, res) => {
-        res.set({
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        });
-
-        const { 
-            page = 1, 
-            limit = 10, 
-            keyword,
-            name,
-            loai,
-            trangThai,
-            _t
-        } = req.query;
-
-        try {
-            let searchKeyword = keyword;
-            if (!keyword && name && name !== 'undefined') {
-                searchKeyword = name;
-            }
-
-            const searchQuery = {};
-            
-            if (searchKeyword && searchKeyword.trim() !== '') {
-                searchQuery.$or = [
-                    { maKhuyenMai: { $regex: searchKeyword.trim(), $options: 'i' } },
-                    { tenKhuyenMai: { $regex: searchKeyword.trim(), $options: 'i' } }
-                ];
-            }
-            
-            if (loai && loai !== 'all') {
-                searchQuery.loai = loai;
-            }
-            
-            if (trangThai && trangThai !== 'all') {
-                searchQuery.trangThai = trangThai;
-            }
-
-            const options = {
-                page: parseInt(page, 10),
-                limit: parseInt(limit, 10),
-                sort: { ngayTao: -1 },
-                populate: {
-                    path: 'sanPhamApDung',
-                    select: 'name price image'
-                }
-            };
-
-            const promotions = await Promotion.paginate(searchQuery, options);
-            
-            res.status(200).json({
-                success: true,
-                data: promotions
-            });
-        } catch (err) {
-            console.error('❌ Search error:', err);
-            res.status(500).json({
-                success: false,
-                message: err.message,
-                error: err.toString()
-            });
+    // ENHANCED: Tìm kiếm promotion với debug logs
+    // ✅ Sửa controller backend
+searchPromotions: async (req, res) => {
+    console.log('🟢 SEARCH ROUTE HIT!', req.query);
+    
+    // ✅ Nhận cả keyword và name
+    const { keyword, name } = req.query;
+    const searchKeyword = keyword || name; // Fallback
+    
+    console.log('🟢 Final searchKeyword:', searchKeyword);
+    
+    try {
+        let searchQuery = {};
+        
+        if (searchKeyword && searchKeyword !== 'undefined' && searchKeyword.trim() !== '') {
+            const trimmedKeyword = searchKeyword.trim();
+            searchQuery.$or = [
+                { maKhuyenMai: { $regex: trimmedKeyword, $options: 'i' } },
+                { tenKhuyenMai: { $regex: trimmedKeyword, $options: 'i' } }
+            ];
         }
-    },
+        
+        // Apply filters
+        if (req.query.loai && req.query.loai !== 'all' && req.query.loai !== 'undefined') {
+            searchQuery.loai = req.query.loai;
+        }
+        
+        if (req.query.trangThai && req.query.trangThai !== 'all' && req.query.trangThai !== 'undefined') {
+            searchQuery.trangThai = req.query.trangThai;
+        }
+        
+        console.log('🟢 MongoDB searchQuery:', JSON.stringify(searchQuery, null, 2));
+        
+        const options = {
+            page: parseInt(req.query.page) || 1,
+            limit: parseInt(req.query.limit) || 10,
+            sort: { ngayTao: -1 },
+            populate: {
+                path: 'sanPhamApDung',
+                select: 'name price image'
+            }
+        };
+        
+        const result = await Promotion.paginate(searchQuery, options);
+        
+        res.status(200).json({
+            success: true,
+            data: result
+        });
+        
+    } catch (err) {
+        console.error('❌ Search error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+},
 
     // Lấy promotion đang active
     getActivePromotions: async (req, res) => {
@@ -439,11 +625,14 @@ const promotionController = {
                 trangThai: 'active'
             }).populate('sanPhamApDung', 'name price image');
 
+            console.log(`✅ Found ${activePromotions.length} active promotions`);
+
             res.status(200).json({
                 success: true,
                 data: activePromotions
             });
         } catch (err) {
+            console.error('❌ Get active promotions error:', err);
             res.status(500).json({
                 success: false,
                 message: err.message
@@ -464,6 +653,13 @@ const promotionController = {
                 });
             }
 
+            if (promotion.loai !== 'dot_giam_gia') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Chỉ có thể áp dụng sản phẩm cho đợt giảm giá'
+                });
+            }
+
             if (promotion.sanPhamApDung.includes(productId)) {
                 return res.status(400).json({
                     success: false,
@@ -474,12 +670,15 @@ const promotionController = {
             promotion.sanPhamApDung.push(productId);
             await promotion.save();
 
+            console.log(`✅ Applied promotion ${promotion.maKhuyenMai} to product ${productId}`);
+
             res.status(200).json({
                 success: true,
                 message: 'Áp dụng khuyến mãi thành công',
                 data: promotion
             });
         } catch (err) {
+            console.error('❌ Apply promotion error:', err);
             res.status(500).json({
                 success: false,
                 message: err.message
@@ -492,7 +691,7 @@ const promotionController = {
     // 1. Lấy promotion active cho nhiều sản phẩm (dùng cho cart)
     getActiveProductPromotions: async (req, res) => {
         try {
-            const { productIds } = req.query; // "id1,id2,id3"
+            const { productIds } = req.query;
             const productIdArray = productIds ? productIds.split(',') : [];
             
             if (productIdArray.length === 0) {
@@ -504,52 +703,30 @@ const promotionController = {
             
             console.log('🔍 Getting promotions for products:', productIdArray);
             
-            // Lấy tất cả promotion đang active cho đợt giảm giá
             const now = new Date();
             const activePromotions = await Promotion.find({
                 loai: 'dot_giam_gia',
                 trangThai: 'active',
                 thoiGianBD: { $lte: now },
-                thoiGianKT: { $gte: now }
+                thoiGianKT: { $gte: now },
+                sanPhamApDung: { $in: productIdArray }
             });
             
             console.log('📊 Found active promotions:', activePromotions.length);
             
-            // Nếu có bảng PromotionProduct riêng
-            let promotionProducts = [];
-            if (PromotionProduct) {
-                promotionProducts = await PromotionProduct.find({
-                    promotion_id: { $in: activePromotions.map(p => p._id) },
-                    product_id: { $in: productIdArray }
-                }).populate('promotion_id');
-            } else {
-                // Nếu không có bảng riêng, check trực tiếp trong promotion.sanPhamApDung
-                promotionProducts = activePromotions.filter(promotion => 
-                    promotion.sanPhamApDung.some(productId => 
-                        productIdArray.includes(productId.toString())
-                    )
-                ).map(promotion => ({
-                    promotion_id: promotion,
-                    product_id: promotion.sanPhamApDung.find(productId => 
-                        productIdArray.includes(productId.toString())
-                    )
-                }));
-            }
-            
-            console.log('🎯 Found promotion-product matches:', promotionProducts.length);
-            
             const result = {};
-            promotionProducts.forEach(pp => {
-                const promotion = pp.promotion_id;
-                const productId = pp.product_id;
-                
-                result[productId] = {
-                    id: promotion._id,
-                    name: promotion.tenKhuyenMai,
-                    type: promotion.loai,
-                    discountPercent: promotion.phanTramKhuyenMai,
-                    maxDiscountAmount: promotion.giamToiDa
-                };
+            activePromotions.forEach(promotion => {
+                promotion.sanPhamApDung.forEach(productId => {
+                    if (productIdArray.includes(productId.toString())) {
+                        result[productId.toString()] = {
+                            id: promotion._id,
+                            name: promotion.tenKhuyenMai,
+                            type: promotion.loai,
+                            discountPercent: promotion.phanTramKhuyenMai,
+                            maxDiscountAmount: promotion.giamToiDa
+                        };
+                    }
+                });
             });
             
             console.log('✅ Final result:', result);
@@ -568,10 +745,10 @@ const promotionController = {
         }
     },
 
-    // 2. Validate voucher code
+    // 2. Validate voucher code với business logic
     validateVoucher: async (req, res) => {
         try {
-            const { voucherCode, orderValue } = req.body;
+            const { voucherCode, orderValue = 0 } = req.body;
             
             console.log('🎫 Validating voucher:', { voucherCode, orderValue });
             
@@ -584,16 +761,16 @@ const promotionController = {
             
             const now = new Date();
             const voucher = await Promotion.findOne({
-                maKhuyenMai: voucherCode.trim(),
+                maKhuyenMai: voucherCode.trim().toUpperCase(),
                 loai: 'voucher',
                 trangThai: 'active',
                 thoiGianBD: { $lte: now },
                 thoiGianKT: { $gte: now },
-                giaTriToiThieu: { $lte: orderValue || 0 },
+                giaTriToiThieu: { $lte: orderValue },
                 $expr: { 
                     $or: [
-                        { $eq: ['$soLuong', null] }, // Không giới hạn số lượng
-                        { $lt: ['$soLuongDaSuDung', '$soLuong'] } // Còn slot
+                        { $eq: ['$soLuong', null] },
+                        { $lt: ['$usedCount', '$soLuong'] }
                     ]
                 }
             });
@@ -615,7 +792,10 @@ const promotionController = {
                     name: voucher.tenKhuyenMai,
                     discountPercent: voucher.phanTramKhuyenMai,
                     maxDiscountAmount: voucher.giamToiDa,
-                    minOrderValue: voucher.giaTriToiThieu
+                    minOrderValue: voucher.giaTriToiThieu,
+                    usedCount: voucher.usedCount,
+                    totalCount: voucher.soLuong,
+                    remainingCount: voucher.soLuong ? voucher.soLuong - voucher.usedCount : null
                 }
             });
             
@@ -649,6 +829,8 @@ const promotionController = {
                 }
             }
             
+            console.log(`💰 Calculated discount: ${discountAmount} for voucher ${voucher.maKhuyenMai}`);
+            
             res.json({
                 success: true,
                 discountAmount: Math.round(discountAmount),
@@ -660,6 +842,7 @@ const promotionController = {
             });
             
         } catch (error) {
+            console.error('❌ Error calculating voucher discount:', error);
             res.status(500).json({ 
                 success: false,
                 error: error.message 
@@ -670,7 +853,7 @@ const promotionController = {
     // 4. Check free shipping promotion
     checkFreeShipping: async (req, res) => {
         try {
-            const { orderValue, address } = req.body;
+            const { orderValue } = req.body;
             
             const now = new Date();
             const freeShipPromotion = await Promotion.findOne({
@@ -678,14 +861,10 @@ const promotionController = {
                 trangThai: 'active',
                 thoiGianBD: { $lte: now },
                 thoiGianKT: { $gte: now },
-                giaTriToiThieu: { $lte: orderValue },
-                $expr: { 
-                    $or: [
-                        { $eq: ['$soLuong', null] },
-                        { $lt: ['$soLuongDaSuDung', '$soLuong'] }
-                    ]
-                }
+                giaTriToiThieu: { $lte: orderValue }
             });
+            
+            console.log(`🚚 Free shipping check for order value ${orderValue}: ${!!freeShipPromotion}`);
             
             res.json({
                 success: true,
@@ -698,6 +877,7 @@ const promotionController = {
             });
             
         } catch (error) {
+            console.error('❌ Error checking free shipping:', error);
             res.status(500).json({ 
                 success: false,
                 error: error.message 
@@ -727,12 +907,15 @@ const promotionController = {
                 .populate('sanPhamApDung', 'name price image')
                 .sort({ ngayTao: -1 });
             
+            console.log(`📋 Found ${promotions.length} promotions of type: ${type}`);
+            
             res.json({
                 success: true,
                 data: promotions
             });
             
         } catch (error) {
+            console.error('❌ Error getting promotions by type:', error);
             res.status(500).json({ 
                 success: false,
                 error: error.message 
@@ -759,7 +942,9 @@ const promotionController = {
                            promotion.thoiGianKT >= now;
             
             const hasSlot = !promotion.soLuong || 
-                          (promotion.soLuongDaSuDung || 0) < promotion.soLuong;
+                          (promotion.usedCount || 0) < promotion.soLuong;
+            
+            console.log(`🔍 Availability check for ${promotion.maKhuyenMai}: active=${isActive}, hasSlot=${hasSlot}`);
             
             res.json({
                 success: true,
@@ -767,20 +952,145 @@ const promotionController = {
                 details: {
                     isActive,
                     hasSlot,
-                    usedQuantity: promotion.soLuongDaSuDung || 0,
+                    usedQuantity: promotion.usedCount || 0,
                     totalQuantity: promotion.soLuong,
+                    remainingQuantity: promotion.soLuong ? promotion.soLuong - (promotion.usedCount || 0) : null,
                     startDate: promotion.thoiGianBD,
                     endDate: promotion.thoiGianKT
                 }
             });
             
         } catch (error) {
+            console.error('❌ Error checking promotion availability:', error);
             res.status(500).json({ 
                 success: false,
                 error: error.message 
             });
         }
+    },
+
+    // 7. Deactivate promotion (ngừng sử dụng)
+    deactivatePromotion: async (req, res) => {
+        try {
+            const promotionId = req.params.id;
+            
+            const promotion = await Promotion.findById(promotionId);
+            if (!promotion) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy khuyến mãi'
+                });
+            }
+
+            if (promotion.trangThai === 'inactive') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Khuyến mãi đã ngừng sử dụng'
+                });
+            }
+
+            const updatedPromotion = await Promotion.findByIdAndUpdate(
+                promotionId,
+                { trangThai: 'inactive' },
+                { new: true }
+            ).populate('sanPhamApDung', 'name price image');
+
+            console.log(`⏹️ Deactivated promotion: ${promotion.maKhuyenMai}`);
+
+            res.status(200).json({
+                success: true,
+                data: updatedPromotion,
+                message: 'Ngừng sử dụng khuyến mãi thành công'
+            });
+        } catch (err) {
+            console.error('❌ Deactivate promotion error:', err);
+            res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
     }
 };
+
+
+// Kiểm tra có thể cập nhật promotion không
+function checkCanUpdatePromotion(promotion) {
+    const now = new Date();
+    const usedCount = promotion.usedCount || 0;
+    
+    // Không thể update nếu đã hết hạn
+    if (promotion.trangThai === 'expired') {
+        return {
+            allowed: false,
+            reason: 'Không thể sửa khuyến mãi đã hết hạn'
+        };
+    }
+    
+    return {
+        allowed: true,
+        reason: null
+    };
+}
+
+// Lấy danh sách fields được phép update
+function getAllowedUpdateFields(promotion) {
+    const usedCount = promotion.usedCount || 0;
+    const now = new Date();
+    
+    let allowedFields = [
+        'tenKhuyenMai',
+        'moTa',
+        'trangThai',
+        'thoiGianKT'
+    ];
+    
+    // Nếu chưa được sử dụng, cho phép sửa thêm
+    if (usedCount === 0) {
+        allowedFields.push(
+            'phanTramKhuyenMai',
+            'giaTriToiThieu',
+            'giamToiDa',
+            'soLuong',
+            'sanPhamApDung',
+            'thoiGianBD'
+        );
+    } else {
+        // Nếu đã được sử dụng, chỉ cho phép tăng số lượng và gia hạn
+        if (promotion.loai === 'voucher') {
+            allowedFields.push('soLuong'); 
+        }
+    }
+    
+    return allowedFields;
+}
+
+// Kiểm tra có thể xóa promotion không
+function checkCanDeletePromotion(promotion) {
+    const usedCount = promotion.usedCount || 0;
+    const now = new Date();
+    
+    // Không thể xóa nếu đã được sử dụng
+    if (usedCount > 0) {
+        return {
+            allowed: false,
+            reason: `Khuyến mãi đã được sử dụng ${usedCount} lần, không thể xóa`
+        };
+    }
+    
+    // Không thể xóa nếu đang active và trong thời gian hiệu lực
+    if (promotion.trangThai === 'active' && 
+        promotion.thoiGianBD <= now && 
+        promotion.thoiGianKT >= now) {
+        return {
+            allowed: false,
+            reason: 'Không thể xóa khuyến mãi đang hoạt động'
+        };
+    }
+    
+    return {
+        allowed: true,
+        reason: null
+    };
+}
 
 module.exports = promotionController;

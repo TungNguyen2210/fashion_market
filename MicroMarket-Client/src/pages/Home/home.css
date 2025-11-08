@@ -1109,3 +1109,97 @@ ul {
     color: #ff4d4f;
     border: 1px solid #ffccc7;
 }
+
+/* Styles cho discount badge trong Home */
+.discount-badge-home {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(255, 65, 108, 0.4);
+  animation: pulse-home 2s infinite;
+}
+
+@keyframes pulse-home {
+  0%, 100% { 
+    transform: scale(1); 
+    box-shadow: 0 3px 10px rgba(255, 65, 108, 0.4);
+  }
+  50% { 
+    transform: scale(1.03); 
+    box-shadow: 0 4px 15px rgba(255, 65, 108, 0.6);
+  }
+}
+
+/* Styles cho promotion info trong Home */
+.promotion-info-home {
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.promotion-name-home {
+  font-size: 11px;
+  color: #52c41a;
+  font-weight: 600;
+  background: #f6ffed;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid #b7eb8f;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.promotion-name-home:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(82, 196, 26, 0.2);
+}
+
+/* Cải thiện style cho price khi có discount */
+.price-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: auto;
+  gap: 4px;
+}
+
+.price-product {
+  font-size: 1.05rem;
+  color: #d70018;
+  font-weight: 700;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.price-cross {
+  color: #8c8c8c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: line-through;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+}
+
+/* Responsive cho mobile */
+@media only screen and (max-width: 768px) {
+  .discount-badge-home {
+    padding: 4px 8px;
+    font-size: 11px;
+    top: 6px;
+    right: 6px;
+    border-radius: 12px;
+  }
+  
+  .promotion-name-home {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}

@@ -1,67 +1,569 @@
+/* ========================================
+   LOGIN PAGE - MAIN CONTAINER
+   ======================================== */
 .login-page {
   display: flex;
+  justify-content: center;
   align-items: center;
   min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
-.login-form {
-  padding: 20px 40px;
-  background-color: white;
+/* Background Animation (Optional) */
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: backgroundMove 20s linear infinite;
+  z-index: 0;
+}
+
+@keyframes backgroundMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+/* ========================================
+   LOGIN BOX - MAIN WRAPPER
+   ======================================== */
+.login-box {
+  display: flex;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  max-width: 1000px;
+  width: 100%;
+  min-height: 600px;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   ILLUSTRATION WRAPPER - LEFT SIDE
+   ======================================== */
+.illustration-wrapper {
+  flex: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.illustration-wrapper::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  top: -100px;
+  left: -100px;
+}
+
+.illustration-wrapper::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  bottom: -50px;
+  right: -50px;
+}
+
+.illustration-wrapper img {
+  max-width: 100%;
+  height: auto;
   border-radius: 15px;
-  border: solid 1px #ffffff;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
 }
 
-.link-register {
+.illustration-wrapper img:hover {
+  transform: scale(1.05);
+}
+
+/* ========================================
+   FORM WRAPPER - RIGHT SIDE
+   ======================================== */
+.login-box form {
+  flex: 1;
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: white;
+}
+
+/* ========================================
+   FORM TITLE & SUBTITLE
+   ======================================== */
+.form-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+  text-align: left;
+  letter-spacing: -0.5px;
+}
+
+.form-title + p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* ========================================
+   FORM ITEMS
+   ======================================== */
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: #333;
+}
+
+/* ========================================
+   INPUT FIELDS
+   ======================================== */
+.ant-input,
+.ant-input-password,
+.ant-input-affix-wrapper {
+  border-radius: 8px;
+  border: 2px solid #e8e8e8;
+  padding: 10px 15px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.ant-input:hover,
+.ant-input-password:hover,
+.ant-input-affix-wrapper:hover {
+  border-color: #667eea;
+}
+
+.ant-input:focus,
+.ant-input-password:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.ant-input-prefix {
+  margin-right: 10px;
+  color: #999;
+  font-size: 16px;
+}
+
+/* ========================================
+   PRIMARY BUTTON
+   ======================================== */
+.ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  height: 48px;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.ant-btn-primary:active {
+  transform: translateY(0);
+}
+
+.ant-btn-primary[disabled] {
+  background: #d9d9d9;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ========================================
+   DIVIDER
+   ======================================== */
+.ant-divider {
+  margin: 25px 0;
+  color: #999;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ant-divider-inner-text {
+  padding: 0 15px;
+}
+
+/* ========================================
+   TEXT CENTER (LINK)
+   ======================================== */
+.text-center {
   text-align: center;
-  display: block;
-  text-transform: capitalize;
-  color: black;
+  color: #666;
+  font-size: 14px;
+  margin-top: 20px;
 }
 
-.link-register:hover {
-  text-decoration: underline;
-  color: green;
+.text-center a {
+  color: #667eea;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-.button{
-    width: 100%;
-    height: 34;
-    border: none;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    margin-left: auto;
-    margin-right: auto;
-    box-shadow: rgba(0, 0, 0, 0.15) 0px 10px 20px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
+.text-center a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 50%;
+  background-color: #667eea;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
 }
 
-.ant-btn-primary:hover {
-  box-shadow: 0 0 10px 1px rgba(255, 255, 255, 0.7);
-  background: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
-  color: white;
-  background-position: 0 100%;
+.text-center a:hover {
+  color: #764ba2;
 }
 
-.ant-btn-primary:focus{
-  box-shadow: 0 0 10px 1px rgba(255, 255, 255, 0.7);
-  background: linear-gradient(to right, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
-  color: white;
-  background-position: 0 100%;
+.text-center a:hover::after {
+  width: 100%;
+}
+
+/* ========================================
+   GOOGLE LOGIN BUTTON CONTAINER
+   ======================================== */
+.ant-row {
+  width: 100%;
+}
+
+/* Custom Google Button Styling (If needed) */
+.google-login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* ========================================
+   CHECKBOX (REMEMBER ME)
+   ======================================== */
+.ant-checkbox-wrapper {
+  font-size: 14px;
+  color: #666;
 }
 
 .ant-checkbox-checked .ant-checkbox-inner {
-    background-color: darkgreen;
-    border-color:   darkgreen;
-}
-.ant-form-item {
-  margin-bottom: 0px;
+  background-color: #667eea;
+  border-color: #667eea;
 }
 
-/* Extra Small Devices, Phones */ 
-@media only screen and (max-width : 1280px) {
-
+.ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ant-checkbox:hover .ant-checkbox-inner,
+.ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: #667eea;
 }
-/* Large Devices, Wide Screens */
-@media only screen and (min-width : 1300px) {
 
+/* ========================================
+   LOADING SPIN
+   ======================================== */
+.ant-spin {
+  color: #667eea;
+}
+
+.ant-spin-dot-item {
+  background-color: #667eea;
+}
+
+/* ========================================
+   NOTIFICATION CUSTOM
+   ======================================== */
+.ant-notification-notice {
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.ant-notification-notice-success {
+  border-left: 4px solid #52c41a;
+}
+
+.ant-notification-notice-error {
+  border-left: 4px solid #ff4d4f;
+}
+
+.ant-notification-notice-warning {
+  border-left: 4px solid #faad14;
+}
+
+/* ========================================
+   ERROR MESSAGE
+   ======================================== */
+.ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+/* ========================================
+   FORGOT PASSWORD LINK
+   ======================================== */
+.forgot-password-link {
+  text-align: right;
+  margin-top: -10px;
+  margin-bottom: 20px;
+}
+
+.forgot-password-link a {
+  color: #667eea;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.forgot-password-link a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Tablets & Small Laptops (768px - 1024px) */
+@media only screen and (max-width: 1024px) {
+  .login-box {
+    max-width: 800px;
+  }
+
+  .illustration-wrapper {
+    padding: 30px;
+  }
+
+  .login-box form {
+    padding: 50px 40px;
+  }
+
+  .form-title {
+    font-size: 28px;
+  }
+}
+
+/* Tablets Portrait (768px) */
+@media only screen and (max-width: 768px) {
+  .login-box {
+    flex-direction: column;
+    max-width: 500px;
+    min-height: auto;
+  }
+
+  .illustration-wrapper {
+    display: none;
+  }
+
+  .login-box form {
+    padding: 40px 30px;
+  }
+
+  .form-title {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .form-title + p {
+    text-align: center;
+  }
+}
+
+/* Mobile Devices (480px) */
+@media only screen and (max-width: 480px) {
+  .login-page {
+    padding: 10px;
+  }
+
+  .login-box {
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .login-box form {
+    padding: 30px 20px;
+  }
+
+  .form-title {
+    font-size: 22px;
+  }
+
+  .form-title + p {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .ant-input,
+  .ant-input-password,
+  .ant-input-affix-wrapper {
+    font-size: 14px;
+  }
+
+  .ant-btn-primary {
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .text-center {
+    font-size: 13px;
+  }
+}
+
+/* Extra Small Devices (320px) */
+@media only screen and (max-width: 360px) {
+  .login-box form {
+    padding: 25px 15px;
+  }
+
+  .form-title {
+    font-size: 20px;
+  }
+
+  .ant-btn-primary {
+    height: 42px;
+    font-size: 14px;
+  }
+}
+
+/* ========================================
+   LARGE SCREENS (1300px+)
+   ======================================== */
+@media only screen and (min-width: 1300px) {
+  .login-box {
+    max-width: 1100px;
+    min-height: 650px;
+  }
+
+  .illustration-wrapper {
+    padding: 50px;
+  }
+
+  .login-box form {
+    padding: 70px 60px;
+  }
+
+  .form-title {
+    font-size: 36px;
+  }
+
+  .form-title + p {
+    font-size: 17px;
+  }
+
+  .ant-input,
+  .ant-input-password,
+  .ant-input-affix-wrapper {
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+
+  .ant-btn-primary {
+    height: 52px;
+    font-size: 17px;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+.ant-input:focus-visible,
+.ant-btn:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+  .login-page {
+    background: white;
+  }
+
+  .login-box {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+
+  .illustration-wrapper {
+    display: none;
+  }
+}
+
+/* ========================================
+   DARK MODE SUPPORT (OPTIONAL)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+  /* Add dark mode styles if needed */
+}
+
+/* ========================================
+   HIGH CONTRAST MODE
+   ======================================== */
+@media (prefers-contrast: high) {
+  .ant-input,
+  .ant-input-password,
+  .ant-input-affix-wrapper {
+    border-width: 3px;
+  }
+
+  .ant-btn-primary {
+    border: 2px solid white;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
