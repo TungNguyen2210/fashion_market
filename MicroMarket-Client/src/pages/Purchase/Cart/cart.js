@@ -4,7 +4,8 @@ import {
   PercentageOutlined,
   TagOutlined,
   GiftOutlined,
-  TruckOutlined,
+  //TruckOutlined,
+  CarOutlined, 
   DownOutlined,
   CheckCircleOutlined,
   InfoCircleOutlined,
@@ -1059,7 +1060,7 @@ const Cart = () => {
                       <Col xs={24} md={12}>
                         <div className="promotion-section">
                           <div className="promotion-header">
-                            <TruckOutlined />
+                            <CarOutlined />
                             <span>Miễn phí vận chuyển</span>
                           </div>
                           
@@ -1172,7 +1173,7 @@ const Cart = () => {
                         {appliedFreeship && (
                           <div className="payment-row discount-row">
                             <Text className="payment-label freeship">
-                              <TruckOutlined /> Miễn phí vận chuyển
+                              <CarOutlined /> Miễn phí vận chuyển
                             </Text>
                             <Text className="payment-value freeship">
                               Miễn phí

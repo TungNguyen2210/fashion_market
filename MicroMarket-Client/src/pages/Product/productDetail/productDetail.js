@@ -46,6 +46,7 @@ const ProductDetail = () => {
   // Kiểm tra người dùng đã đăng nhập chưa
   const checkUserLoggedIn = useCallback(() => {
     const userJson = localStorage.getItem('user');
+
     if (!userJson) {
       return false;
     }
@@ -302,7 +303,7 @@ const ProductDetail = () => {
             const maxQuantity = selectedVariant 
               ? selectedVariant.quantity 
               : productDetail.quantity;
-              
+
             if (newQuantity > maxQuantity) {
               message.warning(`Chỉ còn ${maxQuantity} sản phẩm trong kho!`);
               return {
@@ -310,7 +311,7 @@ const ProductDetail = () => {
                 quantity: maxQuantity,
               };
             }
-            
+
             return {
               ...item,
               quantity: newQuantity,
@@ -327,7 +328,7 @@ const ProductDetail = () => {
           selectedSize,
           variantQuantity: selectedVariant ? selectedVariant.quantity : productDetail.quantity
         };
-        
+
         updatedItems = [...existingItems, newItem];
       }
 
@@ -401,20 +402,61 @@ const ProductDetail = () => {
           generateVariantsFromProductDetails(productResponse.product);
         }
       }
-      
-      const recommendResponse = await productApi.getRecommendProduct(productId);
-      setRecommend(recommendResponse?.recommendations || []);
-      
-      await productApi.getProductReviews(productId).then((response) => {
-        const reviews = response.data || [];
-        setProductRatings(reviews);
 
-        if (reviews.length > 0) {
-          const total = reviews.reduce((sum, r) => sum + r.rating, 0);
-          const avg = total / reviews.length;
-          setAverageRating(avg);
+
+      // Tải sản phẩm gợi ý
+      try {
+        let recommendResponse = null;
+
+        // Lấy user từ state hoặc localStorage
+        const response = await userApi.getProfile();
+
+        let currentUser = response.user;
+
+        console.log("Current user for recommendations:", currentUser?._id);
+        if (currentUser?._id) {
+          try {
+            const userRecommend = await productApi.getRecommendByUser(currentUser._id);
+            console.log("Recommend by user response:", userRecommend);
+
+            if (userRecommend?.recommendations?.length > 0) {
+              recommendResponse = userRecommend;
+            } else {
+              // fallback sang recommend theo sản phẩm
+              recommendResponse = await productApi.getRecommendProduct(productId);
+            }
+          } catch (err) {
+            console.error("Recommend by user error:", err);
+            recommendResponse = await productApi.getRecommendProduct(productId);
+          }
         } else {
-          setAverageRating(0);
+          // chưa login thì chỉ recommend theo sản phẩm
+          recommendResponse = await productApi.getRecommendProduct(productId);
+        }
+
+        setRecommend(recommendResponse?.recommendations || []);
+      } catch (recommendError) {
+        //Nếu lỗi khi lấy theo user, fallback sang recommend theo sản phẩm
+        let recommendResponse = await productApi.getRecommendProduct(productId);
+        setRecommend(recommendResponse?.recommendations || []);
+      }
+
+      // Hiển thị phần đánh giá sản phẩm giống file 2
+      await productApi.getProductReviews(productId).then((response) => {
+        if (response && response.status >= 200 && response.status < 300) {
+          const reviews = response.data || [];
+          setProductRatings(reviews);
+
+          if (reviews.length > 0) {
+            const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+            const avg = total / reviews.length;
+            setAverageRating(avg);
+          } else {
+            setAverageRating(0);
+          }
+        }
+        else {
+          setProductRatings([]);
         }
       });
       
@@ -422,7 +464,7 @@ const ProductDetail = () => {
       setSelectedSize(null);
       setSelectedVariant(null);
       setQuantity(1);
-      
+
       setLoading(false);
       window.scrollTo(0, 0);
     } catch (error) {
@@ -528,8 +570,8 @@ const ProductDetail = () => {
   const priceInfo = calculateDiscountedPrice(productDetail);
 
   // Kiểm tra tình trạng tồn kho
-  const stockStatus = selectedVariant 
-    ? selectedVariant.quantity > 0 
+  const stockStatus = selectedVariant
+    ? selectedVariant.quantity > 0
     : productDetail.quantity > 0;
 
   // Lấy danh sách kích thước có sẵn cho màu đã chọn
@@ -586,7 +628,7 @@ const ProductDetail = () => {
                 )}
               </div>
             </Col>
-            
+
             {/* Thông tin sản phẩm */}
             <Col lg={10} md={24}>
               <div className="product-info-section">

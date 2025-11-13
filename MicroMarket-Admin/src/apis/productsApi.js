@@ -14,11 +14,11 @@ const productApi = {
 
     getListCategory(data) {
         const url = '/category/search';
-        if(!data.page || !data.limit){
+        if (!data.page || !data.limit) {
             data.limit = 10;
             data.page = 1;
         }
-        return axiosClient.post(url,data);
+        return axiosClient.post(url, data);
     },
 
     deleteCategory(id) {
@@ -47,11 +47,11 @@ const productApi = {
 
     getListProducts(data) {
         const url = '/product/search';
-        if(!data.page || !data.limit){
+        if (!data.page || !data.limit) {
             data.limit = 10;
             data.page = 1;
         }
-        return axiosClient.post(url,data);
+        return axiosClient.post(url, data);
     },
 
     // Thêm method getAllProducts mới cho promotion management
@@ -63,6 +63,11 @@ const productApi = {
     deleteProduct(id) {
         const url = "/product/" + id;
         return axiosClient.delete(url);
+    },
+    // Gọi API sinh embedding cho 1 sản phẩm
+    updateEmbedding(productId) {
+        const url = `/recommend/update/${productId}`;
+        return axiosClient.post(url);
     },
 
     uploadImage() {

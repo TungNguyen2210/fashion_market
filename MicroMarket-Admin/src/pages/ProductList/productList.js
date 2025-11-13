@@ -60,7 +60,7 @@ const ProductList = () => {
     const [visible, setVisible] = useState(false);
     const [images, setImages] = useState([]);
     const [supplier, setSupplier] = useState([]);
-    
+
     const [variants, setVariants] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
@@ -89,7 +89,7 @@ const ProductList = () => {
         colors.forEach(color => {
             sizes.forEach(size => {
                 const existingVariant = variants.find(v => v.color === color && v.size === size);
-                
+
                 newVariants.push({
                     color: color,
                     size: size,
@@ -97,7 +97,7 @@ const ProductList = () => {
                 });
             });
         });
-        
+
         setVariants(newVariants);
     };
 
@@ -108,23 +108,23 @@ const ProductList = () => {
             }
             return variant;
         });
-        
+
         setVariants(newVariants);
-        
+
         const totalQuantity = newVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
-        
+
     };
 
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
             const tempProductId = Date.now().toString();
-            
+
             const productVariants = variants.map(variant => ({
                 variantId: generateVariantId(tempProductId, variant.size, variant.color),
                 color: variant.color,
                 size: variant.size,
-                quantity: parseInt(variant.quantity, 10) 
+                quantity: parseInt(variant.quantity, 10)
             }));
 
             const categoryList = {
@@ -139,7 +139,7 @@ const ProductList = () => {
                 "slide": images,
                 "supplier": values.supplier,
                 "sizes": values.sizes,
-                "variants": productVariants 
+                "variants": productVariants
             };
 
             return axiosClient.post("/product", categoryList).then(response => {
@@ -159,6 +159,10 @@ const ProductList = () => {
                     setSelectedSizes([]);
                     setOpenModalCreate(false);
                     handleProductList();
+
+                    // Gọi Service-4 để sinh embedding cho sản phẩm mới
+                    const newProductId = response?._id || response?.data?._id;
+                    generateEmbeddingForProduct(newProductId);
                 }
             });
 
@@ -177,7 +181,7 @@ const ProductList = () => {
             const response = await uploadFileApi.uploadFile(image).then(response => {
                 const imageUrl = response;
                 console.log(imageUrl);
-           
+
                 setImages(prevImages => [...prevImages, imageUrl]);
 
                 console.log(images);
@@ -220,7 +224,7 @@ const ProductList = () => {
                 "color": values.colors,
                 "supplier": values.supplier,
                 "sizes": values.sizes,
-                "variants": productVariants 
+                "variants": productVariants
             };
 
             return axiosClient.put("/product/" + id, categoryList).then(response => {
@@ -231,6 +235,7 @@ const ProductList = () => {
                     });
                     setLoading(false);
                 } else {
+
                     notification["success"]({
                         message: `Thông báo`,
                         description: 'Chỉnh sửa sản phẩm thành công',
@@ -238,6 +243,11 @@ const ProductList = () => {
                     setOpenModalUpdate(false);
                     handleProductList();
                     setLoading(false);
+
+                    //Gọi Service-4 để cập nhật embedding cho sản phẩm đã sửa                    
+                     generateEmbeddingForProduct(id);
+
+
                 }
             });
         } catch (error) {
@@ -267,47 +277,47 @@ const ProductList = () => {
     };
 
     const handleDeleteCategory = async (id) => {
-    setLoading(true);
-    try {
-        const response = await productApi.deleteProduct(id);
-        
-        // Success case
-        if (response?.success) {
-            notification.success({
-                message: 'Thành công',
-                description: response.message
-            });
-            setCurrentPage(1);
-            handleProductList();
+        setLoading(true);
+        try {
+            const response = await productApi.deleteProduct(id);
+
+            // Success case
+            if (response?.success) {
+                notification.success({
+                    message: 'Thành công',
+                    description: response.message
+                });
+                setCurrentPage(1);
+                handleProductList();
+            }
+
+        } catch (error) {
+            console.log('Delete product error:', error);
+
+            if (error.response?.status === 400) {
+                // Sản phẩm đã được mua
+                notification.warning({
+                    message: 'Không thể xóa',
+                    description: error.response.data.message,
+                    duration: 6
+                });
+            } else if (error.response?.status === 404) {
+                // Sản phẩm không tồn tại  
+                notification.error({
+                    message: 'Không tìm thấy',
+                    description: 'Sản phẩm không tồn tại'
+                });
+            } else {
+                // Lỗi khác
+                notification.error({
+                    message: 'Lỗi',
+                    description: error.response?.data?.message || 'Không thể xóa sản phẩm'
+                });
+            }
+        } finally {
+            setLoading(false);
         }
-        
-    } catch (error) {
-        console.log('Delete product error:', error);
-        
-        if (error.response?.status === 400) {
-            // Sản phẩm đã được mua
-            notification.warning({
-                message: 'Không thể xóa',
-                description: error.response.data.message,
-                duration: 6
-            });
-        } else if (error.response?.status === 404) {
-            // Sản phẩm không tồn tại  
-            notification.error({
-                message: 'Không tìm thấy',
-                description: 'Sản phẩm không tồn tại'
-            });
-        } else {
-            // Lỗi khác
-            notification.error({
-                message: 'Lỗi',
-                description: error.response?.data?.message || 'Không thể xóa sản phẩm'
-            });
-        }
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     const handleProductEdit = (id) => {
         setOpenModalUpdate(true);
@@ -316,10 +326,10 @@ const ProductList = () => {
                 const response = await productApi.getDetailProduct(id);
                 console.log(response);
                 setId(id);
-             
+
                 setSelectedColors(response.product.color || []);
                 setSelectedSizes(response.product.sizes || []);
-                
+
                 if (response.product.variants && response.product.variants.length > 0) {
                     setVariants(response.product.variants.map(v => ({
                         color: v.color,
@@ -339,7 +349,7 @@ const ProductList = () => {
                     supplier: response?.product.supplier,
                     sizes: response?.product.sizes
                 });
-                
+
                 console.log(form2);
                 setDescription(response.product.description);
                 setLoading(false);
@@ -348,6 +358,19 @@ const ProductList = () => {
             }
         })();
     }
+
+    // Hàm sinh embedding cho sản phẩm (tạo hoặc cập nhật)
+    const generateEmbeddingForProduct = async (productId) => {
+        if (!productId) return;
+        try {
+            const response = await productApi.updateEmbedding(productId);
+            console.log("Embedding generated for product:", productId, response);
+        } catch (err) {
+            console.error("Failed to generate embedding:", err);
+        }
+    };
+
+
 
     const handleFilter = async (name) => {
         try {
@@ -476,12 +499,37 @@ const ProductList = () => {
         setVisible(true);
     };
 
-    const handleSubmit = () => {
+    /* const handleSubmit = () => {
         form.validateFields().then((values) => {
             form.resetFields();
             handleOkUser(values);
             setVisible(false);
         });
+    }; */
+
+    const handleSubmit = async () => {
+        try {
+            const values = await form.validateFields();
+            await handleOkUser(values);
+            form.resetFields();
+            setVisible(false);
+        } catch (err) {
+            // 🔹 Nếu là lỗi validate form (có errorFields)
+            if (err && err.errorFields) {
+                notification.error({
+                    message: 'Lỗi nhập liệu',
+                    description: 'Vui lòng kiểm tra lại các trường bắt buộc!',
+                });
+                console.warn("Validation errors:", err.errorFields);
+            } else {
+                // 🔹 Các lỗi khác (ví dụ từ API)
+                console.error("Unexpected error:", err);
+                notification.error({
+                    message: 'Lỗi hệ thống',
+                    description: 'Đã xảy ra lỗi, vui lòng thử lại sau!',
+                });
+            }
+        }
     };
 
     useEffect(() => {
@@ -541,7 +589,7 @@ const ProductList = () => {
                 </Card>
             );
         }
-        
+
         return (
             <Card title="Biến thể sản phẩm" style={{ marginTop: 16 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -556,10 +604,10 @@ const ProductList = () => {
                         {variants.map((variant, index) => (
                             <tr key={index}>
                                 <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                                    <div style={{ 
-                                        backgroundColor: variant.color, 
-                                        width: '20px', 
-                                        height: '20px', 
+                                    <div style={{
+                                        backgroundColor: variant.color,
+                                        width: '20px',
+                                        height: '20px',
                                         margin: '0 auto',
                                         border: '1px solid #ddd'
                                     }} />
@@ -572,8 +620,8 @@ const ProductList = () => {
                                         type="number"
                                         value={variant.quantity}
                                         onChange={(e) => handleVariantQuantityChange(
-                                            variant.color, 
-                                            variant.size, 
+                                            variant.color,
+                                            variant.size,
                                             e.target.value
                                         )}
                                         min={0}
@@ -868,7 +916,7 @@ const ProductList = () => {
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-                                     
+
                                         [
                                             "bold",
                                             "underline",
@@ -882,14 +930,14 @@ const ProductList = () => {
                                         ["outdent", "indent"],
 
                                         ["table", "horizontalRule", "link", "image", "video"],
-                                 
+
                                         ["preview", "print"],
                                         ["removeFormat"]
 
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,
-                                    ], 
+                                    ],
                                     defaultTag: "div",
                                     minHeight: "500px",
                                     showPathLabel: false,
@@ -1039,9 +1087,9 @@ const ProductList = () => {
 
                         {/* Bảng biến thể sản phẩm */}
                         {renderVariantsTable()}
-                        
+
                         <Divider />
-                        
+
                         <Form.Item
                             name="image"
                             label="Ảnh"
@@ -1120,7 +1168,7 @@ const ProductList = () => {
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-                                     
+
                                         [
                                             "bold",
                                             "underline",
@@ -1134,14 +1182,14 @@ const ProductList = () => {
                                         ["outdent", "indent"],
 
                                         ["table", "horizontalRule", "link", "image", "video"],
-                                 
+
                                         ["preview", "print"],
                                         ["removeFormat"]
 
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,
-                                    ], 
+                                    ],
                                     defaultTag: "div",
                                     minHeight: "500px",
                                     showPathLabel: false,

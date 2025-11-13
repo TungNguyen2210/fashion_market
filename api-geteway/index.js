@@ -673,21 +673,21 @@ app.get("/api/reviews/:productId", async (req, res) => {
 
 // Thêm phần đánh giá sản phẩm
 app.post("/api/order/:orderId/rate-products", async (req, res) => {
-  try {
-    const response = await axios.post(
-      `http://localhost:3300/api/order/${req.params.orderId}/rate-products`,
-      req.body,
-      {
-        headers: {
-          Authorization: req.headers.authorization || "", // if needed
-        },
-      }
-    );
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error("Rating error:", error.message);
-    res.status(500).json({ message: "Gateway Error" });
-  }
+    try {
+        const response = await axios.post(
+            `http://localhost:3300/api/order/${req.params.orderId}/rate-products`,
+            req.body,
+            {
+                headers: {
+                    Authorization: req.headers.authorization || "", // if needed
+                },
+            }
+        );
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error("Rating error:", error.message);
+        res.status(500).json({ message: "Gateway Error" });
+    }
 });
 
 app.get("/api/order/shipping/:id", async (req, res) => {
@@ -839,13 +839,47 @@ app.post('/api/product/:id/reviews', async (req, res) => {
 
 app.get('/api/product/recommend/:id', async (req, res) => {
     try {
-        const response = await axios.get(`http://localhost:3300/api/product/recommend/${req.params.id}`);
+        const response = await axios.get(`http://localhost:3600/api/recommend/product/${req.params.id}`);
         res.json(response.data);
     } catch (error) {
         console.error(error);
         res.status(500).send('Internal Server Error');
     }
 });
+
+//Thêm hàm recommend sản phẩm dựa vào sản phẩm đã mua của khách hàng
+app.get('/api/product/recommend/user/:userId', async (req, res) => {
+    try {
+        const response = await axios.get(`http://localhost:3600/api/recommend/user/${req.params.userId}`);
+        res.json(response.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Route gọi API update embedding trong Service-4
+app.post('/api/recommend/update/:id', async (req, res) => {
+    try {
+        // Gọi sang Service-4 (port 3600)
+        const response = await axios.post(
+            `http://localhost:3600/api/recommend/update/${req.params.id}`,
+            req.body, // Truyền body nếu có (ở đây có thể không cần)
+            {
+                headers: {
+                    Authorization: req.headers.authorization
+                }
+            }
+        );
+
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error forwarding update embedding request:', error.message);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
 
 /* ========== API PROMOTION ============ */
 
@@ -991,5 +1025,25 @@ app.get('/api/statistical/count', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get("/api/order/shipping/:id", async (req, res) => {
+    try {
+        const response = await axios.get(`http://localhost:3300/api/order/shipping/${req.params.id}`, {
+            headers: {
+                Authorization: req.headers.authorization || ""
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error("Lỗi khi lấy chi tiết đơn hàng cho vận chuyển:", error.message);
+
+        // Trả về lỗi chi tiết và status code từ service
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ message: "Gateway Error: Không thể kết nối đến service" });
+        }
     }
 });

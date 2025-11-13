@@ -36,6 +36,12 @@ const productApi = {
         return axiosClient.get(url);
     },
 
+    //Thêm hàm recommend sản phẩm dựa vào sản phẩm đã mua của khách hàng
+    getRecommendByUser(userId) {
+        const url = '/product/recommend/user/' + userId;
+        return axiosClient.get(url);
+    },
+
     getOrderByUser(){
         const url = '/order/user';
         return axiosClient.get(url);

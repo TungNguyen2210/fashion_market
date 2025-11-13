@@ -103,4 +103,5 @@ public/uploads/
 *.temp
 .tmp/
 .temp/
+Service-4/node_modules/
 EOF
