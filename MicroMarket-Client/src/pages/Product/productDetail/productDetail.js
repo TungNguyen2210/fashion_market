@@ -15,6 +15,7 @@ import {
 import productApi from "../../../apis/productApi";
 import axiosClient from "../../../apis/axiosClient";
 import triangleTopRight from "../../../assets/icon/Triangle-Top-Right.svg";
+import userApi from "../../../apis/userApi";
 import { numberWithCommas } from "../../../utils/common";
 import "./productDetail.css";
 
