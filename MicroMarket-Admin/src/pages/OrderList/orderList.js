@@ -45,6 +45,7 @@ import orderApi from "../../apis/orderApi";
 import promotionApi from "../../apis/promotionManagementApi";
 import * as XLSX from 'xlsx';
 import "./orderList.css";
+import { debounce } from 'lodash';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -66,6 +67,7 @@ const OrderList = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [promotionsAtOrderTime, setPromotionsAtOrderTime] = useState({});
     const [loadingPromotions, setLoadingPromotions] = useState(false);
+    const [originalOrder, setOriginalOrder] = useState([]);
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -314,14 +316,15 @@ const OrderList = () => {
     const handleCategoryList = async () => {
         try {
             await orderApi.getListOrder({ page: 1, limit: 10000 }).then((res) => {
+        
                 setTotalList(res.totalDocs)
-                setOrder(res.data.docs);
-                setLoading(false);
                 const sortedData = res.data.docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 setOrder(sortedData);
+                setOriginalOrder(sortedData); 
+                setLoading(false);
             });
         } catch (error) {
-            console.log('Failed to fetch event list:' + error);
+            console.log('Failed to fetch event list:' + error);  
         };
     }
 
@@ -374,15 +377,42 @@ const OrderList = () => {
         })();
     }
 
-    const handleFilter = async (name) => {
+    const handleFilter = (searchValue) => {
         try {
-            const res = await orderApi.searchOrder(name);
-            setTotalList(res.totalDocs)
-            setOrder(res.data.docs);
+            const searchLower = (searchValue || '').toLowerCase().trim();
+            
+            if (!searchLower) {
+                // Reset về data gốc khi search box trống
+                setOrder(originalOrder);
+                setTotalList(originalOrder.length);
+                return;
+            }
+
+            // Filter từ originalOrder thay vì order
+            const filteredOrders = originalOrder.filter(ord => {
+                const userName = ord.user?.username?.toLowerCase() || '';
+                const userEmail = ord.user?.email?.toLowerCase() || '';
+                const userPhone = ord.user?.phone?.toLowerCase() || '';
+                const orderId = ord._id?.toLowerCase() || '';
+                
+                return userName.includes(searchLower) || 
+                    userEmail.includes(searchLower) || 
+                    userPhone.includes(searchLower) ||
+                    orderId.includes(searchLower);
+            });
+            
+            setOrder(filteredOrders);
+            setTotalList(filteredOrders.length);
+            
+            console.log(`🔍 Filtered ${filteredOrders.length} orders from ${originalOrder.length} total`);
+            
         } catch (error) {
-            console.log('search to fetch category list:' + error);
+            console.log('Error in handleFilter:', error);
         }
-    }
+    };
+
+    // Tạo debounced version để tối ưu performance
+    const debouncedFilter = debounce(handleFilter, 300);
 
     // ✅ NEW: Handle view order detail
     const handleViewOrder = async (orderRecord) => {
@@ -486,8 +516,7 @@ const OrderList = () => {
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (text) => <span>{formatDate(text)}</span>,
-            sorter: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-            defaultSortOrder: 'descend',
+            // SỬA: Xóa phần sort mặc định
             width: 150,
         },
         {
@@ -582,6 +611,7 @@ const OrderList = () => {
                     const sortedData = docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                     setTotalList(res.totalDocs);
                     setOrder(sortedData);
+                    setOriginalOrder(sortedData)
                     setLoading(false);
                 });
             } catch (error) {
@@ -589,8 +619,7 @@ const OrderList = () => {
             }
         })();
     }, [])
-
-    return (
+        return (
         <div>
             <Spin spinning={loading}>
                 <div className='container'>
@@ -615,10 +644,10 @@ const OrderList = () => {
                                 <Row>
                                     <Col span="18">
                                         <Input
-                                            placeholder="Tìm kiếm"
+                                            placeholder="Tìm kiếm theo tên, email, số điện thoại"
                                             allowClear
-                                            onChange={(e) => handleFilter(e.target.value)}
-                                            style={{ width: 300 }}
+                                            onChange={(e) => debouncedFilter(e.target.value)}
+                                            style={{ width: 400 }}
                                         />
                                     </Col>
                                     <Col span="6">
@@ -656,7 +685,7 @@ const OrderList = () => {
                     </div>
                 </div>
 
-                {/* ✅ MODAL CHI TIẾT ĐƠN HÀNG */}
+                {/* ✅ MODAL CHI TIẾT ĐƠN HÀNG - ĐÃ SỬA: Ẩn SĐT */}
                 <Modal
                     title={
                         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -710,6 +739,7 @@ const OrderList = () => {
                                             <strong>Số điện thoại:</strong> {selectedOrder.user?.phone || 'N/A'}
                                         </p>
                                     </Col>
+                                    {/* ĐÃ XÓA PHẦN HIỂN THỊ SỐ ĐIỆN THOẠI */}
                                     <Col xs={24} md={12}>
                                         <p><strong>Tổng đơn hàng:</strong> <Text strong style={{ color: '#d70018' }}>
                                             {selectedOrder.orderTotal?.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}

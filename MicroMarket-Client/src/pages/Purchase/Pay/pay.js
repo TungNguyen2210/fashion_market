@@ -32,6 +32,11 @@ import {
   GlobalOutlined
 } from "@ant-design/icons";
 import { numberWithCommas } from "../../../utils/common";
+import { 
+  calculateGHNShippingFromAddress, 
+  calculateInternationalShippingFee as calculateInternationalGHN,
+  validateGHNConfig 
+} from '../../../utils/ghnHelper';
 
 const { Meta } = Card;
 const { Option } = Select;
@@ -44,9 +49,9 @@ const Pay = () => {
   // ===== STATES =====
   const [productDetail, setProductDetail] = useState([]);
   const [productNames, setProductNames] = useState({});
-  const [userData, setUserData] = useState(null); // ✅ CHANGE: null thay vì []
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [userDataLoading, setUserDataLoading] = useState(true); // ✅ NEW: Loading state riêng cho userData
+  const [userDataLoading, setUserDataLoading] = useState(true);
   const [orderTotal, setOrderTotal] = useState(0);
   const [originalTotal, setOriginalTotal] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -65,6 +70,7 @@ const Pay = () => {
   const [addrLoading, setAddrLoading] = useState(false);
   const [selectedLL, setSelectedLL] = useState(null);
   const [pendingFormValues, setPendingFormValues] = useState(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
 
   // === PROMOTION STATES ===
   const [voucherPromotionID, setVoucherPromotionID] = useState(null);
@@ -97,7 +103,7 @@ const Pay = () => {
   // Store coordinates
   const STORE_COORD = { lat: 10.870319219700491, lng: 106.79061359058457 };
 
-  // ===== SHIPPING CONFIGURATION (giữ nguyên) =====
+  // ===== SHIPPING CONFIGURATION (giữ nguyên cho fallback) =====
   const SHIPPING_CONFIG = {
     domestic: {
       regions: {
@@ -518,7 +524,10 @@ const Pay = () => {
       hasInsurance: insurance,
       hasTracking: tracking,
       hasSignature: signature,
-      customsNote: SHIPPING_CONFIG.international.disclaimer.vi
+      customsNote: SHIPPING_CONFIG.international.disclaimer.vi,
+      isInternational: true,
+      country: countryCode,
+      provider: 'International'
     };
   };
 
@@ -632,15 +641,65 @@ const Pay = () => {
       shippingMethod: region.name,
       isCOD: cod,
       hasInsurance: insurance,
-      isExpress: express
+      isExpress: express,
+      provider: 'Fallback'
     };
   };
 
-  const calculateShippingFee = (country, address, orderValue, options = {}) => {
-    if (country === 'VN') {
-      return calculateDomesticShippingFee(address, orderValue, options);
-    } else {
+  // ✅ NEW: Updated calculateShippingFee with GHN integration
+  const calculateShippingFee = async (country, address, orderValue, options = {}) => {
+    console.log('🚚 [SHIPPING] Calculating fee for:', { country, address, orderValue });
+    
+    // 1️⃣ QUỐC TẾ - Dùng logic cũ
+    if (country !== 'VN') {
+      console.log('🌍 Using international shipping logic');
       return calculateInternationalShippingFee(country, orderValue, options);
+    }
+    
+    // 2️⃣ TRONG NƯỚC - Dùng GHN API
+    console.log('🇻🇳 Using GHN API for domestic shipping');
+    
+    try {
+      // Validate GHN config
+      if (!validateGHNConfig()) {
+        console.error('❌ GHN config invalid, using fallback');
+        return calculateDomesticShippingFee(address, orderValue, options);
+      }
+      
+      // Prepare items for GHN
+      const ghnItems = productDetail.map(item => ({
+        name: item.productName || 'Sản phẩm',
+        quantity: item.quantity || 1,
+        weight: 500, // Default 500g per item
+        price: item.price || 0
+      }));
+      
+      // Call GHN API
+      const ghnResult = await calculateGHNShippingFromAddress(
+        address, 
+        orderValue,
+        ghnItems
+      );
+      
+      console.log('✅ GHN Result:', ghnResult);
+      
+      // Check if free shipping applies
+      if (freeShipPromotionID && ghnResult.success) {
+        return {
+          ...ghnResult,
+          totalPrice: 0,
+          shippingMethod: ghnResult.shippingMethod + ' (Miễn phí vận chuyển)',
+          isFreeShip: true,
+          originalPrice: ghnResult.totalPrice
+        };
+      }
+      
+      return ghnResult;
+      
+    } catch (error) {
+      console.error('❌ GHN API Error:', error);
+      // Fallback to old logic
+      return calculateDomesticShippingFee(address, orderValue, options);
     }
   };
 
@@ -793,40 +852,72 @@ const Pay = () => {
   const lngWatch = Form.useWatch('lng', form);
   const countryWatch = Form.useWatch('country', form);
 
+  // ✅ UPDATED: useEffect for shipping calculation with GHN
   useEffect(() => {
     const calculateShipping = async () => {
       const address = form.getFieldValue('address');
       const country = form.getFieldValue('country') || selectedCountry;
       
       if (address && address.length > 10) {
-        const shippingCalc = calculateShippingFee(country, address, orderTotal || 0, {
-          express: false,
-          insurance: country !== 'VN',
-          cod: country === 'VN',
-          tracking: country !== 'VN',
-          deliveryTime: new Date()
-        });
+        // Set loading state
+        setShippingLoading(true);
         
-        setShippingDetails(shippingCalc);
-        
-        const finalShipFee = (freeShipPromotionID && country === 'VN') ? 0 : shippingCalc.totalPrice;
-        setShipFee(finalShipFee);
-        
-        setGrandTotal((orderTotal || 0) + finalShipFee);
-        
-        if (country === 'VN') {
-          const lat = form.getFieldValue('lat');
-          const lng = form.getFieldValue('lng');
-          if (lat && lng) {
-            const to = { lat: Number(lat), lng: Number(lng) };
-            let km = await getDrivingDistanceKm(STORE_COORD, to);
-            if (km == null) km = haversineKm(STORE_COORD, to);
-            setDistKm(km);
+        try {
+          // ✅ GỌI HÀM BẤT ĐỒNG BỘ
+          const shippingCalc = await calculateShippingFee(
+            country, 
+            address, 
+            orderTotal || 0, 
+            {
+              express: false,
+              insurance: country !== 'VN',
+              cod: country === 'VN',
+              tracking: country !== 'VN',
+              deliveryTime: new Date()
+            }
+          );
+          
+          console.log('📦 Shipping calculation result:', shippingCalc);
+          
+          setShippingDetails(shippingCalc);
+          
+          // Update ship fee với free ship check
+          const finalShipFee = (freeShipPromotionID && country === 'VN') 
+            ? 0 
+            : (shippingCalc.totalPrice || 0);
+            
+          setShipFee(finalShipFee);
+          setGrandTotal((orderTotal || 0) + finalShipFee);
+          
+          // Calculate distance for domestic only
+          if (country === 'VN') {
+            const lat = form.getFieldValue('lat');
+            const lng = form.getFieldValue('lng');
+            if (lat && lng) {
+              const to = { lat: Number(lat), lng: Number(lng) };
+              let km = await getDrivingDistanceKm(STORE_COORD, to);
+              if (km == null) km = haversineKm(STORE_COORD, to);
+              setDistKm(km);
+            }
+          } else {
+            setDistKm(null);
           }
-        } else {
-          setDistKm(null);
+        } catch (error) {
+          console.error('❌ Shipping calculation error:', error);
+          // Set default values on error
+          setShippingDetails({
+            basePrice: 0,
+            totalPrice: 0,
+            estimatedDays: 0,
+            shippingMethod: 'Không thể tính phí'
+          });
+          setShipFee(0);
+          setGrandTotal(orderTotal || 0);
+        } finally {
+          setShippingLoading(false);
         }
       } else {
+        // Reset if no address
         setShippingDetails({
           basePrice: 0,
           totalPrice: 0,
@@ -838,8 +929,20 @@ const Pay = () => {
       }
     };
     
-    calculateShipping();
-  }, [addressWatch, orderTotal, freeShipPromotionID, selectedCountry, countryWatch]);
+    // Debounce the calculation
+    const timeoutId = setTimeout(() => {
+      calculateShipping();
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [
+    addressWatch, 
+    orderTotal, 
+    freeShipPromotionID, 
+    selectedCountry, 
+    countryWatch,
+    productDetail
+  ]);
 
   // ===== PROMOTION FUNCTIONS =====
   const calculateDiscountedPrice = (product) => {
@@ -1144,12 +1247,10 @@ const Pay = () => {
     } else {
       console.log("💵 Processing COD order (domestic only)");
       
-      // 🔍 LOG 1: Check userData
       console.log("🔍 [DEBUG] userData:", userData);
       console.log("🔍 [DEBUG] userData._id:", userData?._id);
       console.log("🔍 [DEBUG] typeof userData:", typeof userData);
       
-      // 🔍 LOG 2: Check localStorage user
       const localStorageUser = localStorage.getItem("user");
       console.log("🔍 [DEBUG] localStorage user raw:", localStorageUser);
       if (localStorageUser) {
@@ -1170,7 +1271,6 @@ const Pay = () => {
         const distanceKm = distKm ?? null;
         const total = (grandTotal || (subtotal + shippingFee));
 
-        // 🔍 LOG 3: Check all state variables
         console.log("🔍 [DEBUG] State variables:", {
           orderTotal,
           shipFee,
@@ -1184,7 +1284,6 @@ const Pay = () => {
           shippingDetails
         });
 
-        // 🔍 LOG 4: Try to get user ID from different sources
         let userId = userData?._id;
         console.log("🔍 [DEBUG] userId from userData:", userId);
         
@@ -1237,11 +1336,11 @@ const Pay = () => {
             method: shippingDetails.shippingMethod,
             estimatedDays: shippingDetails.estimatedDays,
             estimatedTime: shippingDetails.estimatedTime,
-            isInternational: false
+            isInternational: false,
+            provider: shippingDetails.provider || 'Unknown'
           }
         };
 
-        // 🔍 LOG 5: Final data check
         console.log("📦 Order data being sent:", formatData);
         console.log("🔍 [DEBUG] formatData.user:", formatData.user);
         console.log("🔍 [DEBUG] formatData JSON:", JSON.stringify(formatData, null, 2));
@@ -1293,14 +1392,12 @@ const Pay = () => {
             }
           })
           .catch((error) => {
-            // 🔍 LOG 6: Detailed error logging
             console.error("❌ COD order error - Full error:", error);
             console.error("🔍 [DEBUG] Error response:", error.response);
             console.error("🔍 [DEBUG] Error response data:", error.response?.data);
             console.error("🔍 [DEBUG] Error response status:", error.response?.status);
             console.error("🔍 [DEBUG] Error message:", error.message);
             
-            // Show detailed error from server
             const serverError = error.response?.data?.message || 
                                error.response?.data?.error || 
                                error.message || 
@@ -1403,7 +1500,8 @@ const Pay = () => {
               method: shippingDetails.shippingMethod || (country !== 'VN' ? 'International Shipping' : 'Domestic Shipping'),
               estimatedDays: shippingDetails.estimatedDays || '',
               estimatedTime: shippingDetails.estimatedTime || '',
-              isInternational: country !== 'VN'
+              isInternational: country !== 'VN',
+              provider: shippingDetails.provider || 'Unknown'
             }
           };
 
@@ -1486,7 +1584,21 @@ const Pay = () => {
     }
   };
 
-  
+  // ✅ NEW: Debug GHN config on mount
+  useEffect(() => {
+    console.log('🔧 [PAY] Checking GHN config...');
+    if (validateGHNConfig()) {
+      console.log('✅ [PAY] GHN config is valid');
+    } else {
+      console.error('❌ [PAY] GHN config is invalid!');
+      notification.warning({
+        message: 'Cảnh báo',
+        description: 'Không thể kết nối với GHN API. Sử dụng phí ship mặc định.',
+        duration: 5
+      });
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -1501,12 +1613,10 @@ const Pay = () => {
           setShowModal(true);
         }
 
-        // Load promotions
         console.log("🎁 [PAY] Loading promotions...");
         loadPromotionsFromStorage();
         await fetchActivePromotions();
 
-        // ✅ Load user profile
         console.log("👤 [PAY] Loading user profile...");
         const response = await userApi.getProfile();
         console.log("✅ [PAY] User profile response:", response);
@@ -1520,7 +1630,6 @@ const Pay = () => {
         setUserData(response.user);
         console.log("✅ [PAY] User data set:", response.user);
         
-        // ✅ Set form initial values
         const formData = {
           name: response.user.username,
           email: response.user.email,
@@ -1550,7 +1659,6 @@ const Pay = () => {
         
         setUserDataLoading(false);
 
-        // ✅ Load cart
         console.log("🛒 [PAY] Loading cart from localStorage...");
         const cart = JSON.parse(localStorage.getItem("cart")) || [];
         console.log("🛒 [PAY] Cart data:", cart);
@@ -1606,7 +1714,7 @@ const Pay = () => {
       setOriginalTotal(totalCalculation.totalWithProductPromotions);
     }
   }, [activePromotions, productDetail]);
-    return (
+     return (
     <div className="py-5">
       <Spin spinning={loading}>
         <Card className="container">
@@ -1644,7 +1752,7 @@ const Pay = () => {
                 <Form form={form} onFinish={accountCreate} layout="vertical">
                   <Row gutter={24}>
                     <Col xs={24} lg={16}>
-                      {/* ✅ ✅ ✅ THÔNG TIN KHÁCH HÀNG - THÊM DEBUG & CHECK ✅ ✅ ✅ */}
+                      {/* THÔNG TIN KHÁCH HÀNG */}
                       <Card 
                         bordered 
                         style={{ marginBottom: 16 }} 
@@ -1662,7 +1770,6 @@ const Pay = () => {
                               >
                                 <Input 
                                   placeholder="Tên" 
-                         
                                   value={userData.username}
                                 />
                               </Form.Item>
@@ -1676,7 +1783,6 @@ const Pay = () => {
                               >
                                 <Input 
                                   placeholder="Email" 
-                    
                                   value={userData.email}
                                 />
                               </Form.Item>
@@ -1708,10 +1814,11 @@ const Pay = () => {
                       </Card>
 
                       {/* ĐỊA CHỈ GIAO HÀNG */}
-                      <Card bordered title={<span style={{ fontWeight: 600 }}>Địa chỉ giao hàng</span>}>
+                      <Card bordered title={<span style={{ fontWeight: 600 }}>Địa chỉ giao hàng</span>} style={{ marginBottom: 16 }}>
+
                         <Form.Item
                           name="address"
-                          label="Địa chỉ"
+    
                           rules={[
                             { required: true, message: 'Vui lòng nhập địa chỉ' }
                           ]}
@@ -1720,126 +1827,131 @@ const Pay = () => {
                           <Input
                             value={addrQuery}
                             onChange={onAddressChange}
-                            placeholder="Nhập địa chỉ của bạn"
+                            placeholder={selectedCountry === 'VN' ? "Nhập địa chỉ của bạn" : "Nhập địa chỉ giao hàng"}
                             allowClear
                             suffix={
-                              <EnvironmentOutlined
-                                title="Dùng vị trí của tôi"
-                                style={{ color: '#1890ff', cursor: 'pointer' }}
-                                onClick={handleUseMyLocation}
-                              />
+                              selectedCountry === 'VN' && (
+                                <EnvironmentOutlined
+                                  title="Dùng vị trí của tôi"
+                                  style={{ color: '#1890ff', cursor: 'pointer' }}
+                                  onClick={handleUseMyLocation}
+                                />
+                              )
                             }
                           />
                         </Form.Item>
 
-                        <div style={{ marginTop: 8 }}>
-                          <div style={{ marginBottom: 6, fontWeight: 500 }}>Location Preview</div>
-                          {(() => {
-                            const lat = selectedLL?.lat ?? form.getFieldValue('lat');
-                            const lng = selectedLL?.lng ?? form.getFieldValue('lng');
-                            const hasLL = !!lat && !!lng;
+                        {selectedCountry === 'VN' && (
+                          <div style={{ marginTop: 8 }}>
+                            <div style={{ marginBottom: 6, fontWeight: 500 }}>Location Preview</div>
+                            {(() => {
+                              const lat = selectedLL?.lat ?? form.getFieldValue('lat');
+                              const lng = selectedLL?.lng ?? form.getFieldValue('lng');
+                              const hasLL = !!lat && !!lng;
 
-                            const pad = 0.0015;
-                            const left = lng - pad;
-                            const right = lng + pad;
-                            const top = lat + pad;
-                            const bottom = lat - pad;
-                            const src = hasLL
-                              ? `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`
-                              : null;
+                              const pad = 0.0015;
+                              const left = lng - pad;
+                              const right = lng + pad;
+                              const top = lat + pad;
+                              const bottom = lat - pad;
+                              const src = hasLL
+                                ? `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`
+                                : null;
 
-                            return (
-                              <>
-                                <div
-                                  style={{
-                                    position: 'relative',
-                                    height: 280,
-                                    borderRadius: 8,
-                                    overflow: 'hidden',
-                                    background: '#1f1f1f',
-                                  }}
-                                >
-                                  {hasLL ? (
-                                    <iframe
-                                      title="map-preview"
-                                      src={src}
-                                      style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        border: 0,
-                                      }}
-                                      scrolling="no"
-                                    />
-                                  ) : (
-                                    <div
-                                      style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#aaa',
-                                        textAlign: 'center',
-                                      }}
-                                    >
-                                      <div>
-                                        <div style={{ fontSize: 18, marginBottom: 4 }}>🗺️ Map Preview</div>
-                                        <div>Interactive map will show here</div>
+                              return (
+                                <>
+                                  <div
+                                    style={{
+                                      position: 'relative',
+                                      height: 280,
+                                      borderRadius: 8,
+                                      overflow: 'hidden',
+                                      background: '#1f1f1f',
+                                    }}
+                                  >
+                                    {hasLL ? (
+                                      <iframe
+                                        title="map-preview"
+                                        src={src}
+                                        style={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          width: '100%',
+                                          height: '100%',
+                                          border: 0,
+                                        }}
+                                        scrolling="no"
+                                      />
+                                    ) : (
+                                      <div
+                                        style={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: '#aaa',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        <div>
+                                          <div style={{ fontSize: 18, marginBottom: 4 }}>🗺️ Map Preview</div>
+                                          <div>Interactive map will show here</div>
+                                        </div>
                                       </div>
+                                    )}
+                                  </div>
+                                  {hasLL && (
+                                    <div style={{ paddingTop: 6, fontSize: 12 }}>
+                                      <a
+                                        href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Mở bản đồ lớn (OpenStreetMap)
+                                      </a>
                                     </div>
                                   )}
-                                </div>
-                                {hasLL && (
-                                  <div style={{ paddingTop: 6, fontSize: 12 }}>
-                                    <a
-                                      href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      Mở bản đồ lớn (OpenStreetMap)
-                                    </a>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                          
-                          {/* Enhanced Shipping Info Display */}
-                          <div
-                            style={{
-                              marginTop: 12,
-                              padding: '12px',
-                              borderRadius: 8,
-                              border: '1px solid rgba(0,0,0,0.08)',
-                              backgroundColor: '#fafafa'
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                              <span style={{ fontWeight: 500 }}>📍 Khoảng cách từ cửa hàng</span>
-                              <b style={{ color: '#1890ff' }}>{distKm != null ? `${distKm.toFixed(2)} km` : '-'}</b>
-                            </div>
+                                </>
+                              );
+                            })()}
                             
-                            {shippingDetails.shippingMethod && (
-                              <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                  <span>🚚 Phương thức vận chuyển</span>
-                                  <span style={{ color: '#52c41a', fontWeight: 500 }}>{shippingDetails.shippingMethod}</span>
-                                </div>
-                                
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span>📅 Thời gian giao hàng dự kiến</span>
-                                  <span style={{ fontWeight: 500 }}>
-                                    {shippingDetails.estimatedDays === 0 
-                                      ? 'Trong ngày' 
-                                      : `${shippingDetails.estimatedDays} ngày`}
-                                  </span>
-                                </div>
-                              </>
-                            )}
+                            {/* Enhanced Shipping Info Display */}
+                            <div
+                              style={{
+                                marginTop: 12,
+                                padding: '12px',
+                                borderRadius: 8,
+                                border: '1px solid rgba(0,0,0,0.08)',
+                                backgroundColor: '#fafafa'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <span style={{ fontWeight: 500 }}>📍 Khoảng cách từ cửa hàng</span>
+                                <b style={{ color: '#1890ff' }}>{distKm != null ? `${distKm.toFixed(2)} km` : '-'}</b>
+                              </div>
+                              
+                              {shippingDetails.shippingMethod && (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <span>🚚 Phương thức vận chuyển</span>
+                                    <span style={{ color: '#52c41a', fontWeight: 500 }}>{shippingDetails.shippingMethod}</span>
+                                  </div>
+                                  
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>📅 Thời gian giao hàng dự kiến</span>
+                                    <span style={{ fontWeight: 500 }}>
+                                      {shippingDetails.estimatedDays === 0 
+                                        ? 'Trong ngày' 
+                                        : `${shippingDetails.estimatedDays} ngày`}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
+
                         <Form.Item name="lat" hidden><Input /></Form.Item>
                         <Form.Item name="lng" hidden><Input /></Form.Item>
                       </Card>
@@ -1862,10 +1974,9 @@ const Pay = () => {
                     </Col>
 
                     <Col xs={24} lg={8}>
-                      {/* ✅ ✅ ✅ THÔNG TIN ĐƠN HÀNG - THÊM DEBUG ✅ ✅ ✅ */}
-                      <Card bordered style={{ marginBottom: 16 }} title={<span style={{ fontWeight: 600 }}>Thông tin đơn hàng</span>}>
+                      {/* THÔNG TIN ĐƠN HÀNG */}
+                      <Card bordered style={{ marginBottom: 16, position: 'relative' }} title={<span style={{ fontWeight: 600 }}>Thông tin đơn hàng</span>}>
                         <div style={{ marginBottom: 12 }}>
-                          {/* ✅ DEBUG: Show cart info */}
                           {console.log("🛒 [RENDER] ProductDetail:", productDetail)}
                           {console.log("🛒 [RENDER] ProductDetail length:", productDetail?.length)}
                           
@@ -1916,7 +2027,6 @@ const Pay = () => {
                                           📷
                                         </div>
                                       )}
-                                      
                                       {priceInfo.hasDiscount && (
                                         <div style={{
                                           position: 'absolute',
@@ -2109,8 +2219,26 @@ const Pay = () => {
                             padding: '12px',
                             backgroundColor: freeShipPromotionID ? '#f6ffed' : '#fafafa',
                             borderRadius: '8px',
-                            border: freeShipPromotionID ? '1px solid #b7eb8f' : '1px solid #f0f0f0'
+                            border: freeShipPromotionID ? '1px solid #b7eb8f' : '1px solid #f0f0f0',
+                            position: 'relative'
                           }}>
+                            {shippingLoading && (
+                              <div style={{ 
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'rgba(255,255,255,0.8)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '8px',
+                                zIndex: 10
+                              }}>
+                                <Spin size="small" tip="Đang tính phí vận chuyển..." />
+                              </div>
+                            )}
                             <div style={{ 
                               display: 'flex', 
                               justifyContent: 'space-between', 
@@ -2127,6 +2255,16 @@ const Pay = () => {
                                   {distKm != null && (
                                     <span style={{ fontSize: '12px', color: '#999', marginLeft: '4px' }}>
                                       ({distKm.toFixed(2)} km)
+                                    </span>
+                                  )}
+                                  {shippingDetails.provider && (
+                                    <span style={{ 
+                                      fontSize: '11px', 
+                                      color: '#1890ff', 
+                                      marginLeft: '8px',
+                                      fontWeight: '500'
+                                    }}>
+                                      {shippingDetails.provider === 'GHN' ? '🚚 GHN' : ''}
                                     </span>
                                   )}
                                 </div>
@@ -2171,8 +2309,8 @@ const Pay = () => {
                               </div>
                             </div>
                             
-                            {/* Shipping fee breakdown */}
-                            {!freeShipPromotionID && shippingDetails.basePrice > 0 && (
+                            {/* Shipping fee breakdown for GHN */}
+                            {!freeShipPromotionID && shippingDetails.provider === 'GHN' && (
                               <div style={{ 
                                 fontSize: '11px', 
                                 color: '#999',
@@ -2180,16 +2318,74 @@ const Pay = () => {
                                 paddingTop: '8px',
                                 marginTop: '8px'
                               }}>
-                                {shippingDetails.distancePrice > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                  <span>Phí dịch vụ:</span>
+                                  <span>{(shippingDetails.serviceFee || 0).toLocaleString('vi-VN')} đ</span>
+                                </div>
+                                {shippingDetails.insuranceFee > 0 && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                    <span>Phí khoảng cách:</span>
-                                    <span>{shippingDetails.distancePrice.toLocaleString('vi-VN')} đ</span>
+                                    <span>Phí bảo hiểm:</span>
+                                    <span>{shippingDetails.insuranceFee.toLocaleString('vi-VN')} đ</span>
                                   </div>
                                 )}
                                 {shippingDetails.discount > 0 && (
                                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#52c41a' }}>
-                                    <span>Giảm giá (đơn hàng {originalTotal >= 2000000 ? '>2tr' : originalTotal >= 1000000 ? '>1tr' : '>500k'}):</span>
+                                    <span>Giảm giá ({shippingDetails.discountPercent}%):</span>
                                     <span>-{shippingDetails.discount.toLocaleString('vi-VN')} đ</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Shipping fee breakdown for fallback */}
+                            {!freeShipPromotionID && shippingDetails.provider === 'Fallback' && shippingDetails.additionalFees && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#999',
+                                borderTop: '1px solid #f0f0f0',
+                                paddingTop: '8px',
+                                marginTop: '8px'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                  <span>Phí cơ bản:</span>
+                                  <span>{(shippingDetails.basePrice || 0).toLocaleString('vi-VN')} đ</span>
+                                </div>
+                                {shippingDetails.additionalFees.map((fee, idx) => (
+                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span>{fee.split(':')[0]}:</span>
+                                    <span>{fee.split(':')[1]}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* International shipping details */}
+                            {!freeShipPromotionID && shippingDetails.isInternational && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#999',
+                                borderTop: '1px solid #f0f0f0',
+                                paddingTop: '8px',
+                                marginTop: '8px'
+                              }}>
+                                <div style={{ marginBottom: '4px' }}>
+                                  <span>🌍 Vận chuyển quốc tế đến: </span>
+                                  <strong>{COUNTRIES_LIST.find(c => c.code === shippingDetails.country)?.name || shippingDetails.country}</strong>
+                                </div>
+                                {shippingDetails.zone && (
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <span>Khu vực: </span>
+                                    <strong>{shippingDetails.zone}</strong>
+                                  </div>
+                                )}
+                                {shippingDetails.customsNote && (
+                                  <div style={{ 
+                                    color: '#ff7875',
+                                    fontSize: '10px',
+                                    fontStyle: 'italic',
+                                    marginTop: '6px'
+                                  }}>
+                                    ⚠️ {shippingDetails.customsNote}
                                   </div>
                                 )}
                               </div>
@@ -2283,8 +2479,22 @@ const Pay = () => {
                           <div style={{ marginBottom: 8, fontWeight: 600 }}>Chọn phương thức thanh toán</div>
                           <Form.Item name="billing" rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán!' }]} style={{ marginBottom: 0 }}>
                             <Radio.Group style={{ display: 'grid', gap: 8 }}>
-                              <Radio value="cod">💵 COD (Thanh toán khi nhận hàng)</Radio>
-                              <Radio value="paypal">💳 PayPal</Radio>
+                              <Radio value="cod" disabled={selectedCountry !== 'VN'}>
+                                💵 COD (Thanh toán khi nhận hàng)
+                                {selectedCountry !== 'VN' && (
+                                  <span style={{ fontSize: '12px', color: '#ff4d4f', marginLeft: '8px' }}>
+                                    (Chỉ áp dụng cho đơn hàng trong nước)
+                                  </span>
+                                )}
+                              </Radio>
+                              <Radio value="paypal">
+                                💳 PayPal
+                                {selectedCountry !== 'VN' && (
+                                  <span style={{ fontSize: '12px', color: '#52c41a', marginLeft: '8px' }}>
+                                    (Bắt buộc cho đơn hàng quốc tế)
+                                  </span>
+                                )}
+                              </Radio>
                             </Radio.Group>
                           </Form.Item>
                         </div>
@@ -2411,11 +2621,16 @@ const Pay = () => {
                 </div>
                 <div style={{ fontSize: '13px', color: '#666' }}>
                   <div>Phương thức: <strong>{shippingDetails.shippingMethod}</strong></div>
-                  <div>Khoảng cách: <strong>{distKm?.toFixed(2)} km</strong></div>
+                  {shippingDetails.provider && (
+                    <div>Nhà vận chuyển: <strong>{shippingDetails.provider === 'GHN' ? 'Giao Hàng Nhanh' : shippingDetails.provider}</strong></div>
+                  )}
+                  {distKm != null && (
+                    <div>Khoảng cách: <strong>{distKm?.toFixed(2)} km</strong></div>
+                  )}
                   <div>Thời gian dự kiến: <strong>
-                    {shippingDetails.estimatedDays === 0 
+                    {shippingDetails.estimatedTime || (shippingDetails.estimatedDays === 0 
                       ? 'Trong ngày' 
-                      : `${shippingDetails.estimatedDays} ngày`}
+                      : `${shippingDetails.estimatedDays} ngày`)}
                   </strong></div>
                 </div>
               </div>
@@ -2426,6 +2641,7 @@ const Pay = () => {
             </div>
           </div>
         </Modal>
+
       </Spin>
     </div>
   );

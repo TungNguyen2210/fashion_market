@@ -85,7 +85,7 @@ const orderController = {
                 page: page,
                 limit: limit,
                 populate: [
-                    { path: 'user', select: 'username email' },
+                    { path: 'user', select: 'username email phone' },
                     { path: 'products.product' }
                     // 🔥 Removed promotion populates - will fetch via API
                 ]
@@ -406,9 +406,8 @@ const orderController = {
         }
 
         const savedOrder = await order.save();
-        console.log("✅ Đơn hàng đã được lưu thành công:", savedOrder._id);
+        console.log("Đơn hàng đã được lưu thành công:", savedOrder._id);
 
-        // 🔥 GIẢI PHÁP: Cập nhật promotion usedCount qua API thay vì trực tiếp DB
         try {
             console.log("🐛 DEBUG: Bắt đầu cập nhật promotions qua API");
             console.log("🐛 voucherPromotionID:", voucherPromotionID);
@@ -525,7 +524,7 @@ const orderController = {
                     processedProducts.filter(p => p.productPromotionID).map(p => p.productPromotionID)
                 );
 
-                const transporter = nodemailer.createTransport({  // 🔥 SỬA: createTransporter → createTransport
+                const transporter = nodemailer.createTransport({ 
                     host: 'smtp.gmail.com',
                     port: 587,
                     secure: false,
@@ -663,9 +662,9 @@ const orderController = {
             page: page,
             limit: limit,
             populate: [
-                { path: 'user', select: 'username email' },
+                { path: 'user', select: 'username email phone' },
                 { path: 'products.product' }
-                // 🔥 Removed promotion populates - will fetch via API
+                
             ]
         };
 

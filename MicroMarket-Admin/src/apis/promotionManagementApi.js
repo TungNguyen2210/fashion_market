@@ -28,7 +28,7 @@ const promotionManagementApi = {
         }
     },
 
-    async updatePromotionManagement(data, id) {
+    async updatePromotionManagement(id, data) {
         const url = `promotions/${id}`;
         try {
             console.log('📤 Update promotion API call:', { url, id, data });
@@ -41,7 +41,6 @@ const promotionManagementApi = {
         }
     },
 
-    // ✅ FIX: Search function - Support both keyword and filters
     async searchPromotionManagement(searchParams = {}) {
         const url = 'promotions/search';
         console.log('🚨 SEARCH API CALLED!');

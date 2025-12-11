@@ -36,7 +36,8 @@ import {
     Avatar,
     message
 } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import debounce from 'lodash/debounce';
 import promotionManagementApi from "../../apis/promotionManagementApi";
 import productApi from "../../apis/productsApi";
 import "./promotionManagement.css";
@@ -49,6 +50,7 @@ const { Text } = Typography;
 
 const PromotionManagement = () => {
     const [promotions, setPromotions] = useState([]);
+    const [originalPromotions, setOriginalPromotions] = useState([]);
     const [products, setProducts] = useState([]);
     const [openModalCreate, setOpenModalCreate] = useState(false);
     const [openModalUpdate, setOpenModalUpdate] = useState(false);
@@ -64,6 +66,8 @@ const PromotionManagement = () => {
 
     const [targetKeys, setTargetKeys] = useState([]);
     const [selectedKeys, setSelectedKeys] = useState([]);
+
+    
 
     const promotionTypes = {
         'voucher': { label: 'Voucher', icon: <TagOutlined />, color: 'blue' },
@@ -254,9 +258,6 @@ const PromotionManagement = () => {
         handlePromotionList();
     }, []);
 
-    useEffect(() => {
-        handlePromotionList();
-    }, [filterType, filterStatus]);
 
     const showModal = () => {
         setOpenModalCreate(true);
@@ -405,7 +406,7 @@ const PromotionManagement = () => {
                 "trangThai": values.trangThai
             };
 
-            const response = await promotionManagementApi.updatePromotionManagement(promotionData, id);
+            const response = await promotionManagementApi.updatePromotionManagement(id, promotionData);
             
             if (response.success || response.data) {
                 notification["success"]({
@@ -446,30 +447,78 @@ const PromotionManagement = () => {
         setSelectedKeys([]);
     };
 
-    // Hàm load tất cả (không search)
-const handlePromotionList = async () => {
-    try {
-        setLoading(true);
-        const params = { _t: Date.now() };
+    const applyFilters = (data = originalPromotions) => {
+        console.log('🔄 Applying filters - Type:', filterType, 'Status:', filterStatus);
+        console.log('🔄 Filtering from', data.length, 'promotions');
         
-        if (filterType !== 'all') params.loai = filterType;
-        if (filterStatus !== 'all') params.trangThai = filterStatus;
-        
-        const res = await promotionManagementApi.listPromotionManagement(params);
-        
-        if (res && (res.success || res.data)) {
-            const promotionsData = res.data?.docs || res.data || [];
-            setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
-        } else {
-            setPromotions([]);
+        let filtered = [...data]; 
+        if (filterType !== 'all') {
+            filtered = filtered.filter(promo => promo.loai === filterType);
+            console.log(`📌 After type filter (${filterType}):`, filtered.length);
         }
-    } catch (error) {
-        console.error('Failed to fetch promotion list:', error);
-        setPromotions([]);
-    } finally {
-        setLoading(false);
-    }
-};
+ 
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(promo => promo.trangThai === filterStatus);
+            console.log(`📌 After status filter (${filterStatus}):`, filtered.length);
+        }
+        if (searchKeyword && searchKeyword.trim() !== '') {
+            const keyword = searchKeyword.toLowerCase().trim();
+            filtered = filtered.filter(promo => {
+                const maKM = (promo.maKhuyenMai || '').toLowerCase();
+                const tenKM = (promo.tenKhuyenMai || '').toLowerCase();
+                const moTa = (promo.moTa || '').toLowerCase();
+                const loai = (promo.loai || '').toLowerCase();
+                
+                return maKM.includes(keyword) || 
+                    tenKM.includes(keyword) || 
+                    moTa.includes(keyword) ||
+                    loai.includes(keyword);
+            });
+            console.log(`📌 After search filter (${keyword}):`, filtered.length);
+        }
+        
+        console.log(`✅ Final filtered result:`, filtered.length);
+        setPromotions(filtered);
+    }; 
+
+    const handlePromotionList = async () => {
+        try {
+            setLoading(true);
+            const params = { 
+                _t: Date.now(),
+                page: 1,
+                limit: 10000
+            };
+            
+            console.log('📡 Loading ALL promotions from API...');
+            
+            const res = await promotionManagementApi.listPromotionManagement(params);
+            
+            if (res && (res.success || res.data)) {
+                const promotionsData = res.data?.docs || res.data || [];
+                const validData = Array.isArray(promotionsData) ? promotionsData : [];
+                
+                console.log(`✅ Loaded ${validData.length} total promotions`);
+                setOriginalPromotions(validData);
+                applyFilters(validData);
+            } else {
+                console.log('⚠️ No data returned from API');
+                setPromotions([]);
+                setOriginalPromotions([]);
+            }
+        } catch (error) {
+            console.error('❌ Failed to fetch promotion list:', error);
+            setPromotions([]);
+            setOriginalPromotions([]);
+            
+            notification.error({
+                message: 'Lỗi tải dữ liệu',
+                description: 'Không thể tải danh sách khuyến mãi: ' + error.message,
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     const handleDeactivatePromotion = async (id) => {
@@ -562,114 +611,122 @@ const handlePromotionList = async () => {
         setLoading(false);
     };
 
-    const handleSearch = async (value) => {
-    console.log('🔍 === FRONTEND SEARCH DEBUG START ===');
-    console.log('🔍 Search value from Input.Search:', `"${value}"`);
-    console.log('🔍 Type of value:', typeof value);
-    console.log('🔍 Value length:', value?.length);
-    console.log('🔍 Current searchKeyword state:', `"${searchKeyword}"`);
-    console.log('🔍 Current filterType:', `"${filterType}"`);
-    console.log('🔍 Current filterStatus:', `"${filterStatus}"`);
-    
-    try {
-        setLoading(true);
+
+    const handleSearch = (value) => {
+        console.log('🔍 Search triggered with value:', `"${value}"`);
         
-        const params = {
-            _t: Date.now()
-        };
-        
-        const keyword = value || '';
-        console.log('🔍 Final keyword after fallback:', `"${keyword}"`);
-        
-        setSearchKeyword(keyword);
-        console.log('🔍 Updated searchKeyword state to:', `"${keyword}"`);
-        
-        if (keyword && keyword.trim() !== '') {
-            params.keyword = keyword.trim();
-            console.log('🔍 Adding keyword to params:', `"${params.keyword}"`);
-        } else {
-            console.log('🔍 No keyword to search - will get all promotions');
+        try {
+            const keyword = (value || '').toLowerCase().trim();
+            setSearchKeyword(keyword);
+
+            let filtered = [...originalPromotions];
+
+            if (filterType !== 'all') {
+                filtered = filtered.filter(promo => promo.loai === filterType);
+            }
+            
+            if (filterStatus !== 'all') {
+                filtered = filtered.filter(promo => promo.trangThai === filterStatus);
+            }
+
+            if (keyword) {
+                filtered = filtered.filter(promo => {
+                    const maKM = (promo.maKhuyenMai || '').toLowerCase();
+                    const tenKM = (promo.tenKhuyenMai || '').toLowerCase();
+                    const moTa = (promo.moTa || '').toLowerCase();
+                    const loai = (promo.loai || '').toLowerCase();
+                    
+                    return maKM.includes(keyword) || 
+                        tenKM.includes(keyword) || 
+                        moTa.includes(keyword) ||
+                        loai.includes(keyword);
+                });
+            }
+            
+            console.log(`🔍 Found ${filtered.length} results from ${originalPromotions.length} total`);
+            setPromotions(filtered);
+            
+        } catch (error) {
+            console.error('❌ Search error:', error);
+            notification.error({
+                message: 'Lỗi tìm kiếm',
+                description: error.message,
+            });
         }
+    };
+
+    const debouncedSearch = useMemo(
+        () => debounce((value) => {
+            console.log('⏱️ Debounced search executing for:', value);
+            handleSearch(value);
+        }, 300),
+        [originalPromotions, filterType, filterStatus]
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedSearch.cancel(); 
+        };
+    }, [debouncedSearch]);
+
+    const handleFilterTypeChange = (value) => {
+        console.log('🔍 Filter type changed to:', value);
+        setFilterType(value);
+
+        let filtered = [...originalPromotions];
         
-        if (filterType !== 'all') {
-            params.loai = filterType;
-            console.log('🔍 Adding loai filter:', `"${filterType}"`);
-        } else {
-            console.log('🔍 No loai filter (filterType = "all")');
+        if (value !== 'all') {
+            filtered = filtered.filter(promo => promo.loai === value);
         }
         
         if (filterStatus !== 'all') {
-            params.trangThai = filterStatus;
-            console.log('🔍 Adding trangThai filter:', `"${filterStatus}"`);
-        } else {
-            console.log('🔍 No trangThai filter (filterStatus = "all")');
+            filtered = filtered.filter(promo => promo.trangThai === filterStatus);
         }
         
-        console.log('🔍 Final params object before API call:', JSON.stringify(params, null, 2));
-        console.log('🔍 Params object keys:', Object.keys(params));
-        console.log('🔍 Calling promotionManagementApi.searchPromotionManagement...');
-        
-        const res = await promotionManagementApi.searchPromotionManagement(params);
-        
-        console.log('🔍 Raw API response received:', res);
-        console.log('🔍 Response type:', typeof res);
-        console.log('🔍 Response keys:', Object.keys(res || {}));
-        
-        if (res && (res.success || res.data)) {
-            const searchData = res.data?.docs || res.data || [];
-            console.log('🔍 Extracted search data:', searchData);
-            console.log('🔍 Found', searchData.length, 'total results');
-            
-            if (searchData.length > 0) {
-                console.log('🔍 First 3 results from API:');
-                searchData.slice(0, 3).forEach((item, index) => {
-                    console.log(`🔍 Frontend Result ${index + 1}:`, {
-                        id: item._id,
-                        ma: item.maKhuyenMai,
-                        ten: item.tenKhuyenMai,
-                        loai: item.loai,
-                        trangThai: item.trangThai
-                    });
-                });
-            } else {
-                console.log('🔍 No results found in searchData array');
-            }
-            
-            setPromotions(searchData);
-            console.log('🔍 Updated promotions state with', searchData.length, 'items');
-            
-        } else {
-            console.log('🔍 Invalid response structure - no data found');
-            console.log('🔍 Response.success:', res?.success);
-            console.log('🔍 Response.data:', res?.data);
-            setPromotions([]);
+        if (searchKeyword && searchKeyword.trim() !== '') {
+            const keyword = searchKeyword.toLowerCase().trim();
+            filtered = filtered.filter(promo => {
+                const maKM = (promo.maKhuyenMai || '').toLowerCase();
+                const tenKM = (promo.tenKhuyenMai || '').toLowerCase();
+                const moTa = (promo.moTa || '').toLowerCase();
+                
+                return maKM.includes(keyword) || 
+                    tenKM.includes(keyword) || 
+                    moTa.includes(keyword);
+            });
         }
         
-    } catch (error) {
-        console.error('❌ Frontend search error:', error);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error response:', error.response?.data);
-        console.error('❌ Error status:', error.response?.status);
-        
-        setPromotions([]);
-        notification.error({
-            message: 'Lỗi tìm kiếm',
-            description: 'Không thể tìm kiếm khuyến mãi: ' + error.message,
-        });
-    } finally {
-        setLoading(false);
-        console.log('🔍 === FRONTEND SEARCH DEBUG END ===');
-    }
-};
-
-    const handleFilterTypeChange = async (value) => {
-        console.log('🔍 Filter type changed to:', value);
-        setFilterType(value);
+        setPromotions(filtered);
     };
 
-    const handleFilterStatusChange = async (value) => {
+    const handleFilterStatusChange = (value) => {
         console.log('🔍 Filter status changed to:', value);
         setFilterStatus(value);
+  
+        let filtered = [...originalPromotions];
+        
+        if (filterType !== 'all') {
+            filtered = filtered.filter(promo => promo.loai === filterType);
+        }
+        
+        if (value !== 'all') {
+            filtered = filtered.filter(promo => promo.trangThai === value);
+        }
+        
+        if (searchKeyword && searchKeyword.trim() !== '') {
+            const keyword = searchKeyword.toLowerCase().trim();
+            filtered = filtered.filter(promo => {
+                const maKM = (promo.maKhuyenMai || '').toLowerCase();
+                const tenKM = (promo.tenKhuyenMai || '').toLowerCase();
+                const moTa = (promo.moTa || '').toLowerCase();
+                
+                return maKM.includes(keyword) || 
+                    tenKM.includes(keyword) || 
+                    moTa.includes(keyword);
+            });
+        }
+        
+        setPromotions(filtered);
     };
 
     const handlePromotionTypeChange = (value, formInstance) => {
@@ -682,7 +739,7 @@ const handlePromotionList = async () => {
                 phanTramKhuyenMai: 0,
                 giamToiDa: null,
                 soLuong: null,
-                giaTriToiThieu: fields.giaTriToiThieu || undefined // Giữ lại nếu có
+                giaTriToiThieu: fields.giaTriToiThieu || undefined 
             });
             setTargetKeys([]);
         } else if (value === 'dot_giam_gia') {
@@ -690,7 +747,7 @@ const handlePromotionList = async () => {
                 ...fields,
                 giamToiDa: null,
                 soLuong: null,
-                giaTriToiThieu: 0, // Đợt giảm giá không cần giá trị tối thiểu
+                giaTriToiThieu: 0, 
                 phanTramKhuyenMai: fields.phanTramKhuyenMai || undefined
             });
         } else if (value === 'voucher') {
@@ -1385,7 +1442,7 @@ const handlePromotionList = async () => {
                             <Row gutter={16} align="middle">
                                 <Col span={6}>
                                     <Input.Search
-                                        placeholder="Tìm kiếm khuyến mãi..."
+                                        placeholder="Tìm kiếm theo mã, tên, mô tả khuyến mãi..."
                                         allowClear
                                         enterButton="Tìm kiếm"
                                         value={searchKeyword}
@@ -1393,15 +1450,23 @@ const handlePromotionList = async () => {
                                             const value = e.target.value;
                                             console.log('🔍 Input onChange:', value);
                                             setSearchKeyword(value);
+
+                                            if (value.trim() === '') {
+                                                debouncedSearch.cancel(); 
+                                                setPromotions(originalPromotions);
+                                            } else {
+                                                debouncedSearch(value);
+                                            }
                                         }}
                                         onSearch={(value) => {
-                                            console.log('🔍 Input onSearch triggered with:', value);
+                                            console.log('🔍 Search button clicked');
+                                            debouncedSearch.cancel();
                                             handleSearch(value);
                                         }}
-                                        onClear={() => {
-                                            console.log('🔍 Search cleared');
-                                            setSearchKeyword('');
-                                            handlePromotionList();
+                                        onPressEnter={(e) => {
+                                            console.log('🔍 Enter pressed');
+                                            debouncedSearch.cancel();
+                                            handleSearch(e.target.value);
                                         }}
                                         style={{ width: '100%' }}
                                     />

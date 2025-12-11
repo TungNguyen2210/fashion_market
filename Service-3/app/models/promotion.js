@@ -79,8 +79,30 @@ const promotionSchema = new mongoose.Schema({
         type: Date,
         required: true,
         validate: {
-            validator: function(v) {
-                return v > this.thoiGianBD;
+            validator: function(endDateValue) {
+                if (!this.thoiGianBD) {
+                    return true;
+                }
+                const startDate = this.thoiGianBD instanceof Date 
+                    ? this.thoiGianBD 
+                    : new Date(this.thoiGianBD);
+                    
+                const endDate = endDateValue instanceof Date 
+                    ? endDateValue 
+                    : new Date(endDateValue);
+                const isValid = endDate.getTime() > startDate.getTime();
+
+                if (!isValid) {
+                    console.log('❌ Schema validation failed:', {
+                        startDate: startDate.toISOString(),
+                        endDate: endDate.toISOString(),
+                        startTime: startDate.getTime(),
+                        endTime: endDate.getTime(),
+                        difference: endDate.getTime() - startDate.getTime()
+                    });
+                }
+                
+                return isValid;
             },
             message: 'Thời gian kết thúc phải sau thời gian bắt đầu'
         }

@@ -123,26 +123,50 @@ function Topbar() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await userApi.getProfile();
-        const cartLength = localStorage.getItem('cartLength');
-        console.log('Cart length from localStorage:', cartLength);
+        const token = localStorage.getItem('client') || localStorage.getItem('token');
         
+        // ✅ CHỈ GỌI API PROFILE NẾU CÓ TOKEN
+        if (token && token !== 'undefined' && token !== 'null') {
+          console.log('🔑 Token found - fetching user profile...');
+          
+          try {
+            const response = await userApi.getProfile();
+            
+            if (response && response.user) {
+              setUserData(response.user);
+              console.log('✅ User data loaded:', response.user);
+            } else {
+              setUserData(null);
+            }
+          } catch (profileError) {
+            // ✅ NẾU LỖI 401 KHI LẤY PROFILE → XÓA TOKEN KHÔNG HỢP LỆ
+            if (profileError?.response?.status === 401) {
+              console.log('⚠️ Invalid token - clearing...');
+              localStorage.removeItem('client');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+            }
+            setUserData(null);
+          }
+        } else {
+          console.log('ℹ️ No token - browsing as guest');
+          setUserData(null);
+        }
+        
+        // ✅ LUÔN HIỂN THỊ GIỎ HÀNG (CHO CẢ GUEST VÀ USER)
+        const cartLength = localStorage.getItem('cartLength');
         setCart(cartLength ? parseInt(cartLength, 10) : 0);
-        setUserData(response || null);
+        
       } catch (error) {
-        console.log('Failed to fetch profile user:' + error);
+        console.log('⚠️ Error in header initialization:', error.message);
         setUserData(null);
-        setCart(0);
+        
+        // ✅ VẪN HIỂN THỊ GIỎ HÀNG KHI CÓ LỖI
+        const cartLength = localStorage.getItem('cartLength');
+        setCart(cartLength ? parseInt(cartLength, 10) : 0);
       }
     })();
   }, [])
-
-  // Hàm xử lý tên người dùng dài
-  const formatUserName = (name) => {
-    if (!name) return '';
-    if (name.length <= 15) return name;
-    return `${name.substring(0, 12)}...`;
-  };
 
   return (
     <Header
@@ -155,6 +179,7 @@ function Topbar() {
           src={logo} 
           alt="Logo"
           onClick={() => handleLink("/home")}
+          style={{ cursor: 'pointer' }}
         />
       </div>
       
@@ -192,6 +217,7 @@ function Topbar() {
       
       <div className={styles.logBtn}>
         <div className={styles.headerActions}>
+          {/* ✅ LUÔN HIỂN THỊ GIỎ HÀNG (CHO CẢ GUEST VÀ USER) */}
           <div className={styles.actionLink} onClick={() => handleLink("/cart")}>
             <ShoppingCartOutlined className={styles.actionIcon} />
             <span className={styles.actionText}>Giỏ hàng</span>
@@ -204,13 +230,9 @@ function Topbar() {
             )}
           </div>
           
+          {/* ✅ DROPDOWN AVATAR CHO LOGIN/PROFILE */}
           <div className={styles.actionLink}>
-            <DropdownAvatar key="avatar" />
-            {userData && userData.username && (
-              <span className={styles.actionText} title={userData.username}>
-                {formatUserName(userData.username)}
-              </span>
-            )}
+            <DropdownAvatar key="avatar" userData={userData} />
           </div>
         </div>
       </div>
@@ -236,6 +258,7 @@ function Topbar() {
             Liên hệ
           </NavLink>
           
+          {/* ✅ LUÔN HIỂN THỊ GIỎ HÀNG TRONG DRAWER */}
           <div className={styles.navlink2}>
             <div className={styles.drawerCart} onClick={() => handleLink("/cart")}>
               <ShoppingCartOutlined className={styles.drawerCartIcon} />
@@ -251,7 +274,7 @@ function Topbar() {
           </div>
           
           <div className={styles.navlink2}>
-            <DropdownAvatar key="avatar" />
+            <DropdownAvatar key="avatar" userData={userData} />
           </div>
         </div>
       </Drawer>

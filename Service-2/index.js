@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -14,12 +15,14 @@ const productRoute = require('./app/routers/product');
 const categoryRoute = require('./app/routers/category');
 const orderRoute = require('./app/routers/order');
 const colorRoute = require('./app/routers/colors');
-const shippingRoutes = require('./app/routers/shipping');
+const shippingRoutes = require('./app/routers/shippingRoutes');
+
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static('public'));
+
 
 mongoose.connect(DB_MONGO.URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {
@@ -34,7 +37,7 @@ app.use('/api/category', categoryRoute);
 app.use('/api/order', orderRoute);
 app.use('/api/color', colorRoute);
 app.use('/uploads', express.static('uploads'));
-app.use('/shipping', shippingRoutes);
+app.use('/api/shipping', shippingRoutes);
 
 // sendEmailNotification();
 

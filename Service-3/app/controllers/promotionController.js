@@ -421,18 +421,18 @@ const promotionController = {
         }
     },
 
-    // Cập nhật promotion với business rules
     updatePromotion: async (req, res) => {
         try {
             const promotionId = req.params.id;
             const updateData = { ...req.body };
             
-            console.log('📥 Update promotion request:', {
-                id: promotionId,
-                updateData
-            });
+            console.log('=====================================');
+            console.log('📥 UPDATE REQUEST');
+            console.log('   ID:', promotionId);
+            console.log('   Data:', updateData);
+            console.log('=====================================');
 
-            // 1. Kiểm tra promotion có tồn tại không
+            // 1. Check existence
             const currentPromotion = await Promotion.findById(promotionId);
             if (!currentPromotion) {
                 return res.status(404).json({
@@ -441,49 +441,39 @@ const promotionController = {
                 });
             }
 
-            // 2. Kiểm tra business rules để xem có thể update không
-            const canUpdate = checkCanUpdatePromotion(currentPromotion);
-            if (!canUpdate.allowed) {
-                return res.status(400).json({
-                    success: false,
-                    message: canUpdate.reason
-                });
-            }
-
-            // 3. Filter allowed fields dựa trên business rules
-            const allowedFields = getAllowedUpdateFields(currentPromotion);
-            const filteredUpdateData = {};
-            
-            Object.keys(updateData).forEach(field => {
-                if (allowedFields.includes(field)) {
-                    filteredUpdateData[field] = updateData[field];
-                }
-            });
-
-            // 4. Validate dates nếu có
-            if (filteredUpdateData.thoiGianBD) {
-                filteredUpdateData.thoiGianBD = new Date(filteredUpdateData.thoiGianBD);
-                if (isNaN(filteredUpdateData.thoiGianBD.getTime())) {
+            // 2. ✅ CONVERT DATES FIRST
+            if (updateData.thoiGianBD) {
+                const startDate = new Date(updateData.thoiGianBD);
+                if (isNaN(startDate.getTime())) {
                     return res.status(400).json({
                         success: false,
-                        message: `Ngày bắt đầu không hợp lệ: ${updateData.thoiGianBD}`
+                        message: 'Ngày bắt đầu không hợp lệ'
                     });
                 }
+                updateData.thoiGianBD = startDate;
+                console.log('✅ Start date:', startDate.toISOString());
             }
             
-            if (filteredUpdateData.thoiGianKT) {
-                filteredUpdateData.thoiGianKT = new Date(filteredUpdateData.thoiGianKT);
-                if (isNaN(filteredUpdateData.thoiGianKT.getTime())) {
+            if (updateData.thoiGianKT) {
+                const endDate = new Date(updateData.thoiGianKT);
+                if (isNaN(endDate.getTime())) {
                     return res.status(400).json({
                         success: false,
-                        message: `Ngày kết thúc không hợp lệ: ${updateData.thoiGianKT}`
+                        message: 'Ngày kết thúc không hợp lệ'
                     });
                 }
+                updateData.thoiGianKT = endDate;
+                console.log('✅ End date:', endDate.toISOString());
             }
 
-            // 5. Validate date range
-            const finalStartDate = filteredUpdateData.thoiGianBD || currentPromotion.thoiGianBD;
-            const finalEndDate = filteredUpdateData.thoiGianKT || currentPromotion.thoiGianKT;
+            // 3. Validate date range
+            const finalStartDate = updateData.thoiGianBD || currentPromotion.thoiGianBD;
+            const finalEndDate = updateData.thoiGianKT || currentPromotion.thoiGianKT;
+            
+            console.log('🔍 Comparing dates:');
+            console.log('   Start:', finalStartDate);
+            console.log('   End:', finalEndDate);
+            console.log('   Valid:', finalEndDate > finalStartDate);
             
             if (finalEndDate <= finalStartDate) {
                 return res.status(400).json({
@@ -492,26 +482,32 @@ const promotionController = {
                 });
             }
 
-            // 6. Update với filtered data
+            // 4. Update
+            console.log('🔄 Updating in database...');
             const updatedPromotion = await Promotion.findByIdAndUpdate(
                 promotionId,
-                filteredUpdateData,
+                updateData,
                 { 
-                    new: true, 
+                    new: true,
                     runValidators: true
                 }
             ).populate('sanPhamApDung', 'name price image');
 
-            console.log('✅ Updated promotion:', updatedPromotion.maKhuyenMai);
+            console.log('✅ SUCCESS!');
+            console.log('=====================================');
 
             res.status(200).json({
                 success: true,
                 data: updatedPromotion,
                 message: 'Cập nhật khuyến mãi thành công'
             });
+            
         } catch (err) {
-            console.error('❌ Update promotion error:', err);
-            res.status(400).json({
+            console.error('=====================================');
+            console.error('❌ ERROR:', err.message);
+            console.error('=====================================');
+            
+            res.status(500).json({
                 success: false,
                 message: err.message
             });
@@ -559,8 +555,6 @@ const promotionController = {
         }
     },
 
-    // ENHANCED: Tìm kiếm promotion với debug logs
-    // ✅ Sửa controller backend
 searchPromotions: async (req, res) => {
     console.log('🟢 SEARCH ROUTE HIT!', req.query);
     

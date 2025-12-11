@@ -12,20 +12,50 @@ const axiosClient = axios.create({
     paramsSerializer: params => queryString.stringify(params),
 });
 
+
+const PUBLIC_ENDPOINTS = [
+    '/product',              // Danh sách sản phẩm
+    '/product/',             // Chi tiết sản phẩm
+    '/product/searchByName', // Tìm kiếm sản phẩm
+    '/category',             // Danh mục
+    '/news',                 // Tin tức
+    '/contact',              // Liên hệ
+    '/auth/login',           // Đăng nhập
+    '/auth/register',        // Đăng ký
+    '/auth/google-login',    // Google login
+    '/auth/logout',          // Logout
+];
+
+// ✅ DANH SÁCH ENDPOINTS PRIVATE (bắt buộc đăng nhập)
+const PRIVATE_ENDPOINTS = [
+    '/auth/me',              // Lấy thông tin user
+    '/user',                 // Cập nhật profile
+    '/order',                // Đơn hàng
+    '/cart-history',         // Lịch sử giỏ hàng
+    '/checkout',             // Thanh toán
+];
+
+const isPublicEndpoint = (url) => {
+    if (!url) return false;
+    return PUBLIC_ENDPOINTS.some(endpoint => url.includes(endpoint));
+};
+
+
+const isPrivateEndpoint = (url) => {
+    if (!url) return false;
+    return PRIVATE_ENDPOINTS.some(endpoint => url.includes(endpoint));
+};
+
 axiosClient.interceptors.request.use(
     async (config) => {
-        // ✅ THAY ĐỔI: Kiểm tra cả 2 key 'client' và 'token'
         let token = localStorage.getItem('client') || localStorage.getItem('token');
         
-        // ✅ CHỈ thêm Authorization header nếu có token hợp lệ
+        // ✅ CHỈ GỬI TOKEN NẾU CÓ TOKEN HỢP LỆ
         if (token && token.trim() !== '' && token !== 'undefined' && token !== 'null') {
-            // ✅ Xử lý Google token (rất dài) và JWT token (3 phần)
             if (token.length > 500) {
-                // Google OAuth token - gửi trực tiếp
                 config.headers.Authorization = token;
                 console.log('🔑 [GOOGLE TOKEN] Added to request');
             } else {
-                // JWT token - kiểm tra format
                 const tokenParts = token.split('.');
                 if (tokenParts.length === 3) {
                     config.headers.Authorization = `Bearer ${token}`;
@@ -38,14 +68,15 @@ axiosClient.interceptors.request.use(
                 }
             }
         } else {
-            console.log('ℹ️ [TOKEN] No token found - public request');
+            console.log('ℹ️ [TOKEN] No token - public request');
         }
         
         console.log('📤 [REQUEST]', {
             method: config.method?.toUpperCase(),
             url: config.url,
             hasToken: !!config.headers.Authorization,
-            tokenType: token && token.length > 500 ? 'Google' : 'JWT'
+            isPublic: isPublicEndpoint(config.url),
+            isPrivate: isPrivateEndpoint(config.url)
         });
         
         return config;
@@ -75,18 +106,41 @@ axiosClient.interceptors.response.use(
             message: error.message,
             data: error.response?.data
         });
-        
-        // Handle 401 Unauthorized
+
+        if (error.config?.url?.includes('/auth/logout') && error.response?.status === 404) {
+            console.warn('⚠️ [LOGOUT] Endpoint not found - handling locally');
+            return Promise.resolve({ success: true, message: 'Logged out locally' });
+        }
+
         if (error.response?.status === 401) {
-            console.warn('⚠️ [AUTH] Unauthorized - Clearing storage');
-            localStorage.removeItem('client');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            
-            // Redirect to login nếu không phải đang ở trang login
-            if (!window.location.pathname.includes('/login')) {
-                console.log('🔄 [AUTH] Redirecting to login...');
-                window.location.href = '/login';
+            const requestUrl = error.config?.url;
+
+            if (isPublicEndpoint(requestUrl)) {
+                console.log('ℹ️ [AUTH] 401 on public endpoint - allowing continued browsing');
+                return Promise.reject(error);
+            }
+
+            if (isPrivateEndpoint(requestUrl)) {
+                console.warn('⚠️ [AUTH] Unauthorized on private endpoint - Clearing storage');
+                localStorage.removeItem('client');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                
+                const currentPath = window.location.pathname;
+                const isAuthPage = currentPath.includes('/login') || currentPath.includes('/register');
+                
+                if (!isAuthPage) {
+                    console.log('🔄 [AUTH] Redirecting to login...');
+                    
+                    // ✅ LƯU PATH ĐỂ REDIRECT SAU KHI LOGIN
+                    if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+                        localStorage.setItem('redirectAfterLogin', currentPath);
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 100);
+                }
             }
         }
         
