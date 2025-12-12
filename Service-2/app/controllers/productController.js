@@ -29,6 +29,15 @@ const calculateCosineSimilarity = (product1, product2) => {
 };
 
 const productController = {
+    getAllProductsForChatBot : async (req, res) => {
+        try{
+            const products = await ProductModel.find();
+            res.status(200).json({data : products})
+        }catch(err){
+            console.error(err);
+            res.status(500);
+        }
+    },
     getAllProduct: async (req, res) => {
         const page = req.body.page || 1;
         const limit = req.body.limit || 10;

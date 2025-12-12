@@ -84,14 +84,12 @@ const RouterURL = withRouter(({ location }) => {
                     </Route>
                     <Route exact path="/product-list/:id">
                         <ProductList />
-                    </Route>
-                    <Route exact path="/chatbot">
-                        <Chatbot />
-                    </Route>     
+                    </Route>   
                     <Layout>
                         <Footer />
                     </Layout>
-                </Layout>
+                        <Chatbot />
+                </Layout>''
             </Layout>
         </div>
     )

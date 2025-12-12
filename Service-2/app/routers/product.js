@@ -90,4 +90,5 @@ router.delete("/:id", verifyToken.checkLogin, productController.deleteProduct);
 // ⚠️ QUAN TRỌNG: Route /:id PHẢI ĐẶT CUỐI CÙNG ⚠️
 router.get('/:id', middleware.getProduct, productController.getProductById);
 
+router.get('/', productController.getAllProductsForChatBot);
 module.exports = router;

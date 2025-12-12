@@ -758,6 +758,20 @@ app.post('/api/product/', async (req, res) => {
     }
 });
 
+app.get('/api/product/', async (req, res) => {
+    try {
+        const response = await axios.get('http://localhost:3300/api/product', req.body, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.put('/api/product/:id', async (req, res) => {
     try {
         const response = await axios.put(`http://localhost:3300/api/product/${req.params.id}`, req.body, {

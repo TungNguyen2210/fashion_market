@@ -1,9 +1,11 @@
 import logo from './logo.svg';
 import './App.css';
+import Chatbot from "./pages/chatbot/chatbot";
 
 function App() {
   return (
     <div className="App">
+      <Chatbot />
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <p>

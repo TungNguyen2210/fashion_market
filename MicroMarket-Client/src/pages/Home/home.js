@@ -5,7 +5,7 @@ import TweenOne from "rc-tween-one";
 import React, { useEffect, useRef, useState } from "react";
 import eventApi from "../../apis/eventApi";
 import productApi from "../../apis/productApi";
-import axiosClient from "../../apis/axiosClient"; // Import thêm axiosClient
+import axiosClient from "../../apis/axiosClient";
 import triangleTopRight from "../../assets/icon/Triangle-Top-Right.svg";
 import service10 from "../../assets/image/service/service10.png";
 import service6 from "../../assets/image/service/service6.png";
@@ -13,6 +13,10 @@ import service7 from "../../assets/image/service/service7.png";
 import service8 from "../../assets/image/service/service8.png";
 import service9 from "../../assets/image/service/service9.png";
 import "../Home/home.css";
+
+// ===== IMPORT CHATBOT =====
+import Chatbot from "../chatbot/chatbot";
+// ==========================
 
 import {
   BackTop,
@@ -28,11 +32,11 @@ import { numberWithCommas } from "../../utils/common";
 
 const Home = () => {
   const [eventListHome, setEventListHome] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categorizedProducts, setCategorizedProducts] = useState([]);
   const [visible, setVisible] = useState(true);
-  const [activePromotions, setActivePromotions] = useState([]); // State cho promotions
+  const [activePromotions, setActivePromotions] = useState([]);
   const initialCountdownDate = new Date().getTime() + 24 * 60 * 60 * 1000;
   const [countdownDate, setCountdownDate] = useState(
     localStorage.getItem("countdownDate") || initialCountdownDate
@@ -58,7 +62,7 @@ const Home = () => {
     setVisible(false);
   };
 
-  // Hàm tính giá sau khi áp dụng khuyến mãi (Copy từ ProductList.js)
+  // Hàm tính giá sau khi áp dụng khuyến mãi
   const calculateDiscountedPrice = (product) => {
     const now = new Date();
     let finalPrice = product.price;
@@ -70,23 +74,19 @@ const Home = () => {
     console.log('Product name:', product.name);
     console.log('Active promotions:', activePromotions.length);
 
-    // Tìm tất cả các đợt giảm giá active và còn hạn
     const validPromotions = activePromotions.filter(promotion => {
       console.log('Checking promotion:', promotion.tenKhuyenMai);
       
-      // Kiểm tra loại khuyến mãi
       if (promotion.loai !== 'dot_giam_gia') {
         console.log('-> Not dot_giam_gia, actual:', promotion.loai);
         return false;
       }
       
-      // Kiểm tra trạng thái
       if (promotion.trangThai !== 'active') {
         console.log('-> Not active, actual:', promotion.trangThai);
         return false;
       }
       
-      // Kiểm tra thời gian hiệu lực
       const startDate = new Date(promotion.thoiGianBD);
       const endDate = new Date(promotion.thoiGianKT);
       console.log('-> Time check:', { 
@@ -100,7 +100,6 @@ const Home = () => {
         return false;
       }
       
-      // Kiểm tra sản phẩm có trong danh sách áp dụng không
       if (!promotion.sanPhamApDung || promotion.sanPhamApDung.length === 0) {
         console.log('-> No products applied');
         return false;
@@ -109,7 +108,6 @@ const Home = () => {
       console.log('-> Products in promotion:', promotion.sanPhamApDung);
       
       const productInPromotion = promotion.sanPhamApDung.some(productId => {
-        // Xử lý trường hợp productId có thể là string, object với $oid, hoặc object với _id
         let id;
         
         if (typeof productId === 'string') {
@@ -124,7 +122,6 @@ const Home = () => {
           id = productId;
         }
         
-        // So sánh với product._id (có thể là string hoặc object)
         let currentProductId;
         if (typeof product._id === 'string') {
           currentProductId = product._id;
@@ -151,7 +148,6 @@ const Home = () => {
 
     console.log('Valid promotions found:', validPromotions.length);
 
-    // Tìm khuyến mãi có phần trăm giảm cao nhất
     validPromotions.forEach(promotion => {
       console.log('-> Applying promotion:', promotion.tenKhuyenMai, promotion.phanTramKhuyenMai + '%');
       if (promotion.phanTramKhuyenMai > maxDiscountPercent) {
@@ -160,7 +156,6 @@ const Home = () => {
       }
     });
 
-    // Tính giá sau giảm
     if (maxDiscountPercent > 0) {
       const discountAmount = (product.price * maxDiscountPercent) / 100;
       finalPrice = product.price - discountAmount;
@@ -183,13 +178,12 @@ const Home = () => {
     };
   };
 
-  // Hàm tải danh sách khuyến mãi đang hoạt động (Copy từ ProductList.js)
+  // Hàm tải danh sách khuyến mãi đang hoạt động
   const fetchActivePromotions = async () => {
     try {
       console.log('=== HOME FETCHING PROMOTIONS DEBUG ===');
       console.log('Starting to fetch active promotions...');
       
-      // Thử các endpoint khác nhau để tìm đúng API
       const possibleEndpoints = [
         '/promotion-management',
         '/promotions',
@@ -202,7 +196,6 @@ const Home = () => {
         try {
           console.log(`Trying endpoint: ${endpoint}`);
           
-          // Thử GET với params
           const response = await axiosClient.get(endpoint, {
             params: {
               trangThai: 'active',
@@ -227,7 +220,6 @@ const Home = () => {
         }
       }
       
-      // Nếu tất cả endpoints đều fail, thử lấy tất cả rồi filter
       try {
         console.log('Trying to get all promotions and filter...');
         const response = await axiosClient.get('/promotion-management');
@@ -258,7 +250,6 @@ const Home = () => {
         console.log('Failed to get all promotions:', error.message);
       }
       
-      // LAST RESORT: Hardcode data tạm thời để test
       console.log('Using hardcoded test data for promotion...');
       const testPromotion = {
         _id: "68e2258768ec6627f9194d3c",
@@ -269,7 +260,7 @@ const Home = () => {
         giaTriToiThieu: 0,
         giamToiDa: null,
         soLuong: null,
-        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"], // Đảm bảo format string đơn giản
+        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"],
         thoiGianBD: "2025-10-02T00:00:00.000Z",
         thoiGianKT: "2025-10-28T00:00:00.000Z",
         trangThai: "active",
@@ -290,7 +281,6 @@ const Home = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch promotions trước
         await fetchActivePromotions();
         
         const categoryResponse = await productApi.getCategory({ limit: 5, page: 1 });
@@ -328,7 +318,7 @@ const Home = () => {
       }
     };
 
-    fetchData();
+    // fetchData();
 
     localStorage.setItem("countdownDate", countdownDate.toString());
     const interval = setInterval(() => {
@@ -397,7 +387,6 @@ const Home = () => {
                 className="row-product"
               >
                 {categoryGroup.products.map((item) => {
-                  // Tính toán giá khuyến mãi
                   const priceInfo = calculateDiscountedPrice(item);
                   
                   return (
@@ -422,7 +411,6 @@ const Home = () => {
                             />
                           )}
                           
-                          {/* Badge giảm giá mới */}
                           {priceInfo.hasDiscount && (
                             <div 
                               className="discount-badge-home"
@@ -452,7 +440,6 @@ const Home = () => {
                             {item.name}
                           </Paragraph>
                           
-                          {/* Hiển thị tên khuyến mãi nếu có */}
                           {priceInfo.appliedPromotion && (
                             <div 
                               className="promotion-info-home"
@@ -476,12 +463,10 @@ const Home = () => {
                           )}
                           
                           <div className="price-amount">
-                            {/* Hiển thị giá sau giảm */}
                             <span className="price-product">
                               {numberWithCommas(priceInfo.finalPrice)} đ
                             </span>
                             
-                            {/* Hiển thị giá gốc nếu có giảm giá */}
                             {priceInfo.hasDiscount && (
                               <span className="price-cross">
                                 {numberWithCommas(priceInfo.originalPrice)} đ
@@ -489,7 +474,6 @@ const Home = () => {
                             )}
                           </div>
                           
-                          {/* Phần hiển thị trạng thái tồn kho đã được cập nhật */}
                           <div className="stock-status-container">
                             {item.variants && item.variants.some(v => v.quantity > 0) ? (
                               <span className="stock-status in-stock">Còn hàng</span>
@@ -499,7 +483,6 @@ const Home = () => {
                           </div>
                         </div>
                         
-                        {/* Badge giảm giá cũ - chỉ hiển thị nếu có khuyến mãi */}
                         {priceInfo.hasDiscount && (
                           <div className="badge">
                             <span>Giảm giá</span>
@@ -583,6 +566,10 @@ const Home = () => {
       </div>
 
       <BackTop style={{ textAlign: "right" }} />
+      
+      {/* ===== THÊM CHATBOT Ở ĐÂY ===== */}
+      <Chatbot />
+      {/* ================================ */}
     </Spin>
   );
 };
