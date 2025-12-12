@@ -60,7 +60,6 @@ const ProductDetail = () => {
     }
   }, []);
 
-  // Hàm tính giá sau khi áp dụng khuyến mãi
   const calculateDiscountedPrice = (product) => {
     const now = new Date();
     let finalPrice = product.price;
@@ -177,7 +176,6 @@ const ProductDetail = () => {
     };
   };
 
-  // Hàm tải danh sách khuyến mãi đang hoạt động
   const fetchActivePromotions = async () => {
     try {
       console.log('=== PRODUCT DETAIL FETCHING PROMOTIONS DEBUG ===');
@@ -246,12 +244,10 @@ const ProductDetail = () => {
     }
   };
 
-  // Định dạng giá tiền
   const formatPrice = (price) => {
     return numberWithCommas(price) + " đ";
   };
 
-  // Tìm biến thể dựa trên màu sắc và kích thước đã chọn
   const findVariant = useCallback(() => {
     if (!selectedColor || !selectedSize || !variants || variants.length === 0) {
       return null;
@@ -262,13 +258,11 @@ const ProductDetail = () => {
     );
   }, [selectedColor, selectedSize, variants]);
 
-  // Cập nhật biến thể được chọn khi màu sắc hoặc kích thước thay đổi
   useEffect(() => {
     const variant = findVariant();
     setSelectedVariant(variant);
   }, [selectedColor, selectedSize, findVariant]);
 
-  // Thêm sản phẩm vào giỏ hàng
   const addCart = () => {
     try {
       if (!productDetail) return;
@@ -404,7 +398,6 @@ const ProductDetail = () => {
         }
       }
 
-
       // Tải sản phẩm gợi ý
       try {
         let recommendResponse = null;
@@ -442,24 +435,31 @@ const ProductDetail = () => {
         setRecommend(recommendResponse?.recommendations || []);
       }
 
-      // Hiển thị phần đánh giá sản phẩm giống file 2
-      await productApi.getProductReviews(productId).then((response) => {
-        if (response && response.status >= 200 && response.status < 300) {
-          const reviews = response.data || [];
-          setProductRatings(reviews);
+      try {
+          const reviewResponse = await productApi.getProductReviews(productId);
+          
+          console.log('Review response:', reviewResponse);
+          
+          if (reviewResponse && reviewResponse.data) {
+              const reviews = reviewResponse.data || [];
+              setProductRatings(reviews);
 
-          if (reviews.length > 0) {
-            const total = reviews.reduce((sum, r) => sum + r.rating, 0);
-            const avg = total / reviews.length;
-            setAverageRating(avg);
+              if (reviews.length > 0) {
+                  const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+                  const avg = total / reviews.length;
+                  setAverageRating(Number(avg.toFixed(1)));
+              } else {
+                  setAverageRating(0);
+              }
           } else {
-            setAverageRating(0);
+              setProductRatings([]);
+              setAverageRating(0);
           }
-        }
-        else {
+      } catch (error) {
+          console.error('Lỗi khi tải đánh giá:', error);
           setProductRatings([]);
-        }
-      });
+          setAverageRating(0);
+      }
       
       setSelectedColor(null);
       setSelectedSize(null);

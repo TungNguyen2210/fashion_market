@@ -230,11 +230,16 @@ const userApi = {
     // UPDATE PROFILE
     // =====================================================
     updateProfile(editedUserData) {
-        const url = '/user';
+         const url = '/user/profile';
         
         console.log('✏️ Updating profile...');
         
         return axiosClient.put(url, editedUserData);
+    },
+
+    changePassword: (id, data) => {
+        const url = `/user/change-password`;
+        return axiosClient.put(url, data);
     }
 }
 

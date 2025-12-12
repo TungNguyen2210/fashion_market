@@ -1061,3 +1061,33 @@ app.get("/api/order/shipping/:id", async (req, res) => {
         }
     }
 });
+
+// Thêm route PUT cho update profile
+app.put('/api/user/profile', async (req, res) => {
+    try {
+        console.log('📝 [API GATEWAY] Forwarding update profile to Service-1...');
+        console.log('🔑 [API GATEWAY] Authorization:', req.headers.authorization);
+        console.log('📦 [API GATEWAY] Request body:', req.body);
+        
+        const response = await axios.put('http://localhost:3200/api/user/profile', req.body, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Update profile successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Update profile error:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến user service'
+            });
+        }
+    }
+});

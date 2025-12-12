@@ -67,7 +67,7 @@ const productApi = {
 
     //Thêm phần đánh giá sản phẩm
     getProductReviews(productId) {
-        const url = `/reviews/${productId}`;
+        const url = `reviews/${productId}`; 
         return axiosClient.get(url);
     },
 

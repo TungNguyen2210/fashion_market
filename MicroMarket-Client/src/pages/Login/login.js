@@ -30,7 +30,7 @@ const Login = () => {
         // ✅ LƯU TOKEN VỚI CẢ 2 KEY
         if (response.token) {
           localStorage.setItem("client", response.token);
-          localStorage.setItem("token", response.token); // ✅ THÊM DÒNG NÀY
+          localStorage.setItem("token", response.token);
           console.log('💾 Token saved to localStorage with both keys');
         }
         localStorage.setItem("user", JSON.stringify(response.user));
@@ -100,24 +100,44 @@ const Login = () => {
         // ✅ LƯU TOKEN VỚI CẢ 2 KEY
         if (response.token) {
           localStorage.setItem("client", response.token);
-          localStorage.setItem("token", response.token); // ✅ THÊM DÒNG NÀY
+          localStorage.setItem("token", response.token);
           console.log('💾 Google token saved to localStorage with both keys');
         }
         localStorage.setItem("user", JSON.stringify(response.user));
         
-        // Hiển thị notification thành công
-        notification.success({
-          message: '✅ Đăng nhập Google thành công!',
-          description: `Chào mừng ${response.user.name || response.user.username || response.user.email}`,
-          placement: 'topRight',
-          duration: 3,
-        });
+        // ✅ KIỂM TRA SỐ ĐIỆN THOẠI
+        const hasPhoneNumber = response.user.phone || response.user.phoneNumber || response.user.mobile;
         
-        // Redirect về trang chủ
-        console.log('🔄 Redirecting to home page...');
-        setTimeout(() => {
-          history.push("/");
-        }, 500);
+        if (!hasPhoneNumber) {
+          // ⚠️ Nếu chưa có SĐT -> Chuyển đến trang Profile với thông báo
+          notification.warning({
+            message: '⚠️ Vui lòng cập nhật số điện thoại!',
+            description: 'Tài khoản của bạn cần có số điện thoại để sử dụng đầy đủ tính năng.',
+            placement: 'topRight',
+            duration: 6,
+          });
+          
+          console.log('📱 User does not have phone number. Redirecting to profile...');
+          
+          setTimeout(() => {
+            // ✅ CHUYỂN ĐẾN /profile (GIỐNG NHƯ TRONG DropdownAvatar)
+            history.push("/profile?requirePhone=true");
+          }, 1000);
+          
+        } else {
+          // ✅ Có SĐT -> Chuyển về trang chủ
+          notification.success({
+            message: '✅ Đăng nhập Google thành công!',
+            description: `Chào mừng ${response.user.name || response.user.username || response.user.email}`,
+            placement: 'topRight',
+            duration: 3,
+          });
+          
+          console.log('🔄 Redirecting to home page...');
+          setTimeout(() => {
+            history.push("/");
+          }, 500);
+        }
         
       } else {
         // Đăng nhập thất bại

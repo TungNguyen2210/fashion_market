@@ -50,7 +50,6 @@ axiosClient.interceptors.request.use(
     async (config) => {
         let token = localStorage.getItem('client') || localStorage.getItem('token');
         
-        // ✅ CHỈ GỬI TOKEN NẾU CÓ TOKEN HỢP LỆ
         if (token && token.trim() !== '' && token !== 'undefined' && token !== 'null') {
             if (token.length > 500) {
                 config.headers.Authorization = token;

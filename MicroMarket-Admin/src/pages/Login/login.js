@@ -13,34 +13,60 @@ const Login = () => {
   let history = useHistory();
 
   const onFinish = values => {
-    userApi.login(values.email, values.password)
-      .then(function (response) {
-        if (!response.status) {
-          setLogin(false);
-        }
-        else {
-          (async () => {
-            try {
-              console.log(response);
-              if (response.user.role === "isAdmin" && response.user.status !== "noactive") {
-                history.push("/dash-board");
-              } else {
-                notification["error"]({
-                  message: `Thông báo`,
-                  description:
-                    'Bạn không có quyền truy cập vào hệ thống',
+      console.log('🔐 Attempting login with:', { email: values.email });
 
-                });
+      userApi.login(values.email, values.password)
+          .then(function (response) {
+              console.log('Login response:', response);
+
+              if (response.success === true && response.user && response.token) {
+
+                  if (response.user.role === "isAdmin" && response.user.status !== "noactive") {
+
+                      localStorage.setItem('token', response.token);
+                      localStorage.setItem('user', JSON.stringify(response.user));
+                      
+                      console.log('✅ Admin login successful, redirecting to dashboard...');
+                      
+                      notification["success"]({
+                          message: `Đăng nhập thành công`,
+                          description: `Chào mừng ${response.user.username || response.user.email}`,
+                      });
+
+                      history.push("/dash-board");
+                      
+                  } else {
+                      console.log('❌ User role or status invalid:', response.user);
+                      
+                      notification["error"]({
+                          message: `Thông báo`,
+                          description: 'Bạn không có quyền truy cập vào hệ thống',
+                      });
+                      
+                      setLogin(false);
+                  }
+                  
+              } else {
+                  console.log('❌ Login failed:', response);
+                  
+                  setLogin(false);
+                  
+                  notification["error"]({
+                      message: `Đăng nhập thất bại`,
+                      description: response.message || 'Email hoặc mật khẩu không đúng',
+                  });
               }
-            } catch (error) {
-              console.log('Failed to fetch ping role:' + error);
-            }
-          })();
-        }
-      })
-      .catch(error => {
-        console.log("email or password error" + error)
-      });
+          })
+          .catch(error => {
+              console.log('❌ Login error:', error);
+              
+              setLogin(false);
+    
+              notification["error"]({
+                  message: `Lỗi đăng nhập`,
+                  description: error.message || 'Có lỗi xảy ra, vui lòng thử lại',
+              });
+          });
   }
   
   useEffect(() => {

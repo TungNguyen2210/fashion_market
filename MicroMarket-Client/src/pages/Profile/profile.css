@@ -1,7 +1,49 @@
-.card-profile{
-    box-shadow: 0 10px 20px rgb(0 0 0 / 4%), 0 6px 6px rgb(0 0 0 / 10%);
+.card-profile {
+    box-shadow: 0 20px 20px rgb(0 0 0 / 4%), 0 6px 6px rgb(0 0 0 / 10%);
 }
 
-.profile-card{
-    padding: 0px;
+.profile-card {
+    padding: 40px 30px;
+}
+
+.profile-container {
+    padding: 40px 20px;
+    background-color: #f0f2f5;
+}
+
+.profile-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Style cho input bị disabled */
+.disabled-input.ant-input[disabled] {
+    color: rgba(0, 0, 0, 0.45) !important;
+    background-color: #f5f5f5 !important;
+    border-color: #d9d9d9 !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+    text-align: left !important;
+}
+
+/* Style cho input đang edit */
+.ant-input:not([disabled]) {
+    text-align: left;
+}
+
+/* Style cho label */
+.ant-form-item-label > label {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.85);
+}
+
+/* Đảm bảo text trong input căn trái */
+.ant-input {
+    text-align: left;
+}
+
+/* Hover effect cho card */
+.profile-card.ant-card-hoverable:hover {
+    box-shadow: 0 25px 30px rgb(0 0 0 / 6%), 0 8px 8px rgb(0 0 0 / 12%);
+    transition: all 0.3s ease;
 }
