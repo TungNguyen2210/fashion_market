@@ -180,7 +180,7 @@ const Profile = () => {
                     phone: response.user?.phone
                 });
 
-                // ✅ KIỂM TRA QUERY PARAMETER requirePhone
+                //KIỂM TRA QUERY PARAMETER requirePhone
                 const params = new URLSearchParams(location.search);
                 const needPhone = params.get('requirePhone');
                 
@@ -190,17 +190,16 @@ const Profile = () => {
                     if (!hasPhone) {
                         console.log('📱 User needs to update phone number');
                         setRequirePhone(true);
-                        setIsEditing(true); // ✅ TỰ ĐỘNG BẬT CHẾ ĐỘ CHỈNH SỬA
+                        setIsEditing(true); 
                         
                         // Hiển thị notification
                         notification.warning({
                             message: '⚠️ Cập nhật số điện thoại bắt buộc!',
                             description: 'Vui lòng thêm số điện thoại để tiếp tục sử dụng dịch vụ.',
                             placement: 'top',
-                            duration: 0, // Không tự đóng
+                            duration: 0, 
                         });
                     } else {
-                        // Nếu đã có SĐT thì xóa query parameter
                         history.replace('/profile');
                     }
                 }
@@ -212,7 +211,7 @@ const Profile = () => {
             }
         })();
         window.scrollTo(0, 0);
-    }, [location]); // ✅ THÊM location VÀO DEPENDENCY
+    }, [location]); 
 
     return (
         <div className="profile-container">
@@ -220,7 +219,7 @@ const Profile = () => {
                 <div className="profile-wrapper">
                     <Row justify="center">
                         <Col xs={22} sm={18} md={14} lg={10} xl={8}>
-                            {/* ✅ ALERT CỐ ĐỊNH KHI CẦN CẬP NHẬT SĐT */}
+                            {/* ALERT CỐ ĐỊNH KHI CẦN CẬP NHẬT SĐT */}
                             {requirePhone && !userData.phone && (
                                 <Alert
                                     message={
@@ -367,8 +366,9 @@ const Profile = () => {
                                                             Chỉnh sửa
                                                         </Button>
                                                     </Col>
-                                                    <Col xs={24} sm={12}>
+                                                    <Col xs={24} sm={12} style={{ marginBottom: 10 }}>
                                                         <Button 
+                                                            type="primary" 
                                                             size="large"
                                                             icon={<LockOutlined />}
                                                             onClick={() => setShowChangePassword(true)}
@@ -382,10 +382,11 @@ const Profile = () => {
                                                 <>
                                                     <Col xs={12}>
                                                         <Button 
+                                                        
                                                             size="large"
                                                             onClick={handleCancel}
                                                             block
-                                                            disabled={requirePhone && !userData.phone} // ✅ VÔ HIỆU HÓA NÚT HỦY NẾU YÊU CẦU SĐT
+                                                            disabled={requirePhone && !userData.phone} 
                                                         >
                                                             Hủy
                                                         </Button>

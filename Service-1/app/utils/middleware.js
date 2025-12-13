@@ -3,15 +3,21 @@ const _const = require('../config/constant');
 const News = require('../models/news');
 
 module.exports = {
-    // ===== GIỮ NGUYÊN CÁC FUNCTION CŨ =====
+
     checkLogin: (req, res, next) => {
-        const token = req.header('Authorization');
+        let token = req.header('Authorization');
         if (!token) return res.status(401).send('Access Denied');
+
+        if (token.startsWith('Bearer ')) {
+            token = token.replace('Bearer ', '');
+        }
 
         try {
             const verified = jwt.verify(token, _const.JWT_ACCESS_KEY);
+            req.user = verified;  
             next();
         } catch (err) {
+            console.error('❌ checkLogin error:', err.message);
             return res.status(400).send('Invalid Token');
         }
     },
@@ -38,9 +44,7 @@ module.exports = {
         next();
     },
 
-    /**
-     * ✅ CẬP NHẬT: Middleware bảo vệ routes - hỗ trợ cả Cookie và Bearer token
-     */
+
     protect: async (req, res, next) => {
         try {
             let token;
@@ -58,7 +62,7 @@ module.exports = {
                 token = req.headers.authorization;
             }
 
-            // ✅ KIỂM TRA TOKEN TỒN TẠI
+
             if (!token) {
                 return res.status(401).json({
                     success: false,
@@ -66,12 +70,11 @@ module.exports = {
                 });
             }
 
-            // ✅ KIỂM TRA TOKEN CÓ ĐÚNG ĐỊNH DẠNG JWT KHÔNG (3 phần: header.payload.signature)
+
             const tokenParts = token.split('.');
             if (tokenParts.length !== 3) {
                 console.warn('⚠️  Token không đúng định dạng JWT:', token.substring(0, 20) + '...');
                 
-                // Xóa cookie không hợp lệ
                 res.clearCookie('token');
                 res.clearCookie('client');
                 
@@ -81,7 +84,6 @@ module.exports = {
                 });
             }
 
-            // ✅ KIỂM TRA TOKEN KHÔNG PHẢI LÀ CHUỖI RỖNG
             if (token.trim() === '' || tokenParts.some(part => part.trim() === '')) {
                 console.warn('⚠️  Token chứa phần rỗng');
                 
@@ -105,7 +107,6 @@ module.exports = {
         } catch (error) {
             console.error('❌ Auth middleware error:', error.message);
             
-            // Xóa cookies không hợp lệ khi có lỗi
             res.clearCookie('token');
             res.clearCookie('client');
             

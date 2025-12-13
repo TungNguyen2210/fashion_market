@@ -164,15 +164,42 @@ app.post('/api/user/search', async (req, res) => {
 // Gọi API từ service 1 để tạo mới người dùng
 app.post('/api/user', async (req, res) => {
     try {
+        console.log('👤 [API GATEWAY] Creating new user...');
+        console.log('📦 [API GATEWAY] Request body:', req.body);
+        
         const response = await axios.post('http://localhost:3200/api/user', req.body, {
             headers: {
                 Authorization: req.headers.authorization
             }
         });
-        res.json(response.data);
+        
+        console.log('✅ [API GATEWAY] User created successfully');
+        res.status(200).json(response.data);
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Internal Server Error');
+        console.error('❌ [API GATEWAY] Create user error:', error.message);
+        
+        // Forward error từ Service-1
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error response:', {
+                status: error.response.status,
+                data: error.response.data
+            });
+            
+            // Trả về đúng status code và data từ service
+            res.status(error.response.status).json(error.response.data);
+        } else if (error.request) {
+            // Request được gửi nhưng không nhận được response
+            console.error('❌ [API GATEWAY] No response from service');
+            res.status(503).json({
+                message: 'Gateway Error: Không thể kết nối đến user service'
+            });
+        } else {
+            // Lỗi khác
+            console.error('❌ [API GATEWAY] Gateway error:', error.message);
+            res.status(500).json({
+                message: 'Gateway Error: ' + error.message
+            });
+        }
     }
 });
 
@@ -223,6 +250,39 @@ app.get('/api/user/searchByEmail', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send('Internal Server Error');
+    }
+});
+
+app.put('/api/user/change-password', async (req, res) => {
+    try {
+        console.log('🔐 [API GATEWAY] Forwarding change password to Service-1...');
+        console.log('🔑 [API GATEWAY] Authorization:', req.headers.authorization);
+        console.log('📦 [API GATEWAY] Request body:', {
+            hasCurrentPassword: !!req.body.currentPassword,
+            hasNewPassword: !!req.body.newPassword,
+            hasConfirmPassword: !!req.body.confirmPassword
+        });
+        
+        const response = await axios.put('http://localhost:3200/api/user/change-password', req.body, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Change password successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Change password error:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến user service'
+            });
+        }
     }
 });
 
@@ -1062,6 +1122,8 @@ app.get("/api/order/shipping/:id", async (req, res) => {
     }
 });
 
+
+
 // Thêm route PUT cho update profile
 app.put('/api/user/profile', async (req, res) => {
     try {
@@ -1091,3 +1153,4 @@ app.put('/api/user/profile', async (req, res) => {
         }
     }
 });
+

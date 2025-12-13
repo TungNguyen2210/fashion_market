@@ -49,6 +49,33 @@ const userApi = {
         const url = '/user/searchByEmail';
         return axiosClient.get(url, { params });
     },
+
+    updateUser: (userId, userData) => {
+        const url = `/user/${userId}`;
+        
+        console.log('✏️ Updating user:', userId);
+        console.log('📦 User data:', userData);
+        
+        return axiosClient.put(url, userData)
+            .then(response => {
+                console.log('✅ Update user successful:', response);
+                return response;
+            })
+            .catch(error => {
+                console.error('❌ Update user error:', error);
+                
+                if (error.response) {
+                    console.error('Backend error response:', error.response.data);
+                    throw error.response.data;
+                } else if (error.request) {
+                    console.error('No response from backend:', error.request);
+                    throw new Error('Không kết nối được với server');
+                } else {
+                    console.error('Error:', error.message);
+                    throw error;
+                }
+            });
+    },
 }
 
 export default userApi;
