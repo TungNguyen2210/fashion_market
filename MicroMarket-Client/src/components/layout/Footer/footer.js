@@ -57,7 +57,7 @@ function _Footer() {
             </Row>
             <div style={{ textAlign: 'center' }}>
                 <Divider style={{ padding: 0 }} />
-                <p style={{ color: "#FFFFFF", fontSize: 13 }}> ThanhTung </p>
+                <p style={{ color: "#FFFFFF", fontSize: 13 }}> Stussy </p>
                 <p style={{ color: "#FFFFFF", fontSize: 13 }}>Điện thoại: (+84) 354522975 - (+84) 912150371</p>
             </div>
         </Footer>

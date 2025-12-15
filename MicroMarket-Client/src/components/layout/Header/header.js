@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import styles from './header.module.css';
 import userApi from "../../../apis/userApi";
 import logo from "../../../assets/icon/logo.svg";
@@ -120,12 +120,32 @@ function Topbar() {
     }
   };
 
+  // ✅ HÀM ĐỌC CART COUNT TỪ LOCALSTORAGE - DÙNG useCallback
+  const getCartCount = useCallback(() => {
+    try {
+      const cartLength = localStorage.getItem('cartLength');
+      const count = cartLength ? parseInt(cartLength, 10) : 0;
+      console.log('📦 Getting cart count from localStorage:', count);
+      return count;
+    } catch (error) {
+      console.error('Error reading cart length:', error);
+      return 0;
+    }
+  }, []);
+
+  // ✅ HÀM CẬP NHẬT CART COUNT - DÙNG useCallback
+  const updateCartCount = useCallback(() => {
+    const newCount = getCartCount();
+    console.log('🔄 Updating cart count in state:', newCount);
+    setCart(newCount);
+  }, [getCartCount]);
+
+  // ✅ EFFECT CHO USER PROFILE - CHỈ CHẠY 1 LẦN
   useEffect(() => {
     (async () => {
       try {
         const token = localStorage.getItem('client') || localStorage.getItem('token');
         
-        // ✅ CHỈ GỌI API PROFILE NẾU CÓ TOKEN
         if (token && token !== 'undefined' && token !== 'null') {
           console.log('🔑 Token found - fetching user profile...');
           
@@ -139,7 +159,6 @@ function Topbar() {
               setUserData(null);
             }
           } catch (profileError) {
-            // ✅ NẾU LỖI 401 KHI LẤY PROFILE → XÓA TOKEN KHÔNG HỢP LỆ
             if (profileError?.response?.status === 401) {
               console.log('⚠️ Invalid token - clearing...');
               localStorage.removeItem('client');
@@ -153,20 +172,46 @@ function Topbar() {
           setUserData(null);
         }
         
-        // ✅ LUÔN HIỂN THỊ GIỎ HÀNG (CHO CẢ GUEST VÀ USER)
-        const cartLength = localStorage.getItem('cartLength');
-        setCart(cartLength ? parseInt(cartLength, 10) : 0);
+        // ✅ LOAD CART COUNT LẦN ĐẦU
+        updateCartCount();
         
       } catch (error) {
         console.log('⚠️ Error in header initialization:', error.message);
         setUserData(null);
-        
-        // ✅ VẪN HIỂN THỊ GIỎ HÀNG KHI CÓ LỖI
-        const cartLength = localStorage.getItem('cartLength');
-        setCart(cartLength ? parseInt(cartLength, 10) : 0);
+        updateCartCount();
       }
     })();
-  }, [])
+  }, []); // ✅ EMPTY DEPENDENCY - CHỈ CHẠY 1 LẦN
+
+  // ✅ EFFECT RIÊNG CHO EVENT LISTENERS - CẬP NHẬT KHI updateCartCount THAY ĐỔI
+  useEffect(() => {
+    console.log('🎧 Registering cart event listeners...');
+
+    // ✅ LẮNG NGHE SỰ KIỆN CẬP NHẬT GIỎ HÀNG (CUSTOM EVENT)
+    const handleCartUpdate = () => {
+      console.log('🔔 Cart update event received!');
+      updateCartCount();
+    };
+
+    // ✅ LẮNG NGHE STORAGE EVENT (KHI TAB KHÁC THAY ĐỔI)
+    const handleStorageChange = (event) => {
+      if (event.key === 'cartLength') {
+        console.log('🔔 Storage change detected for cartLength');
+        updateCartCount();
+      }
+    };
+
+    // ✅ ĐĂNG KÝ EVENT LISTENERS
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    // ✅ CLEANUP KHI COMPONENT UNMOUNT HOẶC updateCartCount THAY ĐỔI
+    return () => {
+      console.log('🧹 Cleaning up cart event listeners...');
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [updateCartCount]); // ✅ DEPENDENCY updateCartCount - TỰ ĐỘNG CẬP NHẬT
 
   return (
     <Header

@@ -12,10 +12,10 @@ import {
     Button,
     Col,
     ColorPicker,
-    Empty,
     Form,
     Input,
-    Modal, Popconfirm,
+    Modal,
+    Popconfirm,
     Row,
     Space,
     Spin,
@@ -25,14 +25,12 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import 'suneditor/dist/css/suneditor.min.css';
-import axiosClient from '../../apis/axiosClient';
 import newsApi from "../../apis/newsApi";
 import "./color.css";
-import uploadFileApi from '../../apis/uploadFileApi';
 
 const Color = () => {
 
-    const [newsList, setNewsList] = useState([]);
+    const [colorList, setColorList] = useState([]);
     const [openModalCreate, setOpenModalCreate] = useState(false);
     const [openModalUpdate, setOpenModalUpdate] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -41,282 +39,326 @@ const Color = () => {
     const [total, setTotalList] = useState();
     const [currentPage, setCurrentPage] = useState(1);
     const [id, setId] = useState();
-    const [image, setImage] = useState();
-    const [description, setDescription] = useState();
-    const [color, setColor] = useState();
-
+    const [color, setColor] = useState('#000000');
 
     const history = useHistory();
 
     const showModal = () => {
+        setColor('#000000');
+        form.resetFields();
         setOpenModalCreate(true);
     };
-
-    const [file, setUploadFile] = useState();
-
-    const handleChangeImage = async (e) => {
-        setLoading(true);
-        const response = await uploadFileApi.uploadFile(e);
-        if (response) {
-            setUploadFile(response);
-        }
-        setLoading(false);
-    }
-
 
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "description": color,
-                    "image": file,
-                }
-                return axiosClient.post("/color", categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo màu mới thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Tạo màu mới thành công',
-                        });
-                        setOpenModalCreate(false);
-                        handleCategoryList();
-                    }
-                })
-            })
-
-            setLoading(false);
+            const colorData = {
+                name: values.name.trim(),
+                description: color.toLowerCase(),
+            };
+            
+            const response = await newsApi.createColor(colorData);
+            
+            if (response && response.success === false) {
+                notification.error({
+                    message: 'Thông báo',
+                    description: response.message || 'Tạo màu mới thất bại',
+                });
+                setLoading(false);
+                return;
+            }
+            
+            notification.success({
+                message: 'Thông báo',
+                description: response?.message || 'Tạo màu mới thành công',
+            });
+            
+            setOpenModalCreate(false);
+            form.resetFields();
+            setColor('#000000');
+            await handleColorList();
+            
         } catch (error) {
-            throw error;
+            console.error('Error creating color:', error);
+            
+            let errorMessage = 'Có lỗi xảy ra khi tạo màu mới';
+            
+            if (error.response) {
+                if (error.response.data && error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response.status === 400) {
+                    errorMessage = 'Dữ liệu không hợp lệ hoặc màu đã tồn tại';
+                } else if (error.response.status === 500) {
+                    errorMessage = 'Lỗi server. Vui lòng thử lại sau';
+                }
+            } else if (error.request) {
+                errorMessage = 'Không thể kết nối đến server';
+            }
+            
+            notification.error({
+                message: 'Thông báo',
+                description: errorMessage,
+            });
+            
+            setLoading(false);
         }
-    }
+    };
 
-    const handleUpdateCategory = async (values) => {
-        console.log(values);
+    const handleUpdateColor = async (values) => {
         setLoading(true);
         try {
-
-            var formData = new FormData();
-            formData.append("image", image);
-            await axiosClient.post("/uploadFile", formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            }).then(response => {
-                const categoryList = {
-                    "name": values.name,
-                    "description": color,
-                    "image": file,
-                }
-                return axiosClient.put("/color/" + id, categoryList).then(response => {
-                    if (response === undefined) {
-                        notification["error"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa tin tức thất bại',
-                        });
-                    }
-                    else {
-                        notification["success"]({
-                            message: `Thông báo`,
-                            description:
-                                'Chỉnh sửa tin tức thành công',
-                        });
-                        handleCategoryList();
-                        setOpenModalUpdate(false);
-                    }
-                })
-            })
-
-           
-            setLoading(false);
-
+            const colorData = {
+                name: values.name.trim(),
+                description: color.toLowerCase(),
+            };
+            
+            const response = await newsApi.updateColor(id, colorData);
+            
+            if (response && response.success === false) {
+                notification.error({
+                    message: 'Thông báo',
+                    description: response.message || 'Chỉnh sửa màu sắc thất bại',
+                });
+                setLoading(false);
+                return;
+            }
+            
+            notification.success({
+                message: 'Thông báo',
+                description: response?.message || 'Chỉnh sửa màu sắc thành công',
+            });
+            
+            setOpenModalUpdate(false);
+            form2.resetFields();
+            await handleColorList();
+            
         } catch (error) {
-            throw error;
+            console.error('Error updating color:', error);
+            
+            let errorMessage = 'Có lỗi xảy ra khi chỉnh sửa màu';
+            
+            if (error.response) {
+                if (error.response.data && error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response.status === 400) {
+                    errorMessage = 'Dữ liệu không hợp lệ hoặc màu đã tồn tại';
+                } else if (error.response.status === 404) {
+                    errorMessage = 'Không tìm thấy màu cần chỉnh sửa';
+                } else if (error.response.status === 500) {
+                    errorMessage = 'Lỗi server. Vui lòng thử lại sau';
+                }
+            } else if (error.request) {
+                errorMessage = 'Không thể kết nối đến server';
+            }
+            
+            notification.error({
+                message: 'Thông báo',
+                description: errorMessage,
+            });
+            
+            setLoading(false);
         }
-    }
+    };
 
     const handleCancel = (type) => {
         if (type === "create") {
             setOpenModalCreate(false);
+            form.resetFields();
+            setColor('#000000');
         } else {
-            setOpenModalUpdate(false)
+            setOpenModalUpdate(false);
+            form2.resetFields();
         }
-        console.log('Clicked cancel button');
     };
 
-    const handleCategoryList = async () => {
-        try {
-            await newsApi.getListColor({ page: 1, limit: 10 }).then((res) => {
-                console.log(res);
-                setTotalList(res.totalDocs)
-                setNewsList(res.data.docs);
-                setLoading(false);
-            });
-            ;
-        } catch (error) {
-            console.log('Failed to fetch event list:' + error);
-        };
-    }
-
-    const handleDeleteCategory = async (id) => {
+    const handleColorList = async () => {
         setLoading(true);
         try {
-            await newsApi.deleteColor(id).then(response => {
-                if (response === undefined) {
-                    notification["error"]({
-                        message: `Thông báo`,
-                        description:
-                            'Xóa tin tức thất bại',
-
-                    });
-                    setLoading(false);
-                }
-                else {
-                    notification["success"]({
-                        message: `Thông báo`,
-                        description:
-                            'Xóa tin tức thành công',
-
-                    });
-                    setCurrentPage(1);
-                    handleCategoryList();
-                    setLoading(false);
-                }
+            const res = await newsApi.getListColor({ page: 1, limit: 100 });
+            if (res && res.data) {
+                setTotalList(res.data.totalDocs);
+                setColorList(res.data.docs);
             }
-            );
-
+            setLoading(false);
         } catch (error) {
-            console.log('Failed to fetch event list:' + error);
+            console.log('Failed to fetch color list:', error);
+            notification.error({
+                message: 'Thông báo',
+                description: 'Không thể tải danh sách màu',
+            });
+            setLoading(false);
         }
-    }
+    };
 
-    const handleEditCategory = (id) => {
-        setOpenModalUpdate(true);
-        (async () => {
-            try {
-                const response = await newsApi.getDetailColor(id);
-                setId(id);
-                form2.setFieldsValue({
-                    name: response.data.name,
-                    slug: response.data.slug,
-                    description: response.data.description,
-                });
-                console.log(form2);
-                setLoading(false);
-            } catch (error) {
-                throw error;
-            }
-        })();
-    }
-
-    const handleFilter = async (name) => {
+    const handleDeleteColor = async (id) => {
+        setLoading(true);
         try {
-            const res = await newsApi.searchColor(name);
-            setTotalList(res.totalDocs)
-            setNewsList(res.data.docs);
+            const response = await newsApi.deleteColor(id);
+            
+            if (response === undefined || (response && response.success === false)) {
+                notification.error({
+                    message: 'Thông báo',
+                    description: response?.message || 'Xóa màu sắc thất bại',
+                });
+            } else {
+                notification.success({
+                    message: 'Thông báo',
+                    description: response?.message || 'Xóa màu sắc thành công',
+                });
+                setCurrentPage(1);
+                await handleColorList();
+            }
         } catch (error) {
-            console.log('search to fetch news list:' + error);
+            console.log('Failed to delete color:', error);
+            notification.error({
+                message: 'Thông báo',
+                description: 'Có lỗi xảy ra khi xóa màu sắc',
+            });
+            setLoading(false);
         }
-    }
-    
+    };
+
+    const handleEditColor = async (id) => {
+        setLoading(true);
+        try {
+            const response = await newsApi.getDetailColor(id);
+            setId(id);
+            
+            const colorValue = response.data.description || '#000000';
+            setColor(colorValue);
+            
+            form2.setFieldsValue({
+                name: response.data.name,
+                description: colorValue,
+            });
+            
+            setLoading(false);
+            setOpenModalUpdate(true);
+        } catch (error) {
+            console.log('Failed to fetch color detail:', error);
+            notification.error({
+                message: 'Thông báo',
+                description: 'Không thể tải thông tin màu',
+            });
+            setLoading(false);
+        }
+    };
+
+    const handleFilter = async (e) => {
+        const name = e.target.value;
+        try {
+            if (name) {
+                const res = await newsApi.searchColor(name);
+                if (res && res.data) {
+                    setTotalList(res.data.totalDocs);
+                    setColorList(res.data.docs);
+                }
+            } else {
+                await handleColorList();
+            }
+        } catch (error) {
+            console.log('Failed to search colors:', error);
+        }
+    };
+
     const columns = [
         {
             title: 'ID',
             key: 'index',
             render: (text, record, index) => index + 1,
+            width: '10%'
         },
         {
-            title: 'Ảnh',
-            dataIndex: 'image',
-            key: 'image',
-            render: (image) => <img src={image} style={{ height: 80 }} />,
-            width: '20%'
+            title: 'Màu sắc',
+            dataIndex: 'description',
+            key: 'description',
+            render: (color) => (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                }}>
+                    <div style={{
+                        width: '60px',
+                        height: '40px',
+                        backgroundColor: color,
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }} />
+                    <span style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '13px',
+                        fontWeight: '500'
+                    }}>
+                        {color?.toUpperCase()}
+                    </span>
+                </div>
+            ),
+            width: '30%'
         },
         {
-            title: 'Tên',
+            title: 'Tên màu',
             dataIndex: 'name',
             key: 'name',
-            render: (text) => <a>{text}</a>,
+            render: (text) => <strong>{text}</strong>,
         },
-        // {
-        //     title: 'Mô tả',
-        //     dataIndex: 'description',
-        //     key: 'description',
-        //     render: (text) => <div className='box_detail_description' dangerouslySetInnerHTML={{ __html: text }}></div>
-        // },
         {
-            title: 'Action',
+            title: 'Thao tác',
             key: 'action',
             render: (text, record) => (
                 <div>
-                    <Row>
-                        <Button
-                            size="small"
-                            icon={<EditOutlined />}
-                            style={{ width: 150, borderRadius: 15, height: 30 }}
-                            onClick={() => handleEditCategory(record._id)}
-                        >{"Chỉnh sửa"}
-                        </Button>
-                        <div
-                            style={{ marginLeft: 10 }}>
+                    <Row gutter={8}>
+                        <Col>
+                            <Button
+                                size="small"
+                                icon={<EditOutlined />}
+                                style={{ borderRadius: 5 }}
+                                onClick={() => handleEditColor(record._id)}
+                            >
+                                Chỉnh sửa
+                            </Button>
+                        </Col>
+                        <Col>
                             <Popconfirm
-                                title="Bạn có chắc chắn xóa tin tức này?"
-                                onConfirm={() => handleDeleteCategory(record._id)}
-                                okText="Yes"
-                                cancelText="No"
+                                title="Xác nhận xóa"
+                                description="Bạn có chắc chắn muốn xóa màu này?"
+                                onConfirm={() => handleDeleteColor(record._id)}
+                                okText="Có"
+                                cancelText="Không"
+                                okButtonProps={{ danger: true }}
                             >
                                 <Button
                                     size="small"
+                                    danger
                                     icon={<DeleteOutlined />}
-                                    style={{ width: 150, borderRadius: 15, height: 30 }}
-                                >{"Xóa"}
+                                    style={{ borderRadius: 5 }}
+                                >
+                                    Xóa
                                 </Button>
                             </Popconfirm>
-                        </div>
+                        </Col>
                     </Row>
-                </div >
+                </div>
             ),
+            width: '25%'
         },
     ];
 
-
     useEffect(() => {
-        (async () => {
-            try {
-                await newsApi.getListColor({ page: 1, limit: 10 }).then((res) => {
-                    console.log(res);
-                    setTotalList(res.totalDocs)
-                    setNewsList(res.data.docs);
-                    setLoading(false);
-                });
-                ;
-            } catch (error) {
-                console.log('Failed to fetch event list:' + error);
-            }
-        })();
-    }, [])
+        handleColorList();
+    }, []);
 
-    const handleColorChange = (color, hex) => {
-        console.log(hex); // Mã màu RGB
-        console.log(color.hex); // Mã màu HEX
-        // Lưu mã màu vào state hoặc làm bất kỳ thao tác nào khác
-        setColor(hex);
-      };
+    const handleColorChange = (value) => {
+        const hexColor = value.toHexString();
+        setColor(hexColor);
+        
+        if (openModalCreate) {
+            form.setFieldsValue({ description: hexColor });
+        } else if (openModalUpdate) {
+            form2.setFieldsValue({ description: hexColor });
+        }
+    };
 
     return (
         <div>
@@ -343,7 +385,7 @@ const Color = () => {
                                 <Row>
                                     <Col span="18">
                                         <Input
-                                            placeholder="Tìm kiếm"
+                                            placeholder="Tìm kiếm theo tên màu..."
                                             allowClear
                                             onChange={handleFilter}
                                             style={{ width: 300 }}
@@ -352,7 +394,13 @@ const Color = () => {
                                     <Col span="6">
                                         <Row justify="end">
                                             <Space>
-                                                <Button onClick={showModal} icon={<PlusOutlined />} style={{ marginLeft: 10 }} >Tạo màu</Button>
+                                                <Button 
+                                                    type="primary"
+                                                    onClick={showModal} 
+                                                    icon={<PlusOutlined />}
+                                                >
+                                                    Tạo màu mới
+                                                </Button>
                                             </Space>
                                         </Row>
                                     </Col>
@@ -363,7 +411,17 @@ const Color = () => {
                     </div>
 
                     <div style={{ marginTop: 30 }}>
-                        <Table columns={columns} pagination={{ position: ['bottomCenter'] }} dataSource={newsList} />
+                        <Table 
+                            columns={columns} 
+                            pagination={{ 
+                                position: ['bottomCenter'],
+                                pageSize: 10,
+                                showSizeChanger: true,
+                                showTotal: (total) => `Tổng số ${total} màu`
+                            }} 
+                            dataSource={colorList}
+                            rowKey="_id"
+                        />
                     </div>
                 </div>
 
@@ -375,7 +433,6 @@ const Color = () => {
                         form
                             .validateFields()
                             .then((values) => {
-                                form.resetFields();
                                 handleOkUser(values);
                             })
                             .catch((info) => {
@@ -385,60 +442,86 @@ const Color = () => {
                     onCancel={() => handleCancel("create")}
                     okText="Hoàn thành"
                     cancelText="Hủy"
-                    width={800}
+                    width={600}
+                    confirmLoading={loading}
                 >
                     <Form
                         form={form}
-                        name="eventCreate"
+                        name="colorCreate"
                         layout="vertical"
-                        initialValues={{
-                            residence: ['zhejiang', 'hangzhou', 'xihu'],
-                            prefix: '86',
-                        }}
                         scrollToFirstError
                     >
                         <Form.Item
                             name="name"
-                            label="Tên"
+                            label="Tên màu"
                             rules={[
                                 {
                                     required: true,
-                                    message: 'Please input your sender name!',
+                                    message: 'Vui lòng nhập tên màu!',
                                 },
+                                {
+                                    whitespace: true,
+                                    message: 'Tên màu không được để trống!',
+                                },
+                                {
+                                    min: 2,
+                                    message: 'Tên màu phải có ít nhất 2 ký tự!',
+                                }
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <Input placeholder="Tên" />
+                            <Input 
+                                placeholder="Ví dụ: Đỏ đậm, Xanh nhạt..." 
+                                showCount
+                                maxLength={50}
+                            />
                         </Form.Item>
 
                         <Form.Item
                             name="description"
-                            label="Màu"
+                            label="Chọn màu"
                             rules={[
                                 {
                                     required: true,
-                                    message: 'Please input your sender name!',
+                                    message: 'Vui lòng chọn màu!',
                                 },
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <ColorPicker onChange={handleColorChange}/>
-                        </Form.Item>
-
-                        <Form.Item
-                            name="image"
-                            label="Ảnh"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập chọn ảnh!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
+                            <div>
+                                <ColorPicker 
+                                    value={color}
+                                    onChange={handleColorChange} 
+                                    showText 
+                                    format="hex"
+                                    size="large"
+                                    presets={[
+                                        {
+                                            label: 'Màu phổ biến',
+                                            colors: [
+                                                '#FF0000',
+                                                '#00FF00',
+                                                '#0000FF',
+                                                '#FFFF00',
+                                                '#FF00FF',
+                                                '#00FFFF',
+                                                '#000000',
+                                                '#FFFFFF',
+                                            ],
+                                        },
+                                    ]}
+                                />
+                                <div style={{ 
+                                    marginTop: 10, 
+                                    padding: '8px', 
+                                    background: '#f5f5f5',
+                                    borderRadius: '4px'
+                                }}>
+                                    <span style={{ fontSize: '12px', color: '#666' }}>
+                                        Mã màu đã chọn: <strong>{color}</strong>
+                                    </span>
+                                </div>
+                            </div>
                         </Form.Item>
 
                     </Form>
@@ -452,81 +535,103 @@ const Color = () => {
                         form2
                             .validateFields()
                             .then((values) => {
-                                form2.resetFields();
-                                handleUpdateCategory(values);
+                                handleUpdateColor(values);
                             })
                             .catch((info) => {
                                 console.log('Validate Failed:', info);
                             });
                     }}
-                    onCancel={handleCancel}
+                    onCancel={() => handleCancel("update")}
                     okText="Hoàn thành"
                     cancelText="Hủy"
                     width={600}
+                    confirmLoading={loading}
                 >
                     <Form
                         form={form2}
-                        name="eventCreate"
+                        name="colorUpdate"
                         layout="vertical"
-                        initialValues={{
-                            residence: ['zhejiang', 'hangzhou', 'xihu'],
-                            prefix: '86',
-                        }}
                         scrollToFirstError
                     >
                         <Form.Item
                             name="name"
-                            label="Tên"
+                            label="Tên màu"
                             rules={[
                                 {
                                     required: true,
-                                    message: 'Please input your sender name!',
+                                    message: 'Vui lòng nhập tên màu!',
                                 },
+                                {
+                                    whitespace: true,
+                                    message: 'Tên màu không được để trống!',
+                                },
+                                {
+                                    min: 2,
+                                    message: 'Tên màu phải có ít nhất 2 ký tự!',
+                                }
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <Input placeholder="Tên" />
+                            <Input 
+                                placeholder="Ví dụ: Đỏ đậm, Xanh nhạt..." 
+                                showCount
+                                maxLength={50}
+                            />
                         </Form.Item>
 
                         <Form.Item
                             name="description"
-                            label="Màu"
+                            label="Chọn màu"
                             rules={[
                                 {
                                     required: true,
-                                    message: 'Please input your sender name!',
+                                    message: 'Vui lòng chọn màu!',
                                 },
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <ColorPicker value={color} onChange={setColor}/>
-                        </Form.Item>
-
-
-                        <Form.Item
-                            name="image"
-                            label="Ảnh"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập chọn ảnh!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
+                            <div>
+                                <ColorPicker 
+                                    value={color}
+                                    onChange={handleColorChange} 
+                                    showText 
+                                    format="hex"
+                                    size="large"
+                                    presets={[
+                                        {
+                                            label: 'Màu phổ biến',
+                                            colors: [
+                                                '#FF0000',
+                                                '#00FF00',
+                                                '#0000FF',
+                                                '#FFFF00',
+                                                '#FF00FF',
+                                                '#00FFFF',
+                                                '#000000',
+                                                '#FFFFFF',
+                                            ],
+                                        },
+                                    ]}
+                                />
+                                <div style={{ 
+                                    marginTop: 10, 
+                                    padding: '8px', 
+                                    background: '#f5f5f5',
+                                    borderRadius: '4px'
+                                }}>
+                                    <span style={{ fontSize: '12px', color: '#666' }}>
+                                        Mã màu đã chọn: <strong>{color}</strong>
+                                    </span>
+                                </div>
+                            </div>
                         </Form.Item>
 
                     </Form>
                 </Modal>
 
-
-                {/* <Pagination style={{ textAlign: "center", marginBottom: 20 }} current={currentPage} defaultCurrent={1} total={total} onChange={handlePage}></Pagination> */}
                 <BackTop style={{ textAlign: 'right' }} />
             </Spin>
-        </div >
+        </div>
     )
 }
 

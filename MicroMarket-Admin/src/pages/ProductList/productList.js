@@ -112,7 +112,6 @@ const ProductList = () => {
         setVariants(newVariants);
 
         const totalQuantity = newVariants.reduce((sum, variant) => sum + parseInt(variant.quantity, 10), 0);
-
     };
 
     const handleOkUser = async (values) => {
@@ -174,11 +173,17 @@ const ProductList = () => {
 
     const handleImageUpload = async (info) => {
         const image = info.file;
-        const formData = new FormData();
-        formData.append('image', image);
 
         try {
-            const response = await uploadFileApi.uploadFile(image).then(response => {
+            // Tạo một fake event object vì uploadFileApi cần e.target.files[0]
+            const fakeEvent = {
+                target: {
+                    files: [image]
+                }
+            };
+            
+            const response = await uploadFileApi.uploadFile(fakeEvent);
+            if (response) {
                 const imageUrl = response;
                 console.log(imageUrl);
 
@@ -186,33 +191,52 @@ const ProductList = () => {
 
                 console.log(images);
                 message.success(`${info.file.name} đã được tải lên thành công!`);
-            });
+            }
         } catch (error) {
             console.log(error);
+            message.error('Upload file thất bại');
         }
     }
 
     const [file, setUploadFile] = useState();
+    
+    // Hàm đã được sửa để xử lý trường hợp người dùng hủy upload
     const handleChangeImage = async (e) => {
-        setLoading(true);
-        const response = await uploadFileApi.uploadFile(e);
-        if (response) {
-            setUploadFile(response);
+        // Kiểm tra nếu người dùng cancel hoặc không chọn file
+        if (!e.target.files || e.target.files.length === 0) {
+            console.log('No file selected');
+            return;
         }
-        setLoading(false);
+        
+        // Kiểm tra file có tồn tại
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        setLoading(true);
+        try {
+            // Truyền cả event object (e) thay vì chỉ file
+            const response = await uploadFileApi.uploadFile(e);
+            if (response) {
+                setUploadFile(response);
+                message.success('Upload file thành công!');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            message.error('Upload file thất bại');
+        } finally {
+            setLoading(false);
+        }
     }
 
     const handleUpdateProduct = async (values) => {
         setLoading(true);
         try {
-
             const productVariants = variants.map(variant => ({
                 variantId: generateVariantId(id, variant.size, variant.color),
                 color: variant.color,
                 size: variant.size,
                 quantity: parseInt(variant.quantity, 10)
             }));
-
 
             const categoryList = {
                 "name": values.name,
@@ -235,7 +259,6 @@ const ProductList = () => {
                     });
                     setLoading(false);
                 } else {
-
                     notification["success"]({
                         message: `Thông báo`,
                         description: 'Chỉnh sửa sản phẩm thành công',
@@ -245,9 +268,7 @@ const ProductList = () => {
                     setLoading(false);
 
                     //Gọi Service-4 để cập nhật embedding cho sản phẩm đã sửa                    
-                     generateEmbeddingForProduct(id);
-
-
+                    generateEmbeddingForProduct(id);
                 }
             });
         } catch (error) {
@@ -370,8 +391,6 @@ const ProductList = () => {
         }
     };
 
-
-
     const handleFilter = async (name) => {
         try {
             const res = await productApi.searchProduct(name);
@@ -413,18 +432,6 @@ const ProductList = () => {
             render: (slugs) => (
                 <span>
                     <div>{slugs?.toLocaleString('vi', { style: 'currency', currency: 'VND' })}</div>
-                </span>
-            ),
-        },
-        {
-            title: 'Giá giảm',
-            key: 'promotion',
-            dataIndex: 'promotion',
-            render: (promotion) => (
-                <span>
-                    <Tag color="geekblue" key={promotion}>
-                        {promotion?.toLocaleString('vi', { style: 'currency', currency: 'VND' })}
-                    </Tag>
                 </span>
             ),
         },
@@ -499,22 +506,16 @@ const ProductList = () => {
         setVisible(true);
     };
 
-    /* const handleSubmit = () => {
-        form.validateFields().then((values) => {
-            form.resetFields();
-            handleOkUser(values);
-            setVisible(false);
-        });
-    }; */
-
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
             await handleOkUser(values);
             form.resetFields();
             setVisible(false);
+            // Reset file upload sau khi submit thành công
+            setUploadFile(null);
         } catch (err) {
-            // 🔹 Nếu là lỗi validate form (có errorFields)
+            // Nếu là lỗi validate form (có errorFields)
             if (err && err.errorFields) {
                 notification.error({
                     message: 'Lỗi nhập liệu',
@@ -522,7 +523,7 @@ const ProductList = () => {
                 });
                 console.warn("Validation errors:", err.errorFields);
             } else {
-                // 🔹 Các lỗi khác (ví dụ từ API)
+                // Các lỗi khác (ví dụ từ API)
                 console.error("Unexpected error:", err);
                 notification.error({
                     message: 'Lỗi hệ thống',
@@ -581,6 +582,7 @@ const ProductList = () => {
 
         XLSX.writeFile(wb, 'danh_sach_san_pham.xlsx');
     };
+
     const renderVariantsTable = () => {
         if (!selectedColors.length || !selectedSizes.length) {
             return (
@@ -641,9 +643,11 @@ const ProductList = () => {
         setSelectedSizes([]);
         setVariants([]);
         form.resetFields();
+        // Reset file upload khi mở form create
+        setUploadFile(null);
     };
 
-    return (
+        return (
         <div>
             <Spin spinning={loading}>
                 <div className='container'>
@@ -696,7 +700,11 @@ const ProductList = () => {
                 <Drawer
                     title="Tạo sản phẩm mới"
                     visible={visible}
-                    onClose={() => setVisible(false)}
+                    onClose={() => {
+                        setVisible(false);
+                        // Reset file khi đóng drawer
+                        setUploadFile(null);
+                    }}
                     width={1000}
                     footer={
                         <div
@@ -704,7 +712,11 @@ const ProductList = () => {
                                 textAlign: 'right',
                             }}
                         >
-                            <Button onClick={() => setVisible(false)} style={{ marginRight: 8 }}>
+                            <Button onClick={() => {
+                                setVisible(false);
+                                // Reset file khi hủy
+                                setUploadFile(null);
+                            }} style={{ marginRight: 8 }}>
                                 Hủy
                             </Button>
                             <Button onClick={handleSubmit} type="primary">
@@ -749,20 +761,6 @@ const ProductList = () => {
                             style={{ marginBottom: 10 }}
                         >
                             <Input placeholder="Giá gốc" type="number" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="promotion"
-                            label="Giá giảm"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập giá giảm!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <Input placeholder="Giá giảm" type="number" />
                         </Form.Item>
 
                         <Form.Item
@@ -827,26 +825,18 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="images"
-                            label="Hình ảnh slide"
-                            style={{ marginBottom: 10 }}
-                        >
-                            <Upload
-                                name="images"
-                                listType="picture-card"
-                                showUploadList={true}
-                                beforeUpload={() => false}
-                                onChange={handleImageUpload}
-                                multiple
-                            >
-                                <Button icon={<UploadOutlined />}>Tải lên</Button>
-                            </Upload>
+                            <input 
+                                type="file" 
+                                onChange={handleChangeImage}
+                                id="avatar" 
+                                name="file"
+                                accept="image/png, image/jpeg" 
+                            />
+                            {file && (
+                                <div style={{ marginTop: 10 }}>
+                                    <img src={file} alt="Preview" style={{ maxWidth: 200, maxHeight: 200 }} />
+                                </div>
+                            )}
                         </Form.Item>
 
                         <Form.Item
@@ -916,7 +906,6 @@ const ProductList = () => {
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-
                                         [
                                             "bold",
                                             "underline",
@@ -928,12 +917,9 @@ const ProductList = () => {
                                         ["fontColor", "hiliteColor"],
                                         ["align", "list", "lineHeight"],
                                         ["outdent", "indent"],
-
                                         ["table", "horizontalRule", "link", "image", "video"],
-
                                         ["preview", "print"],
                                         ["removeFormat"]
-
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,
@@ -958,7 +944,11 @@ const ProductList = () => {
                 <Drawer
                     title="Chỉnh sửa sản phẩm"
                     visible={openModalUpdate}
-                    onClose={() => handleCancel("update")}
+                    onClose={() => {
+                        handleCancel("update");
+                        // Reset file khi đóng drawer update
+                        setUploadFile(null);
+                    }}
                     width={1000}
                     footer={
                         <div
@@ -979,7 +969,11 @@ const ProductList = () => {
                             }} type="primary" style={{ marginRight: 8 }}>
                                 Hoàn thành
                             </Button>
-                            <Button onClick={() => handleCancel("update")}>
+                            <Button onClick={() => {
+                                handleCancel("update");
+                                // Reset file khi hủy
+                                setUploadFile(null);
+                            }}>
                                 Hủy
                             </Button>
                         </div>
@@ -987,7 +981,7 @@ const ProductList = () => {
                 >
                     <Form
                         form={form2}
-                        name="eventCreate"
+                        name="eventUpdate"
                         layout="vertical"
                         initialValues={{
                             residence: ['zhejiang', 'hangzhou', 'xihu'],
@@ -1020,21 +1014,7 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <Input placeholder="Giá gốc" />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="promotion"
-                            label="Giá giảm"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập giá giảm!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <Input placeholder="Giá giảm" />
+                            <Input placeholder="Giá gốc" type="number" />
                         </Form.Item>
 
                         <Form.Item
@@ -1095,9 +1075,22 @@ const ProductList = () => {
                             label="Ảnh"
                             style={{ marginBottom: 10 }}
                         >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
+                            <input 
+                                type="file" 
+                                onChange={handleChangeImage}
+                                id="avatar" 
+                                name="file"
+                                accept="image/png, image/jpeg" 
+                            />
+                            {(file || form2.getFieldValue('image')) && (
+                                <div style={{ marginTop: 10 }}>
+                                    <img 
+                                        src={file || form2.getFieldValue('image')} 
+                                        alt="Preview" 
+                                        style={{ maxWidth: 200, maxHeight: 200 }} 
+                                    />
+                                </div>
+                            )}
                         </Form.Item>
 
                         <Form.Item
@@ -1126,7 +1119,7 @@ const ProductList = () => {
 
                         <Form.Item
                             name="supplier"
-                            label="thương hiệu"
+                            label="Thương hiệu"
                             rules={[
                                 {
                                     required: true,
@@ -1135,7 +1128,7 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <Select style={{ width: '100%' }} tokenSeparators={[',']} placeholder="thương hiệu" showSearch filterOption={(input, option) =>
+                            <Select style={{ width: '100%' }} tokenSeparators={[',']} placeholder="Thương hiệu" showSearch filterOption={(input, option) =>
                                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                             }>
                                 {supplier.map((item, index) => {
@@ -1168,7 +1161,6 @@ const ProductList = () => {
                                     buttonList: [
                                         ["undo", "redo"],
                                         ["font", "fontSize"],
-
                                         [
                                             "bold",
                                             "underline",
@@ -1180,12 +1172,9 @@ const ProductList = () => {
                                         ["fontColor", "hiliteColor"],
                                         ["align", "list", "lineHeight"],
                                         ["outdent", "indent"],
-
                                         ["table", "horizontalRule", "link", "image", "video"],
-
                                         ["preview", "print"],
                                         ["removeFormat"]
-
                                     ],
                                     fontSize: [
                                         8, 10, 14, 18, 24,

@@ -22,6 +22,175 @@ import "./productDetail.css";
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 
+// ===== ✅ HÀM CHUYỂN ĐỔI MÀU HEX SANG TÊN TIẾNG VIỆT =====
+const hexToColorName = (hex) => {
+  if (!hex) return 'Màu tùy chỉnh';
+  
+  // Chuẩn hóa hex code
+  hex = hex.replace('#', '').toLowerCase();
+  
+  // Dictionary màu phổ biến trong tiếng Việt
+  const colorMap = {
+    // Đỏ
+    'ff0000': 'Đỏ',
+    'dc143c': 'Đỏ thẫm',
+    'ff6b6b': 'Đỏ hồng',
+    'ff4757': 'Đỏ tươi',
+    'ee5a6f': 'Đỏ san hô',
+    'c23616': 'Đỏ gạch',
+    'e74c3c': 'Đỏ cam',
+    
+    // Cam
+    'ffa500': 'Cam',
+    'ff7f50': 'Cam san hô',
+    'ff8c00': 'Cam đậm',
+    'ffa07a': 'Cam nhạt',
+    'ff6348': 'Cam đỏ',
+    
+    // Vàng
+    'ffff00': 'Vàng',
+    'ffd700': 'Vàng kim',
+    'ffeb3b': 'Vàng tươi',
+    'ffc312': 'Vàng chanh',
+    'f9ca24': 'Vàng mơ',
+    'fff200': 'Vàng neon',
+    
+    // Xanh lá
+    '008000': 'Xanh lá',
+    '00ff00': 'Xanh lá neon',
+    '32cd32': 'Xanh lá nhạt',
+    '228b22': 'Xanh lá rừng',
+    '7bed9f': 'Xanh lá mint',
+    '2ecc71': 'Xanh lá tươi',
+    '27ae60': 'Xanh lá đậm',
+    '1abc9c': 'Xanh lá ngọc',
+    
+    // Xanh dương
+    '0000ff': 'Xanh dương',
+    '00bfff': 'Xanh dương nhạt',
+    '1e90ff': 'Xanh dương đậm',
+    '4169e1': 'Xanh hoàng gia',
+    '3498db': 'Xanh dương tươi',
+    '2980b9': 'Xanh dương đậm',
+    '5f27cd': 'Xanh tím',
+    
+    // Xanh da trời
+    '87ceeb': 'Xanh da trời',
+    '87cefa': 'Xanh da trời nhạt',
+    '00ced1': 'Xanh ngọc lam',
+    '48c9b0': 'Xanh ngọc',
+    
+    // Tím
+    '800080': 'Tím',
+    '9b59b6': 'Tím nhạt',
+    '8e44ad': 'Tím đậm',
+    'ee82ee': 'Tím hoa cà',
+    'dda0dd': 'Tím mận',
+    'a29bfe': 'Tím lavender',
+    '6c5ce7': 'Tím than',
+    
+    // Hồng
+    'ffc0cb': 'Hồng',
+    'ff69b4': 'Hồng đậm',
+    'ffb3ba': 'Hồng nhạt',
+    'fd79a8': 'Hồng sen',
+    'e84393': 'Hồng cánh sen',
+    'fab1a0': 'Hồng đào',
+    
+    // Nâu
+    'a52a2a': 'Nâu',
+    '8b4513': 'Nâu đậm',
+    'd2691e': 'Nâu sô cô la',
+    'cd853f': 'Nâu vàng',
+    
+    // Xám
+    '808080': 'Xám',
+    'a9a9a9': 'Xám đậm',
+    'd3d3d3': 'Xám nhạt',
+    'c0c0c0': 'Bạc',
+    'dcdde1': 'Xám trắng',
+    '95a5a6': 'Xám đá',
+    '7f8c8d': 'Xám thép',
+    
+    // Trắng đen
+    'ffffff': 'Trắng',
+    '000000': 'Đen',
+    'f5f5f5': 'Trắng ngà',
+    '2f3640': 'Đen nhạt',
+    '353b48': 'Đen xanh',
+    
+    // Màu đặc biệt
+    '1c78fa': 'Xanh nước biển',
+    'be93e4': 'Tím pastel',
+    'ffcccc': 'Hồng pastel',
+    'ccffcc': 'Xanh pastel',
+    'ccccff': 'Tím nhạt pastel',
+  };
+  
+  // Tìm màu chính xác
+  if (colorMap[hex]) {
+    return colorMap[hex];
+  }
+  
+  // Nếu không tìm thấy, tìm màu gần nhất
+  return findClosestColorName(hex, colorMap);
+};
+
+// Hàm tìm màu gần nhất
+const findClosestColorName = (hex, colorMap) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 'Màu tùy chỉnh';
+  
+  let minDistance = Infinity;
+  let closestColor = 'Màu tùy chỉnh';
+  
+  Object.keys(colorMap).forEach(colorHex => {
+    const colorRgb = hexToRgb(colorHex);
+    if (colorRgb) {
+      const distance = Math.sqrt(
+        Math.pow(rgb.r - colorRgb.r, 2) +
+        Math.pow(rgb.g - colorRgb.g, 2) +
+        Math.pow(rgb.b - colorRgb.b, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestColor = colorMap[colorHex];
+      }
+    }
+  });
+  
+  return minDistance < 100 ? closestColor : 'Màu tùy chỉnh';
+};
+
+// Chuyển HEX sang RGB
+const hexToRgb = (hex) => {
+  hex = hex.replace('#', '');
+  
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  
+  if (hex.length !== 6) {
+    return null;
+  }
+  
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  return { r, g, b };
+};
+
+// Hàm kiểm tra màu sáng hay tối
+const isLightColor = (hex) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return true;
+  
+  const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return brightness > 128;
+};
+
 const ProductDetail = () => {
   const [productDetail, setProductDetail] = useState(null);
   const [recommend, setRecommend] = useState([]);
@@ -44,7 +213,6 @@ const ProductDetail = () => {
   let { id } = useParams();
   const history = useHistory();
 
-  // Kiểm tra người dùng đã đăng nhập chưa
   const checkUserLoggedIn = useCallback(() => {
     const userJson = localStorage.getItem('user');
 
@@ -273,7 +441,7 @@ const ProductDetail = () => {
         }
 
         if (selectedVariant.quantity < quantity) {
-          return message.error(`Chỉ còn ${selectedVariant.quantity} sản phẩm với màu ${selectedColor} và kích thước ${selectedSize}!`);
+          return message.error(`Chỉ còn ${selectedVariant.quantity} sản phẩm với màu ${hexToColorName(selectedColor)} và kích thước ${selectedSize}!`);
         }
       } else if (productDetail.quantity < quantity) {
         return message.error(`Chỉ còn ${productDetail.quantity} sản phẩm!`);
@@ -330,6 +498,10 @@ const ProductDetail = () => {
       setCartLength(updatedItems.length);
       localStorage.setItem("cart", JSON.stringify(updatedItems));
       localStorage.setItem("cartLength", updatedItems.length);
+      
+      // ✅ DISPATCH EVENT ĐỂ HEADER CẬP NHẬT
+      window.dispatchEvent(new Event('cartUpdated'));
+      
       message.success('Đã thêm sản phẩm vào giỏ hàng!');
     } catch (error) {
       console.error('Lỗi khi thêm vào giỏ hàng:', error);
@@ -337,26 +509,22 @@ const ProductDetail = () => {
     }
   };
 
-  // Mua ngay
   const paymentCard = () => {
     addCart();
     history.push("/cart");
   };
 
-  // Chuyển đến trang chi tiết sản phẩm khác
   const handleReadMore = (id) => {
     history.push("/product-detail/" + id);
     fetchProductDetail(id);
   };
 
-  // Chọn màu sắc
   const handleColorClick = (color) => {
     const newColor = color === selectedColor ? null : color;
     setSelectedColor(newColor);
     setSelectedSize(null);
   };
 
-  // Lấy danh sách kích thước có sẵn cho màu đã chọn
   const getAvailableSizesForColor = (color) => {
     if (!color) return [];
     return variants
@@ -364,7 +532,6 @@ const ProductDetail = () => {
       .map(v => v.size);
   };
 
-  // Tải dữ liệu chi tiết sản phẩm
   const fetchProductDetail = async (productId) => {
     try {
       setLoading(true);
@@ -398,11 +565,9 @@ const ProductDetail = () => {
         }
       }
 
-      // Tải sản phẩm gợi ý
       try {
         let recommendResponse = null;
 
-        // Lấy user từ state hoặc localStorage
         const response = await userApi.getProfile();
 
         let currentUser = response.user;
@@ -416,7 +581,6 @@ const ProductDetail = () => {
             if (userRecommend?.recommendations?.length > 0) {
               recommendResponse = userRecommend;
             } else {
-              // fallback sang recommend theo sản phẩm
               recommendResponse = await productApi.getRecommendProduct(productId);
             }
           } catch (err) {
@@ -424,13 +588,11 @@ const ProductDetail = () => {
             recommendResponse = await productApi.getRecommendProduct(productId);
           }
         } else {
-          // chưa login thì chỉ recommend theo sản phẩm
           recommendResponse = await productApi.getRecommendProduct(productId);
         }
 
         setRecommend(recommendResponse?.recommendations || []);
       } catch (recommendError) {
-        //Nếu lỗi khi lấy theo user, fallback sang recommend theo sản phẩm
         let recommendResponse = await productApi.getRecommendProduct(productId);
         setRecommend(recommendResponse?.recommendations || []);
       }
@@ -475,7 +637,6 @@ const ProductDetail = () => {
     }
   };
 
-  // Tạo biến thể từ thông tin màu sắc và kích thước
   const generateVariantsFromProductDetails = (product) => {
     if (!product.color || !product.sizes || product.color.length === 0 || product.sizes.length === 0) {
       return;
@@ -507,7 +668,6 @@ const ProductDetail = () => {
     setVariants(generatedVariants);
   };
 
-  // Tăng số lượng
   const increaseQuantity = () => {
     const maxQuantity = selectedVariant ? selectedVariant.quantity : (productDetail?.quantity || 0);
     if (quantity < maxQuantity) {
@@ -517,14 +677,12 @@ const ProductDetail = () => {
     }
   };
 
-  // Giảm số lượng
   const decreaseQuantity = () => {
     if (quantity > 1) {
       setQuantity(quantity - 1);
     }
   };
 
-  // Tải dữ liệu khi component được mount
   useEffect(() => {
     fetchProductDetail(id);
     checkUserLoggedIn();
@@ -567,15 +725,12 @@ const ProductDetail = () => {
     );
   }
 
-  // Tính toán thông tin giá
   const priceInfo = calculateDiscountedPrice(productDetail);
 
-  // Kiểm tra tình trạng tồn kho
   const stockStatus = selectedVariant
     ? selectedVariant.quantity > 0
     : productDetail.quantity > 0;
 
-  // Lấy danh sách kích thước có sẵn cho màu đã chọn
   const availableSizesForSelectedColor = getAvailableSizesForColor(selectedColor);
 
   return (
@@ -596,7 +751,6 @@ const ProductDetail = () => {
           <hr />
           
           <Row gutter={24} style={{ marginTop: 20, marginBottom: 20 }}>
-            {/* Hình ảnh sản phẩm */}
             <Col lg={14} md={24}>
               <div className="product-image-section">
                 {productDetail?.slide?.length > 0 ? (
@@ -618,7 +772,6 @@ const ProductDetail = () => {
                   </Card>
                 )}
 
-                {/* Badge khuyến mãi trên ảnh */}
                 {priceInfo.hasDiscount && (
                   <div className="image-discount-overlay">
                     <div className="discount-badge-large">
@@ -630,14 +783,12 @@ const ProductDetail = () => {
               </div>
             </Col>
 
-            {/* Thông tin sản phẩm */}
             <Col lg={10} md={24}>
               <div className="product-info-section">
                 <div className="product-header">
                   <h1 className="product_name">{productDetail.name}</h1>
                 </div>
 
-                {/* Rating */}
                 {averageRating > 0 && (
                   <div className="product-rating">
                     <Rate disabled allowHalf value={averageRating} />
@@ -648,7 +799,6 @@ const ProductDetail = () => {
                 )}
                 
                 <Card className="price-card" bordered={false}>
-                  {/* Thông tin khuyến mãi */}
                   {priceInfo.appliedPromotion && (
                     <div className="promotion-banner">
                       <div className="promotion-header">
@@ -661,7 +811,6 @@ const ProductDetail = () => {
                     </div>
                   )}
 
-                  {/* Giá sản phẩm - Cùng 1 hàng */}
                   <div className="price-section">
                     <div className="price-row">
                       <span className="current-price">
@@ -682,7 +831,6 @@ const ProductDetail = () => {
                     </div>
                   </div>
                   
-                  {/* Khuyến mãi chung */}
                   <div className="box-product-promotion">
                     <div className="box-product-promotion-header">
                       <p>🎁 Ưu đãi đặc biệt</p>
@@ -699,12 +847,14 @@ const ProductDetail = () => {
                     </div>
                   </div>
                   
-                  {/* Chọn màu sắc */}
+                  {/* ===== ✅ PHẦN CHỌN MÀU SẮC ĐÃ CẬP NHẬT ===== */}
                   {productDetail.color && productDetail.color.length > 0 && (
                     <div className="color-product">
                       <div className="option-label">
                         Màu sắc: 
-                        {selectedColor && <span className="selected-option"> {selectedColor}</span>}
+                        {selectedColor && (
+                          <span className="selected-option"> {hexToColorName(selectedColor)}</span>
+                        )}
                       </div>
                       <div className="color-options">
                         {productDetail.color.map((color) => {
@@ -712,18 +862,33 @@ const ProductDetail = () => {
                             v => v.color === color && v.quantity > 0
                           );
                           
+                          const colorName = hexToColorName(color);
+                          const isLight = isLightColor(color);
+                          
                           return (
-                            <Tooltip key={color} title={`${color}${!hasColorInStock ? ' (Hết hàng)' : ''}`}>
+                            <Tooltip 
+                              key={color} 
+                              title={`${colorName}${!hasColorInStock ? ' (Hết hàng)' : ''}`}
+                            >
                               <div
                                 style={{ 
                                   backgroundColor: color,
                                   opacity: hasColorInStock ? 1 : 0.5,
-                                  cursor: hasColorInStock ? 'pointer' : 'not-allowed'
+                                  cursor: hasColorInStock ? 'pointer' : 'not-allowed',
+                                  border: isLight ? '2px solid #d9d9d9' : '2px solid transparent'
                                 }}
                                 className={`color-dot ${selectedColor === color ? "active" : ""} ${!hasColorInStock ? 'out-of-stock' : ''}`}
                                 onClick={() => hasColorInStock && handleColorClick(color)}
                               >
-                                {selectedColor === color && <CheckCircleOutlined className="check-icon" />}
+                                {selectedColor === color && (
+                                  <CheckCircleOutlined 
+                                    className="check-icon"
+                                    style={{ color: isLight ? '#000' : '#fff' }}
+                                  />
+                                )}
+                                <span className="color-name" style={{ color: isLight ? '#000' : '#fff' }}>
+                                  {colorName}
+                                </span>
                               </div>
                             </Tooltip>
                           );
@@ -737,7 +902,6 @@ const ProductDetail = () => {
                     </div>
                   )}
                   
-                  {/* Chọn kích thước */}
                   {productDetail.sizes && productDetail.sizes.length > 0 && (
                     <div className="size-product">
                       <div className="option-label">
@@ -766,7 +930,7 @@ const ProductDetail = () => {
                     </div>
                   )}
                   
-                  {/* Hiển thị thông tin biến thể đã chọn */}
+                  {/* ===== ✅ HIỂN THỊ TÊN MÀU TRONG VARIANT INFO ===== */}
                   {selectedVariant && (
                     <div className="variant-info">
                       <Tag 
@@ -774,13 +938,12 @@ const ProductDetail = () => {
                         color={selectedVariant.quantity > 0 ? "success" : "error"}
                       >
                         {selectedVariant.quantity > 0 
-                          ? `Còn ${selectedVariant.quantity} sản phẩm ${selectedColor} - ${selectedSize}` 
-                          : `Hết hàng ${selectedColor} - ${selectedSize}`}
+                          ? `Còn ${selectedVariant.quantity} sản phẩm ${hexToColorName(selectedColor)} - ${selectedSize}` 
+                          : `Hết hàng ${hexToColorName(selectedColor)} - ${selectedSize}`}
                       </Tag>
                     </div>
                   )}
                   
-                  {/* Số lượng */}
                   <div className="quantity-selector">
                     <div className="option-label">Số lượng:</div>
                     <div className="quantity-controls">
@@ -813,7 +976,6 @@ const ProductDetail = () => {
                     </div>
                   </div>
                   
-                  {/* Nút mua hàng */}
                   <div className="purchase-buttons">
                     <Button
                       type="primary"
@@ -852,7 +1014,6 @@ const ProductDetail = () => {
               dangerouslySetInnerHTML={{ __html: productDetail.description }}
             ></div>
 
-            {/* Phần đánh giá sản phẩm */}
             <Divider />
             <div className="product-reviews">
               <h3 className="reviews-title">
@@ -895,7 +1056,6 @@ const ProductDetail = () => {
           
           <Divider />
           
-          {/* Sản phẩm gợi ý */}
           {recommend && recommend.length > 0 && (
             <>
               <div className="recommend-section">

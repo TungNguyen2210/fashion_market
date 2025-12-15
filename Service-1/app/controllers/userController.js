@@ -59,64 +59,110 @@ const userController = {
     updateUser: async (req, res) => {
         const _id = req.params.id;
         const { username, email, password, role, phone, status } = req.body;
+        
         try {
-            const user = await UserModel.findByIdAndUpdate(_id, { username, email, password, role, phone, status }, { new: true });
+            const user = await UserModel.findById(_id);
+            
             if (!user) {
                 return res.status(404).json({ message: 'User not found' });
             }
 
-            return res.status(200).json("Update success");
+            // Chuẩn bị data để update
+            const updateData = {
+                username,
+                email,
+                role,
+                phone,
+                status
+            };
+
+            // Nếu có password mới thì hash nó
+            if (password && password.trim() !== '') {
+                // Validate độ dài password
+                if (password.length < 6) {
+                    return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+                }
+
+                // Hash password mới
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(password, salt);
+                updateData.password = hashedPassword;
+            }
+
+            // Update user
+            const updatedUser = await UserModel.findByIdAndUpdate(
+                _id, 
+                updateData, 
+                { new: true }
+            ).select('-password'); // Không trả về password trong response
+
+            return res.status(200).json({
+                message: "Update success",
+                data: updatedUser
+            });
         } catch (err) {
             console.log(err);
-            return res.status(500).json(err);
+            
+            // Xử lý lỗi duplicate email hoặc phone
+            if (err.code === 11000) {
+                const field = Object.keys(err.keyPattern)[0];
+                return res.status(400).json({ 
+                    message: `${field === 'email' ? 'Email' : 'Số điện thoại'} đã tồn tại` 
+                });
+            }
+            
+            return res.status(500).json({ 
+                message: 'Có lỗi xảy ra', 
+                error: err.message 
+            });
         }
     },
 
     changePassword: async (req, res) => {
-    // Lấy userId từ req.user (từ token)
-    const _id = req.user._id || req.user.id;
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-    
-    try {
-        // Validate input
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+     
+        const _id = req.user._id || req.user.id;
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+        
+        try {
+            // Validate input
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+            }
+
+            if (newPassword !== confirmPassword) {
+                return res.status(400).json({ message: 'Mật khẩu mới không khớp' });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+            }
+
+            // Tìm user
+            const user = await UserModel.findById(_id);
+            if (!user) {
+                return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+            }
+
+            // Kiểm tra mật khẩu hiện tại
+            const validPassword = await bcrypt.compare(currentPassword, user.password);
+            if (!validPassword) {
+                return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
+            }
+
+            // Hash mật khẩu mới
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+            // Cập nhật mật khẩu
+            user.password = hashedPassword;
+            await user.save();
+
+            return res.status(200).json({ message: 'Đổi mật khẩu thành công' });
+        } catch (err) {
+            console.log(err);
+            return res.status(500).json({ message: 'Có lỗi xảy ra', error: err });
         }
-
-        if (newPassword !== confirmPassword) {
-            return res.status(400).json({ message: 'Mật khẩu mới không khớp' });
-        }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
-        }
-
-        // Tìm user
-        const user = await UserModel.findById(_id);
-        if (!user) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-        }
-
-        // Kiểm tra mật khẩu hiện tại
-        const validPassword = await bcrypt.compare(currentPassword, user.password);
-        if (!validPassword) {
-            return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng' });
-        }
-
-        // Hash mật khẩu mới
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-        // Cập nhật mật khẩu
-        user.password = hashedPassword;
-        await user.save();
-
-        return res.status(200).json({ message: 'Đổi mật khẩu thành công' });
-    } catch (err) {
-        console.log(err);
-        return res.status(500).json({ message: 'Có lỗi xảy ra', error: err });
-    }
-},
+    },
 
     resetPassword: async (req, res) => {
         const _id = req.params.id;

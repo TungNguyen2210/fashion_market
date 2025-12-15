@@ -173,6 +173,7 @@ const AccountManagement = () => {
         console.log('Edit user:', record);
         setSelectedUser(record);
         
+        // Chỉ set các field không phải password
         form.setFieldsValue({
             name: record.username,
             email: record.email,
@@ -194,50 +195,68 @@ const AccountManagement = () => {
                 "status": selectedUser.status
             }
             
+            // Chỉ thêm password nếu người dùng đã nhập
+            if (values.password && values.password.trim() !== '') {
+                formatData.password = values.password;
+            }
+            
             console.log('Updating user:', selectedUser._id, formatData);
             
             await userApi.updateUser(selectedUser._id, formatData);
             
             notification["success"]({
                 message: `Thành công`,
-                description: 'Cập nhật thông tin người dùng thành công!',
+                description: values.password ? 
+                    'Cập nhật thông tin và mật khẩu người dùng thành công!' : 
+                    'Cập nhật thông tin người dùng thành công!',
             });
             
             form.resetFields();
             setEditModalVisible(false);
+            setSelectedUser(null);
             
             handleListUser();
         } catch (error) {
             console.error('Error updating user:', error);
             
-            if (error.status === 400) {
-                if (error.message === "User already exists" || 
-                    error.data?.message === "User already exists") {
+            // Xử lý lỗi từ backend
+            const errorMessage = error.response?.data?.message || error.message;
+            
+            if (error.status === 400 || error.response?.status === 400) {
+                if (errorMessage === "User already exists" || 
+                    errorMessage.includes("Email đã tồn tại")) {
                     notification["error"]({
                         message: `Email đã tồn tại`,
                         description: 'Email này đã được đăng ký bởi người dùng khác!',
                         duration: 5,
                     });
-                } else if (error.message && error.message.includes("Email has already been taken")) {
+                } else if (errorMessage.includes("Email has already been taken")) {
                     notification["error"]({
                         message: `Email đã tồn tại`,
                         description: 'Email này đã được sử dụng!',
                         duration: 5,
                     });
-                } else if (error.message && error.message.includes("Phone has already been taken")) {
+                } else if (errorMessage.includes("Số điện thoại đã tồn tại") || 
+                           errorMessage.includes("Phone has already been taken")) {
                     notification["error"]({
                         message: `Số điện thoại đã tồn tại`,
                         description: 'Số điện thoại này đã được sử dụng!',
                         duration: 5,
                     });
+                } else if (errorMessage.includes("Mật khẩu phải có ít nhất 6 ký tự")) {
+                    notification["error"]({
+                        message: `Lỗi mật khẩu`,
+                        description: 'Mật khẩu phải có ít nhất 6 ký tự!',
+                        duration: 5,
+                    });
                 } else {
                     notification["error"]({
                         message: `Lỗi`,
-                        description: error.message || 'Cập nhật thông tin thất bại!',
+                        description: errorMessage || 'Cập nhật thông tin thất bại!',
                         duration: 5,
                     });
                 }
-            } else if (error.status === 404) {
+            } else if (error.status === 404 || error.response?.status === 404) {
                 notification["error"]({
                     message: `Không tìm thấy`,
                     description: 'Không tìm thấy người dùng này!',
@@ -246,7 +265,7 @@ const AccountManagement = () => {
             } else {
                 notification["error"]({
                     message: `Lỗi`,
-                    description: error.message || 'Cập nhật thông tin thất bại!',
+                    description: errorMessage || 'Cập nhật thông tin thất bại!',
                     duration: 5,
                 });
             }
@@ -514,7 +533,7 @@ const AccountManagement = () => {
                             rules={[
                                 { required: true, message: 'Vui lòng nhập tên!' },
                                 { max: 100, message: 'Tên tối đa 100 ký tự' },
-                                { min: 5, message: 'Tên ít nhất 5 ký tự' },
+                                { min: 4, message: 'Tên ít nhất 4 ký tự' },
                             ]}
                         >
                             <Input placeholder="Tên" />
@@ -554,6 +573,57 @@ const AccountManagement = () => {
                                 <Option value="isAdmin">Quản lý</Option>
                                 <Option value="isClient">Khách hàng</Option>
                             </Select>
+                        </Form.Item>
+
+                        {/* ==================== MẬT KHẨU MỚI ==================== */}
+                        <Form.Item
+                            name="password"
+                            label="Mật khẩu mới"
+                            hasFeedback
+                            rules={[
+                                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' },
+                            ]}
+                            extra="Để trống nếu không muốn thay đổi mật khẩu"
+                        >
+                            <Input.Password 
+                                placeholder="Nhập mật khẩu mới (để trống nếu không đổi)" 
+                                autoComplete="new-password"
+                            />
+                        </Form.Item>
+
+                        <Form.Item
+                            name="confirmPassword"
+                            label="Xác nhận mật khẩu"
+                            dependencies={['password']}
+                            hasFeedback
+                            rules={[
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        const password = getFieldValue('password');
+                                        
+                                        // Nếu không nhập mật khẩu thì không cần xác nhận
+                                        if (!password || password.trim() === '') {
+                                            return Promise.resolve();
+                                        }
+                                        
+                                        // Nếu có nhập mật khẩu thì phải xác nhận
+                                        if (!value) {
+                                            return Promise.reject(new Error('Vui lòng xác nhận mật khẩu!'));
+                                        }
+                                        
+                                        if (password === value) {
+                                            return Promise.resolve();
+                                        }
+                                        
+                                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Input.Password 
+                                placeholder="Xác nhận mật khẩu mới" 
+                                autoComplete="new-password"
+                            />
                         </Form.Item>
                     </Form>
                 </Spin>

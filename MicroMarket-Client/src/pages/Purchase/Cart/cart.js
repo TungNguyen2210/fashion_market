@@ -4,7 +4,6 @@ import {
   PercentageOutlined,
   TagOutlined,
   GiftOutlined,
-  //TruckOutlined,
   CarOutlined, 
   DownOutlined,
   CheckCircleOutlined,
@@ -44,6 +43,186 @@ if (typeof window !== 'undefined') {
   }, true);
 }
 
+// ===== ✅ THÊM HÀM CHUYỂN ĐỔI MÀU HEX SANG TÊN TIẾNG VIỆT =====
+const hexToColorName = (hex) => {
+  if (!hex) return 'Màu tùy chỉnh';
+  
+  // Chuẩn hóa hex code
+  hex = hex.replace('#', '').toLowerCase();
+  
+  // Dictionary màu phổ biến trong tiếng Việt
+  const colorMap = {
+    // Đỏ
+    'ff0000': 'Đỏ',
+    'dc143c': 'Đỏ thẫm',
+    'ff6b6b': 'Đỏ hồng',
+    'ff4757': 'Đỏ tươi',
+    'ee5a6f': 'Đỏ san hô',
+    'c23616': 'Đỏ gạch',
+    'e74c3c': 'Đỏ cam',
+    
+    // Cam
+    'ffa500': 'Cam',
+    'ff7f50': 'Cam san hô',
+    'ff8c00': 'Cam đậm',
+    'ffa07a': 'Cam nhạt',
+    'ff6348': 'Cam đỏ',
+    
+    // Vàng
+    'ffff00': 'Vàng',
+    'ffd700': 'Vàng kim',
+    'ffeb3b': 'Vàng tươi',
+    'ffc312': 'Vàng chanh',
+    'f9ca24': 'Vàng mơ',
+    'fff200': 'Vàng neon',
+    
+    // Xanh lá
+    '008000': 'Xanh lá',
+    '00ff00': 'Xanh lá neon',
+    '32cd32': 'Xanh lá nhạt',
+    '228b22': 'Xanh lá rừng',
+    '7bed9f': 'Xanh lá mint',
+    '2ecc71': 'Xanh lá tươi',
+    '27ae60': 'Xanh lá đậm',
+    '1abc9c': 'Xanh lá ngọc',
+    
+    // Xanh dương
+    '0000ff': 'Xanh dương',
+    '00bfff': 'Xanh dương nhạt',
+    '1e90ff': 'Xanh dương đậm',
+    '4169e1': 'Xanh hoàng gia',
+    '3498db': 'Xanh dương tươi',
+    '2980b9': 'Xanh dương đậm',
+    '5f27cd': 'Xanh tím',
+    
+    // Xanh da trời
+    '87ceeb': 'Xanh da trời',
+    '87cefa': 'Xanh da trời nhạt',
+    '00ced1': 'Xanh ngọc lam',
+    '48c9b0': 'Xanh ngọc',
+    
+    // Tím
+    '800080': 'Tím',
+    '9b59b6': 'Tím nhạt',
+    '8e44ad': 'Tím đậm',
+    'ee82ee': 'Tím hoa cà',
+    'dda0dd': 'Tím mận',
+    'a29bfe': 'Tím lavender',
+    '6c5ce7': 'Tím than',
+    
+    // Hồng
+    'ffc0cb': 'Hồng',
+    'ff69b4': 'Hồng đậm',
+    'ffb3ba': 'Hồng nhạt',
+    'fd79a8': 'Hồng sen',
+    'e84393': 'Hồng cánh sen',
+    'fab1a0': 'Hồng đào',
+    
+    // Nâu
+    'a52a2a': 'Nâu',
+    '8b4513': 'Nâu đậm',
+    'd2691e': 'Nâu sô cô la',
+    'cd853f': 'Nâu vàng',
+    
+    // Xám
+    '808080': 'Xám',
+    'a9a9a9': 'Xám đậm',
+    'd3d3d3': 'Xám nhạt',
+    'c0c0c0': 'Bạc',
+    'dcdde1': 'Xám trắng',
+    '95a5a6': 'Xám đá',
+    '7f8c8d': 'Xám thép',
+    
+    // Trắng đen
+    'ffffff': 'Trắng',
+    '000000': 'Đen',
+    'f5f5f5': 'Trắng ngà',
+    '2f3640': 'Đen nhạt',
+    '353b48': 'Đen xanh',
+    
+    // Màu đặc biệt
+    '1c78fa': 'Xanh nước biển',
+    'be93e4': 'Tím pastel',
+    'ffcccc': 'Hồng pastel',
+    'ccffcc': 'Xanh pastel',
+    'ccccff': 'Tím nhạt pastel',
+  };
+  
+  // Tìm màu chính xác
+  if (colorMap[hex]) {
+    return colorMap[hex];
+  }
+  
+  // Nếu không tìm thấy, tìm màu gần nhất
+  return findClosestColorName(hex, colorMap);
+};
+
+// Hàm tìm màu gần nhất
+const findClosestColorName = (hex, colorMap) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 'Màu tùy chỉnh';
+  
+  let minDistance = Infinity;
+  let closestColor = 'Màu tùy chỉnh';
+  
+  Object.keys(colorMap).forEach(colorHex => {
+    const colorRgb = hexToRgb(colorHex);
+    if (colorRgb) {
+      const distance = Math.sqrt(
+        Math.pow(rgb.r - colorRgb.r, 2) +
+        Math.pow(rgb.g - colorRgb.g, 2) +
+        Math.pow(rgb.b - colorRgb.b, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestColor = colorMap[colorHex];
+      }
+    }
+  });
+  
+  return minDistance < 100 ? closestColor : 'Màu tùy chỉnh';
+};
+
+// Chuyển HEX sang RGB
+const hexToRgb = (hex) => {
+  hex = hex.replace('#', '');
+  
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  
+  if (hex.length !== 6) {
+    return null;
+  }
+  
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  return { r, g, b };
+};
+
+// Hàm kiểm tra màu sáng hay tối
+const isLightColor = (hex) => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return true;
+  
+  const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return brightness > 128;
+};
+
+// ===== ✅ HELPER FUNCTION CẬP NHẬT CART =====
+const updateCartInLocalStorage = (cart) => {
+  localStorage.setItem("cart", JSON.stringify(cart));
+  localStorage.setItem("cartLength", cart.length.toString());
+  
+  // ✅ DISPATCH EVENT ĐỂ HEADER CẬP NHẬT
+  window.dispatchEvent(new Event('cartUpdated'));
+  
+  console.log('🛒 Cart updated - Length:', cart.length);
+};
+
 const Cart = () => {
   const [productDetail, setProductDetail] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,20 +235,16 @@ const Cart = () => {
   
   const [availablePromotions, setAvailablePromotions] = useState([]);
   
-  // ===== THÊM STATES CHO ĐỢT GIẢM GIÁ =====
   const [activePromotions, setActivePromotions] = useState([]);
   const [productDiscountAmount, setProductDiscountAmount] = useState(0);
   
-  // Promotion states
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [appliedFreeship, setAppliedFreeship] = useState(null);
   const [voucherDiscountAmount, setVoucherDiscountAmount] = useState(0);
   
-  // Loading states
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [freeshipLoading, setFreeshipLoading] = useState(false);
 
-  // ===== THÊM HÀM TÍNH GIÁ THEO ĐỢT GIẢM GIÁ =====
   const calculateDiscountedPrice = (product) => {
     const now = new Date();
     let finalPrice = product.price;
@@ -81,23 +256,19 @@ const Cart = () => {
     console.log('Product name:', product.name);
     console.log('Active promotions:', activePromotions.length);
 
-    // Tìm tất cả các đợt giảm giá active và còn hạn
     const validPromotions = activePromotions.filter(promotion => {
       console.log('Checking promotion:', promotion.tenKhuyenMai);
       
-      // Kiểm tra loại khuyến mãi
       if (promotion.loai !== 'dot_giam_gia') {
         console.log('-> Not dot_giam_gia, actual:', promotion.loai);
         return false;
       }
       
-      // Kiểm tra trạng thái
       if (promotion.trangThai !== 'active') {
         console.log('-> Not active, actual:', promotion.trangThai);
         return false;
       }
       
-      // Kiểm tra thời gian hiệu lực
       const startDate = new Date(promotion.thoiGianBD);
       const endDate = new Date(promotion.thoiGianKT);
       console.log('-> Time check:', { 
@@ -111,7 +282,6 @@ const Cart = () => {
         return false;
       }
       
-      // Kiểm tra sản phẩm có trong danh sách áp dụng không
       if (!promotion.sanPhamApDung || promotion.sanPhamApDung.length === 0) {
         console.log('-> No products applied');
         return false;
@@ -120,7 +290,6 @@ const Cart = () => {
       console.log('-> Products in promotion:', promotion.sanPhamApDung);
       
       const productInPromotion = promotion.sanPhamApDung.some(productId => {
-        // Xử lý trường hợp productId có thể là string, object với $oid, hoặc object với _id
         let id;
         
         if (typeof productId === 'string') {
@@ -135,7 +304,6 @@ const Cart = () => {
           id = productId;
         }
         
-        // So sánh với product._id (có thể là string hoặc object)
         let currentProductId;
         if (typeof product._id === 'string') {
           currentProductId = product._id;
@@ -162,7 +330,6 @@ const Cart = () => {
 
     console.log('Valid promotions found:', validPromotions.length);
 
-    // Tìm khuyến mãi có phần trăm giảm cao nhất
     validPromotions.forEach(promotion => {
       console.log('-> Applying promotion:', promotion.tenKhuyenMai, promotion.phanTramKhuyenMai + '%');
       if (promotion.phanTramKhuyenMai > maxDiscountPercent) {
@@ -171,7 +338,6 @@ const Cart = () => {
       }
     });
 
-    // Tính giá sau giảm
     if (maxDiscountPercent > 0) {
       const discountAmount = (product.price * maxDiscountPercent) / 100;
       finalPrice = product.price - discountAmount;
@@ -193,13 +359,11 @@ const Cart = () => {
     };
   };
 
-  // ===== THÊM HÀM TẢI ĐỢT GIẢM GIÁ =====
   const fetchActivePromotions = async () => {
     try {
       console.log('=== FETCHING CART PROMOTIONS DEBUG ===');
       console.log('Starting to fetch active promotions...');
       
-      // Thử các endpoint khác nhau để tìm đúng API
       const possibleEndpoints = [
         '/promotion-management',
         '/promotions',
@@ -212,7 +376,6 @@ const Cart = () => {
         try {
           console.log(`Trying endpoint: ${endpoint}`);
           
-          // Thử GET với params
           const response = await axiosClient.get(endpoint, {
             params: {
               trangThai: 'active',
@@ -237,7 +400,6 @@ const Cart = () => {
         }
       }
       
-      // Nếu tất cả endpoints đều fail, thử lấy tất cả rồi filter
       try {
         console.log('Trying to get all promotions and filter...');
         const response = await axiosClient.get('/promotion-management');
@@ -268,7 +430,6 @@ const Cart = () => {
         console.log('Failed to get all promotions:', error.message);
       }
       
-      // LAST RESORT: Hardcode data tạm thời để test
       console.log('Using hardcoded test data for promotion...');
       const testPromotion = {
         _id: "68e2258768ec6627f9194d3c",
@@ -279,7 +440,7 @@ const Cart = () => {
         giaTriToiThieu: 0,
         giamToiDa: null,
         soLuong: null,
-        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"], // Đảm bảo format string đơn giản
+        sanPhamApDung: ["689eab3c9a03e6c3477fb6c6"],
         thoiGianBD: "2025-10-02T00:00:00.000Z",
         thoiGianKT: "2025-10-28T00:00:00.000Z",
         trangThai: "active",
@@ -297,7 +458,6 @@ const Cart = () => {
   };
 
   const handlePay = () => {
-    // Save promotion data to localStorage before navigating
     if (appliedVoucher) {
       localStorage.setItem("appliedVoucherID", appliedVoucher._id);
       localStorage.setItem("appliedVoucher", JSON.stringify(appliedVoucher));
@@ -329,7 +489,16 @@ const Cart = () => {
         localStorage.removeItem("appliedVoucherID");
         localStorage.removeItem("appliedFreeshipID");
         localStorage.removeItem("appliedVoucher");
-        window.location.reload();
+        
+        // ✅ DISPATCH EVENT TRƯỚC KHI RELOAD
+        window.dispatchEvent(new Event('cartUpdated'));
+        
+        setProductDetail([]);
+        setCartLength(0);
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
       }
     });
   };
@@ -348,7 +517,9 @@ const Cart = () => {
         return item;
       });
 
-      localStorage.setItem("cart", JSON.stringify(updatedCart));
+      // ✅ SỬ DỤNG HELPER FUNCTION
+      updateCartInLocalStorage(updatedCart);
+      
       return updatedCart;
     });
   }, []);
@@ -359,9 +530,10 @@ const Cart = () => {
       (product) => product.cartItemId !== cartItemId
     );
     
-    localStorage.setItem("cart", JSON.stringify(filteredCart));
+    // ✅ SỬ DỤNG HELPER FUNCTION
+    updateCartInLocalStorage(filteredCart);
+    
     setCartLength(filteredCart.length);
-    localStorage.setItem("cartLength", filteredCart.length.toString());
     setProductDetail(filteredCart);
     
     notification.success({
@@ -370,12 +542,10 @@ const Cart = () => {
     });
   }, []);
 
-  // Check if promotion is currently active
   const isPromotionActive = (promotion) => {
     return promotion.trangThai === 'active' || promotion.trangThai === 'scheduled';
   };
 
-  // Apply voucher from dropdown
   const applyVoucherFromDropdown = useCallback(async (voucher) => {
     if (appliedVoucher && appliedVoucher._id === voucher._id) {
       notification.warning({
@@ -385,7 +555,6 @@ const Cart = () => {
       return;
     }
 
-    // ===== SỬA LOGIC CHECK VOUCHER - SỬ DỤNG TỔNG SAU GIẢM GIÁ SẢN PHẨM =====
     const discountedTotal = originalTotal - productDiscountAmount;
     
     if (voucher.giaTriToiThieu && discountedTotal < voucher.giaTriToiThieu) {
@@ -406,7 +575,6 @@ const Cart = () => {
     console.log("🎫 Applied voucher:", voucher);
   }, [originalTotal, productDiscountAmount, appliedVoucher]);
 
-  // Apply freeship from dropdown
   const applyFreeshipFromDropdown = useCallback(async (freeship) => {
     if (appliedFreeship && appliedFreeship._id === freeship._id) {
       notification.warning({
@@ -416,7 +584,6 @@ const Cart = () => {
       return;
     }
 
-    // ===== SỬA LOGIC CHECK FREESHIP - SỬ DỤNG TỔNG SAU GIẢM GIÁ SẢN PHẨM =====
     const discountedTotal = originalTotal - productDiscountAmount;
     
     if (freeship.giaTriToiThieu && discountedTotal < freeship.giaTriToiThieu) {
@@ -437,7 +604,6 @@ const Cart = () => {
     console.log("🚚 Applied freeship:", freeship);
   }, [originalTotal, productDiscountAmount, appliedFreeship]);
 
-  // Remove voucher
   const removeVoucher = () => {
     setAppliedVoucher(null);
     setVoucherDiscountAmount(0);
@@ -447,7 +613,6 @@ const Cart = () => {
     });
   };
 
-  // Remove freeship
   const removeFreeship = () => {
     setAppliedFreeship(null);
     notification.info({
@@ -458,10 +623,8 @@ const Cart = () => {
 
   const handleCart = useCallback(async () => {
     try {
-      // ===== THÊM FETCH ĐỢT GIẢM GIÁ =====
       await fetchActivePromotions();
       
-      // Load promotions
       const res = await promotionManagementApi.listPromotionManagement();
       
       const promotionsData = Array.isArray(res.data?.docs) ? res.data.docs : [];
@@ -469,7 +632,6 @@ const Cart = () => {
       
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
       
-      // Add cartItemId for each product if not exists
       const cartWithIds = cart.map((item, index) => {
         if (!item.cartItemId) {
           const uniqueId = `${item._id}-${item.selectedColor || item.color || ''}-${item.selectedSize || item.size || item.productSize || ''}-${index}`;
@@ -481,15 +643,13 @@ const Cart = () => {
         return item;
       });
       
-      // Save cart with IDs
-      localStorage.setItem("cart", JSON.stringify(cartWithIds));
+      // ✅ SỬ DỤNG HELPER FUNCTION
+      updateCartInLocalStorage(cartWithIds);
       
       setProductDetail(cartWithIds);
       const cartLength = cartWithIds.length;
-      localStorage.setItem("cartLength", cartLength.toString());
       setCartLength(cartLength);
       
-      // Load applied promotions from localStorage
       const savedVoucherID = localStorage.getItem("appliedVoucherID");
       const savedFreeshipID = localStorage.getItem("appliedFreeshipID");
       const savedVoucher = localStorage.getItem("appliedVoucher");
@@ -520,7 +680,6 @@ const Cart = () => {
     }
   }, []);
 
-  // ===== ✅ THÊM USEEFFECT TÍNH TOÁN KHI ACTIVE PROMOTIONS THAY ĐỔI =====
   useEffect(() => {
     if (activePromotions.length >= 0 && productDetail.length > 0) {
       console.log("🔄 Recalculating totals with active promotions:", {
@@ -551,7 +710,6 @@ const Cart = () => {
     }
   }, [activePromotions, productDetail]);
 
-  // ===== ✅ USEEFFECT TÍNH VOUCHER DISCOUNT =====
   useEffect(() => {
     if (appliedVoucher && originalTotal > 0) {
       const discountedTotal = originalTotal - productDiscountAmount;
@@ -567,7 +725,6 @@ const Cart = () => {
     }
   }, [appliedVoucher, originalTotal, productDiscountAmount]);
 
-  // ===== ✅ USEEFFECT TÍNH TỔNG CUỐI =====
   useEffect(() => {
     const discountedTotal = originalTotal - productDiscountAmount;
     const finalTotal = discountedTotal - voucherDiscountAmount;
@@ -591,7 +748,6 @@ const Cart = () => {
     };
   }, [handleCart]);
 
-  // Create voucher dropdown menu
   const voucherMenu = (
     <Menu>
       {(() => {
@@ -628,7 +784,6 @@ const Cart = () => {
         }
         
         return activeVouchers.map(voucher => {
-          // ===== SỬA LOGIC CHECK ELIGIBILITY =====
           const discountedTotal = originalTotal - productDiscountAmount;
           const isEligible = !voucher.giaTriToiThieu || discountedTotal >= voucher.giaTriToiThieu;
           
@@ -677,7 +832,6 @@ const Cart = () => {
     </Menu>
   );
 
-  // Create freeship dropdown menu
   const freeshipMenu = (
     <Menu>
       {(() => {
@@ -714,7 +868,6 @@ const Cart = () => {
         }
         
         return activeFreeships.map(freeship => {
-          // ===== SỬA LOGIC CHECK ELIGIBILITY =====
           const discountedTotal = originalTotal - productDiscountAmount;
           const isEligible = !freeship.giaTriToiThieu || discountedTotal >= freeship.giaTriToiThieu;
           
@@ -787,7 +940,6 @@ const Cart = () => {
                   </Row>
                   <br></br>
                   
-                  {/* Enhanced Product Table */}
                   <div className="custom-table-container">
                     <table className="custom-table">
                       <thead>
@@ -806,10 +958,9 @@ const Cart = () => {
                       <tbody>
                         {productDetail.length > 0 ? (
                           productDetail.map((item, index) => {
-                            // ===== THÊM LOGIC TÍNH GIÁ VỚI ĐỢT GIẢM GIÁ =====
                             const priceInfo = calculateDiscountedPrice(item);
-                            const displayPrice = priceInfo.finalPrice; // Giá sau giảm
-                            const originalPrice = priceInfo.originalPrice; // Giá gốc
+                            const displayPrice = priceInfo.finalPrice;
+                            const originalPrice = priceInfo.originalPrice;
                             
                             return (
                               <tr key={item.cartItemId || `cart-item-${index}`}>
@@ -827,7 +978,6 @@ const Cart = () => {
                                       }} 
                                       alt="Sản phẩm" 
                                     />
-                                    {/* ===== THÊM DISCOUNT BADGE TRONG CART ===== */}
                                     {priceInfo.hasDiscount && (
                                       <div 
                                         style={{
@@ -852,7 +1002,6 @@ const Cart = () => {
                                 <td>
                                   <div className="product-name-cell">
                                     <Text strong>{item.name}</Text>
-                                    {/* ===== THÊM PROMOTION TAG TRONG CART ===== */}
                                     {priceInfo.appliedPromotion && (
                                       <div style={{ marginTop: '4px' }}>
                                         <Tag 
@@ -871,21 +1020,31 @@ const Cart = () => {
                                     )}
                                   </div>
                                 </td>
+                                {/* ===== ✅ PHẦN HIỂN THỊ MÀU ĐÃ CẬP NHẬT ===== */}
                                 <td>
                                   {(item.selectedColor || item.color) && (item.selectedColor || item.color) !== '-' ? (
                                     <div className="color-display">
-                                      <div
-                                        className="color-dot"
-                                        style={{
-                                          backgroundColor: item.selectedColor || item.color,
-                                          width: '20px',
-                                          height: '20px',
-                                          borderRadius: '50%',
-                                          border: '2px solid #fff',
-                                          boxShadow: '0 0 0 1px #d9d9d9'
-                                        }}
-                                      />
-                                      <Text>{item.selectedColor || item.color}</Text>
+                                      <Tooltip title={hexToColorName(item.selectedColor || item.color)}>
+                                        <div
+                                          className="color-dot"
+                                          style={{
+                                            backgroundColor: item.selectedColor || item.color,
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            border: isLightColor(item.selectedColor || item.color) 
+                                              ? '2px solid #d9d9d9' 
+                                              : '2px solid #fff',
+                                            boxShadow: '0 0 0 1px #d9d9d9',
+                                            display: 'inline-block',
+                                            marginRight: '8px',
+                                            verticalAlign: 'middle'
+                                          }}
+                                        />
+                                      </Tooltip>
+                                      <Text style={{ verticalAlign: 'middle' }}>
+                                        {hexToColorName(item.selectedColor || item.color)}
+                                      </Text>
                                     </div>
                                   ) : (
                                     <Text type="secondary">-</Text>
@@ -902,7 +1061,6 @@ const Cart = () => {
                                 </td>
                                 <td>
                                   <div className="price-cell">
-                                    {/* ===== HIỂN THỊ GIÁ THEO ĐỢT GIẢM GIÁ ===== */}
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                       <Text strong style={{ color: '#ff4d4f', fontSize: '14px' }}>
                                         {displayPrice.toLocaleString("vi", {
@@ -939,7 +1097,6 @@ const Cart = () => {
                                 </td>
                                 <td>
                                   <div className="total-cell">
-                                    {/* ===== HIỂN THỊ THÀNH TIỀN THEO GIÁ SAU GIẢM ===== */}
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                       <Text strong style={{ color: '#ff4d4f', fontSize: '15px' }}>
                                         {(displayPrice * item.quantity).toLocaleString("vi", {
@@ -1008,7 +1165,6 @@ const Cart = () => {
                   
                   <br></br>
 
-                  {/* Enhanced Promotion Section */}
                   <Card 
                     title={
                       <Space>
@@ -1019,7 +1175,6 @@ const Cart = () => {
                     className="promotion-card"
                   >
                     <Row gutter={[24, 16]}>
-                      {/* Voucher Dropdown */}
                       <Col xs={24} md={12}>
                         <div className="promotion-section">
                           <div className="promotion-header">
@@ -1056,7 +1211,6 @@ const Cart = () => {
                         </div>
                       </Col>
 
-                      {/* Freeship Dropdown */}
                       <Col xs={24} md={12}>
                         <div className="promotion-section">
                           <div className="promotion-header">
@@ -1095,7 +1249,6 @@ const Cart = () => {
                     </Row>
                   </Card>
 
-                  {/* Policy Section */}
                   <Divider orientation="left">Chính sách</Divider>
                   <Row justify="start">
                     <Col>
@@ -1121,7 +1274,6 @@ const Cart = () => {
                   </Row>
                   <br></br>
 
-                  {/* ===== ✅ SỬA MODERN PAYMENT SUMMARY ===== */}
                   <div className="payment-section">
                     <Card className="payment-summary-modern">
                       <div className="payment-header">
@@ -1131,7 +1283,6 @@ const Cart = () => {
                       </div>
                       
                       <div className="payment-details">
-                        {/* ===== HIỂN THỊ GIÁ GỐC =====  */}
                         <div className="payment-row">
                           <Text className="payment-label">Tổng {cartLength} sản phẩm (giá gốc)</Text>
                           <Text className="payment-value">
@@ -1139,7 +1290,6 @@ const Cart = () => {
                           </Text>
                         </div>
 
-                        {/* ===== HIỂN THỊ PRODUCT DISCOUNT ===== */}
                         {productDiscountAmount > 0 && (
                           <div className="payment-row discount-row">
                             <Text className="payment-label product-discount">
@@ -1151,7 +1301,6 @@ const Cart = () => {
                           </div>
                         )}
 
-                        {/* ===== HIỂN THỊ TẠM TÍNH ===== */}
                         <div className="payment-row">
                           <Text className="payment-label">Tạm tính</Text>
                           <Text className="payment-value">
@@ -1183,7 +1332,6 @@ const Cart = () => {
 
                         <Divider style={{ margin: '16px 0' }} />
 
-                        {/* ===== SỬA TỔNG THANH TOÁN ===== */}
                         <div className="payment-total">
                           <Text className="total-label">Tổng thanh toán</Text>
                           <Text className="total-amount">

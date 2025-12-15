@@ -1,14 +1,13 @@
-
 const router = require("express").Router();
-const newsController = require("../controllers/colorController");
+const colorController = require("../controllers/colorController");
 const middleware = require('../utils/middleware');
 
-router.post('/search', newsController.getAllNews);
-router.get("/searchByName", newsController.searchNewsByName);
-router.get('/:id', middleware.getColor, newsController.getNewsById);
+router.post('/search', colorController.getAllNews);
+router.get("/searchByName", colorController.searchNewsByName);
+router.get('/:id', middleware.getColor, colorController.getNewsById);
 
-router.post('/', middleware.checkLogin, newsController.createNews)
-router.put('/:id', middleware.checkLogin, newsController.updateNews)
-router.delete("/:id", middleware.checkLogin, newsController.deleteNews);
+router.post('/', middleware.checkLogin, colorController.createNews);
+router.put('/:id', middleware.checkLogin, colorController.updateNews);
+router.delete("/:id", middleware.checkLogin, colorController.deleteNews);
 
 module.exports = router;

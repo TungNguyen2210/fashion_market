@@ -13,7 +13,8 @@ import {
     Col,
     Form,
     Input,
-    Modal, Popconfirm,
+    Modal, 
+    Popconfirm,
     Row,
     Space,
     Spin,
@@ -25,7 +26,6 @@ import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import axiosClient from '../../apis/axiosClient';
 import productApi from "../../apis/productsApi";
-import uploadFileApi from '../../apis/uploadFileApi';
 import "./categoryList.css";
 
 const CategoryList = () => {
@@ -49,12 +49,10 @@ const CategoryList = () => {
     const handleOkUser = async (values) => {
         setLoading(true);
         try {
-
             const categoryList = {
                 "name": values.name,
                 "description": values.description,
-                "slug": values.slug,
-                "image": file
+                "slug": values.slug
             }
             return axiosClient.post("/category", categoryList).then(response => {
                 if (response === undefined) {
@@ -86,8 +84,7 @@ const CategoryList = () => {
             const categoryList = {
                 "name": values.name,
                 "description": values.description,
-                "slug": values.slug,
-                "image": file || values.image,
+                "slug": values.slug
             }
             return axiosClient.put("/category/" + id, categoryList).then(response => {
                 if (response === undefined) {
@@ -197,29 +194,11 @@ const CategoryList = () => {
         }
     }
 
-    const [file, setUploadFile] = useState();
-
-    const handleChangeImage = async (e) => {
-        setLoading(true);
-        const response = await uploadFileApi.uploadFile(e);
-        if (response) {
-            setUploadFile(response);
-        }
-        setLoading(false);
-    }
-
     const columns = [
         {
             title: 'ID',
             key: 'index',
             render: (text, record, index) => index + 1,
-        },
-        {
-            title: 'Ảnh',
-            dataIndex: 'image',
-            key: 'image',
-            render: (image) => <img src={image} style={{ height: 60 }} />,
-            width: '10%'
         },
         {
             title: 'Tên',
@@ -295,6 +274,7 @@ const CategoryList = () => {
             }
         })();
     }, [])
+
     return (
         <div>
             <Spin spinning={loading}>
@@ -415,22 +395,6 @@ const CategoryList = () => {
                             <Input placeholder="Slug" />
                         </Form.Item>
 
-                        <Form.Item
-                            name="image"
-                            label="Ảnh"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Vui lòng nhập chọn ảnh!',
-                                },
-                            ]}
-                            style={{ marginBottom: 10 }}
-                        >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
-                        </Form.Item>
-
                     </Form>
                 </Modal>
 
@@ -505,21 +469,10 @@ const CategoryList = () => {
                             <Input placeholder="Slug" />
                         </Form.Item>
 
-                        <Form.Item
-                            name="image"
-                            label="Ảnh"
-                            style={{ marginBottom: 10 }}
-                        >
-                            <input type="file" onChange={handleChangeImage}
-                                id="avatar" name="file"
-                                accept="image/png, image/jpeg" />
-                        </Form.Item>
-
                     </Form>
                 </Modal>
 
 
-                {/* <Pagination style={{ textAlign: "center", marginBottom: 20 }} current={currentPage} defaultCurrent={1} total={total} onChange={handlePage}></Pagination> */}
                 <BackTop style={{ textAlign: 'right' }} />
             </Spin>
         </div >
