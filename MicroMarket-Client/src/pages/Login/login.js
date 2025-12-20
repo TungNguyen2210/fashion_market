@@ -315,10 +315,6 @@ const Login = () => {
             Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
           </p>
 
-          {/* ===== LINK QUÊN MẬT KHẨU (OPTIONAL) ===== */}
-          <p className="text-center" style={{ marginTop: '10px' }}>
-            <Link to="/forgot-password">Quên mật khẩu?</Link>
-          </p>
 
         </Form>
       </div>
