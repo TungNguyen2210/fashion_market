@@ -4,6 +4,7 @@ const middleware = require('../utils/middleware');
 
 router.post('/search', colorController.getAllNews);
 router.get("/searchByName", colorController.searchNewsByName);
+router.get("/searchByHex", colorController.searchByHex);
 router.get('/:id', middleware.getColor, colorController.getNewsById);
 
 router.post('/', middleware.checkLogin, colorController.createNews);

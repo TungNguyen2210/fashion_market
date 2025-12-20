@@ -58,6 +58,12 @@ const newsApi = {
         return axiosClient.post(url, data);
     },
 
+    getAllColors(params = {}) {
+        const { page = 1, limit = 1000 } = params;
+        const url = '/color/search';
+        return axiosClient.post(url, { page, limit });
+    },
+
     deleteColor(id) {
         const url = '/color/' + id;
         return axiosClient.delete(url);
@@ -70,6 +76,11 @@ const newsApi = {
 
     searchColor(name) {
         const url = '/color/searchByName?name=' + name;
+        return axiosClient.get(url);
+    },
+
+    searchColorByHex(hex) {
+        const url = '/color/searchByHex?hex=' + hex;
         return axiosClient.get(url);
     },
 }

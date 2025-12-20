@@ -223,6 +223,45 @@ const colorController = {
             });
         }
     },
+
+        searchByHex: async (req, res) => {
+        try {
+            const { hex } = req.query;
+            
+            if (!hex) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng cung cấp mã hex'
+                });
+            }
+
+            // Chuẩn hóa hex
+            const normalizedHex = hex.toLowerCase().replace('#', '');
+            
+            const color = await ColorModel.findOne({ 
+                description: normalizedHex 
+            });
+
+            if (!color) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy màu'
+                });
+            }
+
+            res.status(200).json({ 
+                success: true,
+                data: color 
+            });
+        } catch (err) {
+            console.error('Error searching color by hex:', err);
+            res.status(500).json({ 
+                success: false,
+                message: 'Lỗi khi tìm kiếm màu',
+                error: err.message 
+            });
+        }
+    },
 }
 
 module.exports = colorController;
