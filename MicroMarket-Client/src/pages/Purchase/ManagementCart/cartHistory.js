@@ -1257,39 +1257,15 @@ const CartHistory = () => {
                             </div>
                             
                             <div style={{ marginBottom: 12 }}>
-                              <Space direction="vertical" size={4}>
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                  <Text type="secondary" style={{ marginRight: 8, minWidth: '80px' }}>
-                                    Màu sắc:
-                                  </Text>
-                                  {item.productColor && item.productColor !== '-' ? (
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      <div
-                                        style={{
-                                          backgroundColor: item.productColor,
-                                          width: '16px',
-                                          height: '16px',
-                                          borderRadius: '50%',
-                                          marginRight: '8px',
-                                          border: '1px solid #ddd'
-                                        }}
-                                      />
-                                      <span>{item.productColor}</span>
-                                    </div>
-                                  ) : (
-                                    <span>-</span>
-                                  )}
+                              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Text type="secondary">Màu sắc:</Text>
+                                  {renderColorInfo(item.productColor || '-')}
                                 </div>
                                 
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                  <Text type="secondary" style={{ marginRight: 8, minWidth: '80px' }}>
-                                    Kích thước:
-                                  </Text>
-                                  {item.productSize && item.productSize !== '-' ? (
-                                    <Tag color="blue">{item.productSize}</Tag>
-                                  ) : (
-                                    <span>-</span>
-                                  )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Text type="secondary">Kích thước:</Text>
+                                  {renderSizeInfo(item.productSize || '-')}
                                 </div>
                               </Space>
                             </div>

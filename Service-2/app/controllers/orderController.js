@@ -86,47 +86,61 @@ const orderController = {
                 limit: limit,
                 populate: [
                     { path: 'user', select: 'username email phone' },
-                    { path: 'products.product' }
+                    { 
+                        path: 'products.product',
+                        select: '-embedding -__v' // ✅ Loại bỏ embedding và __v để giảm payload
+                    }
                     // 🔥 Removed promotion populates - will fetch via API
                 ]
             };
 
             const orderList = await OrderModel.paginate({}, options);
             
-            // 🔥 Fetch promotion details via API for each order
-            for (const order of orderList.docs) {
-                try {
-                    const promotionIDs = [
-                        order.voucherPromotionID,
-                        order.freeShipPromotionID,
-                        ...order.products.map(p => p.productPromotionID)
-                    ].filter(Boolean);
+            // ✅ OPTIMIZED: Fetch ALL promotion IDs at once instead of loop
+            const allPromotionIDs = [];
+            orderList.docs.forEach(order => {
+                if (order.voucherPromotionID) allPromotionIDs.push(order.voucherPromotionID);
+                if (order.freeShipPromotionID) allPromotionIDs.push(order.freeShipPromotionID);
+                order.products.forEach(p => {
+                    if (p.productPromotionID) allPromotionIDs.push(p.productPromotionID);
+                });
+            });
 
-                    if (promotionIDs.length > 0) {
-                        const promotionResult = await callPromotionAPI('/batch', 'POST', { ids: promotionIDs });
-                        if (promotionResult.success) {
-                            const promotions = promotionResult.data;
-                            
-                            // Attach promotion data
-                            if (order.voucherPromotionID) {
-                                order.voucherPromotion = promotions.find(p => p._id === order.voucherPromotionID);
-                            }
-                            if (order.freeShipPromotionID) {
-                                order.freeShipPromotion = promotions.find(p => p._id === order.freeShipPromotionID);
-                            }
-                            
-                            // Attach product promotion data
-                            order.products.forEach(product => {
-                                if (product.productPromotionID) {
-                                    product.productPromotion = promotions.find(p => p._id === product.productPromotionID);
-                                }
-                            });
-                        }
+            // Remove duplicates
+            const uniquePromotionIDs = [...new Set(allPromotionIDs)];
+
+            // Fetch all promotions in ONE API call
+            let promotionsMap = {};
+            if (uniquePromotionIDs.length > 0) {
+                try {
+                    console.log(`📦 Fetching ${uniquePromotionIDs.length} unique promotions in batch`);
+                    const promotionResult = await callPromotionAPI('/batch', 'POST', { ids: uniquePromotionIDs });
+                    if (promotionResult.success) {
+                        // Create map for fast lookup
+                        promotionResult.data.forEach(promo => {
+                            promotionsMap[promo._id] = promo;
+                        });
+                        console.log(`✅ Successfully fetched ${promotionResult.data.length} promotions`);
                     }
                 } catch (promotionError) {
-                    console.error('❌ Error fetching promotions for order:', order._id, promotionError);
+                    console.error('❌ Error fetching promotions in getAllOrder:', promotionError);
                 }
             }
+
+            // Attach promotion data to orders
+            orderList.docs.forEach(order => {
+                if (order.voucherPromotionID) {
+                    order.voucherPromotion = promotionsMap[order.voucherPromotionID];
+                }
+                if (order.freeShipPromotionID) {
+                    order.freeShipPromotion = promotionsMap[order.freeShipPromotionID];
+                }
+                order.products.forEach(product => {
+                    if (product.productPromotionID) {
+                        product.productPromotion = promotionsMap[product.productPromotionID];
+                    }
+                });
+            });
 
             res.status(200).json({ data: orderList });
         } catch (err) {
@@ -511,13 +525,13 @@ const orderController = {
             console.error('❌ Error stack:', promotionError.stack);
         }
 
-        // Gửi email thông báo (với thông tin promotion chi tiết)
+        // Gửi email thông báo với giao diện chuyên nghiệp
         try {
             const customer = await User.findById(userId);
             console.log("👤 Tìm thấy khách hàng:", customer ? customer.email : "Không tìm thấy khách hàng");
             
             if (customer && customer.email) {
-                // 🔥 Lấy thông tin promotion để hiển thị trong email qua API
+                // Lấy thông tin promotion để hiển thị trong email qua API
                 const promotionInfo = await getPromotionDetailsForEmail(
                     voucherPromotionID, 
                     freeShipPromotionID, 
@@ -535,53 +549,229 @@ const orderController = {
                 });
 
                 // Tạo nội dung chi tiết sản phẩm
-                let productsHtml = '';
+                let productsRows = '';
                 for (const item of processedProducts) {
                     const productDetail = await Product.findById(item.product);
                     const productPromotion = promotionInfo.productPromotions.find(p => 
                         p._id.toString() === item.productPromotionID?.toString()
                     );
                     
-                    productsHtml += `
-                        <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                            <p><strong>${productDetail ? productDetail.name : 'Sản phẩm'}</strong> x ${item.quantity}</p>
-                            <p>Giá: ${item.price.toLocaleString()} VND</p>
-                            ${productPromotion ? `<p>🎁 Khuyến mãi: ${productPromotion.tenKhuyenMai}</p>` : ''}
-                            ${item.size ? `<p>Kích thước: ${item.size}</p>` : ''}
-                            ${item.color ? `<p>Màu sắc: ${item.color}</p>` : ''}
-                        </div>
+                    const variantInfo = [];
+                    if (item.size) variantInfo.push(`Size: ${item.size}`);
+                    if (item.color) variantInfo.push(`Màu: ${item.color}`);
+                    const variantText = variantInfo.length > 0 ? `<div style="font-size: 13px; color: #666; margin-top: 4px;">${variantInfo.join(' • ')}</div>` : '';
+                    
+                    const promotionBadge = productPromotion ? `<div style="display: inline-block; background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-top: 4px;">🎁 ${productPromotion.tenKhuyenMai}</div>` : '';
+                    
+                    productsRows += `
+                        <tr>
+                            <td style="padding: 16px 8px 16px 0; border-bottom: 1px solid #e5e7eb; width: 55%;">
+                                <div style="font-weight: 500; color: #111827; font-size: 14px;">${productDetail ? productDetail.name : 'Sản phẩm'}</div>
+                                ${variantText}
+                                ${promotionBadge}
+                            </td>
+                            <td style="padding: 16px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px; width: 15%;">
+                                ${item.quantity}
+                            </td>
+                            <td style="padding: 16px 0 16px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #111827; font-weight: 500; font-size: 14px; white-space: nowrap; width: 30%;">
+                                ${item.price.toLocaleString('vi-VN')} ₫
+                            </td>
+                        </tr>
                     `;
                 }
 
-                // Tạo thông tin chi tiết về giá
-                const priceBreakdown = `
-                    <h3>Chi tiết thanh toán:</h3>
-                    <p>Tạm tính: ${orderTotal.toLocaleString()} VND</p>
-                    ${discountAmount > 0 ? `<p>🎫 Giảm giá: -${discountAmount.toLocaleString()} VND</p>` : ''}
-                    ${promotionInfo.voucher ? `<p>Voucher: ${promotionInfo.voucher.tenKhuyenMai}</p>` : ''}
-                    ${shippingFee > 0 ? `<p>Phí vận chuyển: ${shippingFee.toLocaleString()} VND</p>` : ''}
-                    ${promotionInfo.freeShip ? `<p>🚚 Miễn phí vận chuyển: ${promotionInfo.freeShip.tenKhuyenMai}</p>` : ''}
-                    <p><strong>Tổng cộng: ${calculatedFinalAmount.toLocaleString()} VND</strong></p>
-                `;
+                // Format ngày tháng
+                const orderDate = new Date();
+                const day = orderDate.getDate();
+                const month = orderDate.getMonth() + 1;
+                const year = orderDate.getFullYear();
+                const formattedDate = `${day}/${month}/${year}`;
+
+                // Tạo mã đơn hàng ngắn gọn (8 ký tự cuối)
+                const shortOrderId = savedOrder._id.toString().slice(-8).toUpperCase();
 
                 const mailOptions = {
-                    from: '"MicroMarket" <h5studiogl@gmail.com>',
+                    from: '"Stussy" <h5studiogl@gmail.com>',
                     to: customer.email,
-                    subject: 'Xác nhận đơn hàng của bạn tại MicroMarket',
+                    subject: `Xác nhận đơn hàng #${shortOrderId} - Stussy`,
                     html: `
-                        <h1>Cảm ơn bạn đã đặt hàng!</h1>
-                        <p>Đơn hàng với mã số <strong>${savedOrder._id}</strong> của bạn đã được đặt thành công.</p>
-                        
-                        <h2>Chi tiết đơn hàng:</h2>
-                        ${productsHtml}
-                        
-                        ${priceBreakdown}
-                        
-                        <p>Phương thức thanh toán: ${savedOrder.billing === 'cod' ? 'Thanh toán khi nhận hàng' : 'PayPal'}</p>
-                        <p>Địa chỉ giao hàng: ${savedOrder.address}</p>
-                        
-                        <p>Chúng tôi sẽ thông báo cho bạn khi đơn hàng bắt đầu được giao.</p>
-                        <p>Cảm ơn bạn đã mua sắm tại MicroMarket!</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác nhận đơn hàng</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <!-- Container chính -->
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px; text-align: center;">
+                            <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="background-color: white; width: 60px; height: 60px; border-radius: 50%; text-align: center; vertical-align: middle; line-height: 60px;">
+                                        <span style="font-size: 32px; display: inline-block; vertical-align: middle; line-height: normal;">📦</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <h1 style="margin: 20px 0 0 0; color: white; font-size: 28px; font-weight: 600;">Stussy</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Thông báo chính -->
+                    <tr>
+                        <td style="padding: 40px; text-align: center; background-color: #fefefe;">
+                            <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="background-color: #10b981; width: 64px; height: 64px; border-radius: 50%; text-align: center; vertical-align: middle; line-height: 64px;">
+                                        <span style="font-size: 36px; color: white; display: inline-block; vertical-align: middle; line-height: normal;">✓</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <h2 style="margin: 20px 0 12px; color: #111827; font-size: 24px; font-weight: 600;">Đơn hàng đã được xác nhận!</h2>
+                            <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
+                                Cảm ơn bạn đã tin tưởng mua sắm tại Stussy.<br>
+                                Chúng tôi đang xử lý đơn hàng của bạn.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Thông tin đơn hàng -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="padding-bottom: 16px; width: 50%;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Mã đơn hàng</div>
+                                            <div style="color: #111827; font-size: 16px; font-weight: 600;">#${shortOrderId}</div>
+                                        </td>
+                                        <td style="text-align: right; padding-bottom: 16px; width: 50%;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Ngày đặt</div>
+                                            <div style="color: #111827; font-size: 14px; font-weight: 500; white-space: nowrap;">${formattedDate}</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Phương thức thanh toán</div>
+                                            <div style="color: #111827; font-size: 14px; font-weight: 500;">${billing === 'cod' ? '💵 Thanh toán khi nhận hàng (COD)' : '💳 PayPal'}</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Chi tiết sản phẩm -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <h3 style="margin: 0 0 20px; color: #111827; font-size: 18px; font-weight: 600;">Chi tiết đơn hàng</h3>
+                            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                                        <th style="padding: 12px 8px 12px 0; text-align: left; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 55%;">Sản phẩm</th>
+                                        <th style="padding: 12px 8px; text-align: center; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 15%;">SL</th>
+                                        <th style="padding: 12px 0 12px 8px; text-align: right; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 30%;">Giá</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${productsRows}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Tổng cộng -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Tạm tính</td>
+                                        <td style="padding: 8px 0; text-align: right; color: #111827; font-size: 14px;">${orderTotal.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                    ${discountAmount > 0 ? `
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #10b981; font-size: 14px;">
+                                            <span>🎫 Giảm giá</span>
+                                            ${promotionInfo.voucher ? `<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${promotionInfo.voucher.tenKhuyenMai}</div>` : ''}
+                                        </td>
+                                        <td style="padding: 8px 0; text-align: right; color: #10b981; font-size: 14px; font-weight: 500;">-${discountAmount.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                    ` : ''}
+                                    ${shippingFee > 0 ? `
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
+                                            <span>🚚 Phí vận chuyển</span>
+                                            ${promotionInfo.freeShip ? `<div style="font-size: 12px; color: #10b981; margin-top: 2px;">${promotionInfo.freeShip.tenKhuyenMai}</div>` : ''}
+                                        </td>
+                                        <td style="padding: 8px 0; text-align: right; color: #111827; font-size: 14px;">${promotionInfo.freeShip ? '<span style="text-decoration: line-through; color: #9ca3af; margin-right: 8px;">' + shippingFee.toLocaleString('vi-VN') + ' ₫</span><span style="color: #10b981; font-weight: 500;">Miễn phí</span>' : shippingFee.toLocaleString('vi-VN') + ' ₫'}</td>
+                                    </tr>
+                                    ` : ''}
+                                    <tr style="border-top: 2px solid #e5e7eb;">
+                                        <td style="padding: 16px 0 0; color: #111827; font-size: 16px; font-weight: 600;">Tổng cộng</td>
+                                        <td style="padding: 16px 0 0; text-align: right; color: #667eea; font-size: 20px; font-weight: 700;">${calculatedFinalAmount.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Địa chỉ giao hàng -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 8px;">
+                                <div style="color: #92400e; font-size: 13px; font-weight: 500; margin-bottom: 8px;">📍 ĐỊA CHỈ GIAO HÀNG</div>
+                                <div style="color: #78350f; font-size: 14px; line-height: 1.6;">${address}</div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Call to action -->
+                    <tr>
+                        <td style="padding: 0 40px 40px; text-align: center;">
+                        </td>
+                    </tr>
+                    
+                    <!-- Support -->
+                    <tr>
+                        <td style="padding: 0 40px 40px; text-align: center;">
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                Có câu hỏi? <a href="mailto:h5studiogl@gmail.com" style="color: #667eea; text-decoration: none; font-weight: 500;">Liên hệ hỗ trợ</a>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 12px; color: #9ca3af; font-size: 13px;">
+                                Email này được gửi tự động, vui lòng không trả lời.
+                            </p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                © 2025 Stussy. All rights reserved.
+                            </p>
+                            <div style="margin-top: 16px;">
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Chính sách</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Điều khoản</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Hỗ trợ</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
                     `,
                 };
 
@@ -638,14 +828,305 @@ const orderController = {
         const { user, products, address, orderTotal, billing, description, status } = req.body;
 
         try {
+            // Get old order to compare status
+            const oldOrder = await OrderModel.findById(id)
+                .populate('user', 'username email phone')
+                .populate('products.product', '-embedding -__v');
+            
+            if (!oldOrder) {
+                return res.status(404).json({ message: 'Order not found' });
+            }
+
+            const oldStatus = oldOrder.status;
+
+            // Update order
             const orderList = await OrderModel.findByIdAndUpdate(
                 id, 
                 { status, description, address }, 
                 { new: true }
-            );
+            )
+            .populate('user', 'username email phone')
+            .populate('products.product', '-embedding -__v');
             
             if (!orderList) {
                 return res.status(404).json({ message: 'Order not found' });
+            }
+
+            // ✅ GỬI EMAIL KHI TRẠNG THÁI THAY ĐỔI
+            if (oldStatus !== status && orderList.user && orderList.user.email) {
+                try {
+                    console.log(`📧 Gửi email cập nhật trạng thái: ${oldStatus} → ${status}`);
+                    
+                    // Lấy thông tin promotion để hiển thị trong email
+                    const promotionInfo = await getPromotionDetailsForEmail(
+                        orderList.voucherPromotionID,
+                        orderList.freeShipPromotionID,
+                        orderList.products.filter(p => p.productPromotionID).map(p => p.productPromotionID)
+                    );
+
+                    const transporter = nodemailer.createTransport({
+                        host: 'smtp.gmail.com',
+                        port: 587,
+                        secure: false,
+                        auth: {
+                            user: 'h5studiogl@gmail.com',
+                            pass: 'ubqq hfra cduj tlnq',
+                        },
+                    });
+
+                    // Map trạng thái sang tiếng Việt và màu sắc
+                    const statusMap = {
+                        'pending': { text: 'Đợi xác nhận', color: '#3b82f6', icon: '⏳', bgColor: '#dbeafe' },
+                        'approved': { text: 'Đang vận chuyển', color: '#f59e0b', icon: '🚚', bgColor: '#fef3c7' },
+                        'final': { text: 'Đã giao hàng', color: '#10b981', icon: '✅', bgColor: '#d1fae5' },
+                        'rejected': { text: 'Đã hủy', color: '#ef4444', icon: '❌', bgColor: '#fee2e2' }
+                    };
+
+                    const currentStatus = statusMap[status] || { text: status, color: '#6b7280', icon: '📦', bgColor: '#f3f4f6' };
+                    
+                    // Tạo HTML cho danh sách sản phẩm
+                    let productsRows = '';
+                    for (const item of orderList.products) {
+                        const productDetail = item.product;
+                        const productPromotion = promotionInfo.productPromotions.find(p => 
+                            p._id.toString() === item.productPromotionID?.toString()
+                        );
+                        
+                        const variantInfo = [];
+                        if (item.size) variantInfo.push(`Size: ${item.size}`);
+                        if (item.color) variantInfo.push(`Màu: ${item.color}`);
+                        const variantText = variantInfo.length > 0 ? `<div style="font-size: 13px; color: #666; margin-top: 4px;">${variantInfo.join(' • ')}</div>` : '';
+                        
+                        const promotionBadge = productPromotion ? `<div style="display: inline-block; background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-top: 4px;">🎁 ${productPromotion.tenKhuyenMai}</div>` : '';
+                        
+                        productsRows += `
+                            <tr>
+                                <td style="padding: 16px 8px 16px 0; border-bottom: 1px solid #e5e7eb; width: 55%;">
+                                    <div style="font-weight: 500; color: #111827; font-size: 14px;">${productDetail ? productDetail.name : 'Sản phẩm'}</div>
+                                    ${variantText}
+                                    ${promotionBadge}
+                                </td>
+                                <td style="padding: 16px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px; width: 15%;">
+                                    ${item.quantity}
+                                </td>
+                                <td style="padding: 16px 0 16px 8px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #111827; font-weight: 500; font-size: 14px; white-space: nowrap; width: 30%;">
+                                    ${item.price.toLocaleString('vi-VN')} ₫
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    // Format ngày
+                    const orderDate = new Date(orderList.createdAt);
+                    const day = orderDate.getDate();
+                    const month = orderDate.getMonth() + 1;
+                    const year = orderDate.getFullYear();
+                    const formattedDate = `${day}/${month}/${year}`;
+
+                    const shortOrderId = orderList._id.toString().slice(-8).toUpperCase();
+                    const calculatedFinalAmount = orderList.finalAmount;
+
+                    const mailOptions = {
+                        from: '"MicroMarket" <h5studiogl@gmail.com>',
+                        to: orderList.user.email,
+                        subject: `Cập nhật đơn hàng #${shortOrderId} - ${currentStatus.text}`,
+                        html: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cập nhật đơn hàng</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px; text-align: center;">
+                            <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="background-color: white; width: 60px; height: 60px; border-radius: 50%; text-align: center; vertical-align: middle; line-height: 60px;">
+                                        <span style="font-size: 32px; display: inline-block; vertical-align: middle; line-height: normal;">📦</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <h1 style="margin: 20px 0 0 0; color: white; font-size: 28px; font-weight: 600;">MicroMarket</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Status Update Notice -->
+                    <tr>
+                        <td style="padding: 40px; text-align: center; background-color: #fefefe;">
+                            <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="background-color: ${currentStatus.bgColor}; width: 64px; height: 64px; border-radius: 50%; text-align: center; vertical-align: middle; line-height: 64px;">
+                                        <span style="font-size: 36px; display: inline-block; vertical-align: middle; line-height: normal;">${currentStatus.icon}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <h2 style="margin: 20px 0 12px; color: #111827; font-size: 24px; font-weight: 600;">Đơn hàng đã được cập nhật!</h2>
+                            <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
+                                Trạng thái đơn hàng của bạn đã thay đổi thành<br>
+                                <strong style="color: ${currentStatus.color}; font-size: 18px;">${currentStatus.icon} ${currentStatus.text}</strong>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Order Info -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="padding-bottom: 16px; width: 50%;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Mã đơn hàng</div>
+                                            <div style="color: #111827; font-size: 16px; font-weight: 600;">#${shortOrderId}</div>
+                                        </td>
+                                        <td style="text-align: right; padding-bottom: 16px; width: 50%;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Ngày đặt</div>
+                                            <div style="color: #111827; font-size: 14px; font-weight: 500; white-space: nowrap;">${formattedDate}</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                                            <div style="color: #6b7280; font-size: 13px; margin-bottom: 6px;">Phương thức thanh toán</div>
+                                            <div style="color: #111827; font-size: 14px; font-weight: 500;">${orderList.billing === 'cod' ? '💵 Thanh toán khi nhận hàng (COD)' : '💳 PayPal'}</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    ${description ? `
+                    <!-- Admin Note -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 8px;">
+                                <div style="color: #92400e; font-size: 13px; font-weight: 500; margin-bottom: 8px;">📝 GHI CHÚ TỪ SHOP</div>
+                                <div style="color: #78350f; font-size: 14px; line-height: 1.6;">${description}</div>
+                            </div>
+                        </td>
+                    </tr>
+                    ` : ''}
+                    
+                    <!-- Products -->
+                    <tr>
+                        <td style="padding: 0 40px 30px;">
+                            <h3 style="margin: 0 0 20px; color: #111827; font-size: 18px; font-weight: 600;">Chi tiết đơn hàng</h3>
+                            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                                        <th style="padding: 12px 8px 12px 0; text-align: left; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 55%;">Sản phẩm</th>
+                                        <th style="padding: 12px 8px; text-align: center; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 15%;">SL</th>
+                                        <th style="padding: 12px 0 12px 8px; text-align: right; color: #6b7280; font-weight: 500; font-size: 13px; text-transform: uppercase; width: 30%;">Giá</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${productsRows}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Order Total -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 24px; border: 1px solid #e5e7eb;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Tạm tính</td>
+                                        <td style="padding: 8px 0; text-align: right; color: #111827; font-size: 14px;">${orderList.orderTotal.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                    ${orderList.discountAmount > 0 ? `
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #10b981; font-size: 14px;">
+                                            <span>🎫 Giảm giá</span>
+                                            ${promotionInfo.voucher ? `<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${promotionInfo.voucher.tenKhuyenMai}</div>` : ''}
+                                        </td>
+                                        <td style="padding: 8px 0; text-align: right; color: #10b981; font-size: 14px; font-weight: 500;">-${orderList.discountAmount.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                    ` : ''}
+                                    ${orderList.shippingFee > 0 ? `
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
+                                            <span>🚚 Phí vận chuyển</span>
+                                            ${promotionInfo.freeShip ? `<div style="font-size: 12px; color: #10b981; margin-top: 2px;">${promotionInfo.freeShip.tenKhuyenMai}</div>` : ''}
+                                        </td>
+                                        <td style="padding: 8px 0; text-align: right; color: #111827; font-size: 14px;">${promotionInfo.freeShip ? '<span style="text-decoration: line-through; color: #9ca3af; margin-right: 8px;">' + orderList.shippingFee.toLocaleString('vi-VN') + ' ₫</span><span style="color: #10b981; font-weight: 500;">Miễn phí</span>' : orderList.shippingFee.toLocaleString('vi-VN') + ' ₫'}</td>
+                                    </tr>
+                                    ` : ''}
+                                    <tr style="border-top: 2px solid #e5e7eb;">
+                                        <td style="padding: 16px 0 0; color: #111827; font-size: 16px; font-weight: 600;">Tổng cộng</td>
+                                        <td style="padding: 16px 0 0; text-align: right; color: #667eea; font-size: 20px; font-weight: 700;">${calculatedFinalAmount.toLocaleString('vi-VN')} ₫</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Delivery Address -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 8px;">
+                                <div style="color: #92400e; font-size: 13px; font-weight: 500; margin-bottom: 8px;">📍 ĐỊA CHỈ GIAO HÀNG</div>
+                                <div style="color: #78350f; font-size: 14px; line-height: 1.6;">${orderList.address}</div>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Support -->
+                    <tr>
+                        <td style="padding: 0 40px 40px; text-align: center;">
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                Có câu hỏi? <a href="mailto:h5studiogl@gmail.com" style="color: #667eea; text-decoration: none; font-weight: 500;">Liên hệ hỗ trợ</a>
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 12px; color: #9ca3af; font-size: 13px;">
+                                Email này được gửi tự động, vui lòng không trả lời.
+                            </p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                © 2025 MicroMarket. All rights reserved.
+                            </p>
+                            <div style="margin-top: 16px;">
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Chính sách</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Điều khoản</a>
+                                <span style="color: #d1d5db;">•</span>
+                                <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 12px; margin: 0 8px;">Hỗ trợ</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+                        `,
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error('❌ Lỗi gửi email cập nhật:', error);
+                        } else {
+                            console.log('✅ Email cập nhật đã gửi: ' + info.response);
+                        }
+                    });
+
+                } catch (emailError) {
+                    console.error('❌ Không thể gửi email cập nhật:', emailError);
+                }
             }
             
             res.status(200).json(orderList);
@@ -663,8 +1144,10 @@ const orderController = {
             limit: limit,
             populate: [
                 { path: 'user', select: 'username email phone' },
-                { path: 'products.product' }
-                
+                { 
+                    path: 'products.product',
+                    select: '-embedding -__v' // ✅ Loại bỏ embedding để tăng tốc
+                }
             ]
         };
 
@@ -676,40 +1159,49 @@ const orderController = {
                 options
             );
 
-            // 🔥 Fetch promotion details via API for each order
-            for (const order of orderList.docs) {
-                try {
-                    const promotionIDs = [
-                        order.voucherPromotionID,
-                        order.freeShipPromotionID,
-                        ...order.products.map(p => p.productPromotionID)
-                    ].filter(Boolean);
+            // ✅ OPTIMIZED: Fetch ALL promotion IDs at once instead of loop
+            const allPromotionIDs = [];
+            orderList.docs.forEach(order => {
+                if (order.voucherPromotionID) allPromotionIDs.push(order.voucherPromotionID);
+                if (order.freeShipPromotionID) allPromotionIDs.push(order.freeShipPromotionID);
+                order.products.forEach(p => {
+                    if (p.productPromotionID) allPromotionIDs.push(p.productPromotionID);
+                });
+            });
 
-                    if (promotionIDs.length > 0) {
-                        const promotionResult = await callPromotionAPI('/batch', 'POST', { ids: promotionIDs });
-                        if (promotionResult.success) {
-                            const promotions = promotionResult.data;
-                            
-                            // Attach promotion data
-                            if (order.voucherPromotionID) {
-                                order.voucherPromotion = promotions.find(p => p._id === order.voucherPromotionID);
-                            }
-                            if (order.freeShipPromotionID) {
-                                order.freeShipPromotion = promotions.find(p => p._id === order.freeShipPromotionID);
-                            }
-                            
-                            // Attach product promotion data
-                            order.products.forEach(product => {
-                                if (product.productPromotionID) {
-                                    product.productPromotion = promotions.find(p => p._id === product.productPromotionID);
-                                }
-                            });
-                        }
+            // Remove duplicates
+            const uniquePromotionIDs = [...new Set(allPromotionIDs)];
+
+            // Fetch all promotions in ONE API call
+            let promotionsMap = {};
+            if (uniquePromotionIDs.length > 0) {
+                try {
+                    const promotionResult = await callPromotionAPI('/batch', 'POST', { ids: uniquePromotionIDs });
+                    if (promotionResult.success) {
+                        // Create map for fast lookup
+                        promotionResult.data.forEach(promo => {
+                            promotionsMap[promo._id] = promo;
+                        });
                     }
                 } catch (promotionError) {
-                    console.error('❌ Error fetching promotions for order:', order._id, promotionError);
+                    console.error('❌ Error fetching promotions in search:', promotionError);
                 }
             }
+
+            // Attach promotion data to orders
+            orderList.docs.forEach(order => {
+                if (order.voucherPromotionID) {
+                    order.voucherPromotion = promotionsMap[order.voucherPromotionID];
+                }
+                if (order.freeShipPromotionID) {
+                    order.freeShipPromotion = promotionsMap[order.freeShipPromotionID];
+                }
+                order.products.forEach(product => {
+                    if (product.productPromotionID) {
+                        product.productPromotion = promotionsMap[product.productPromotionID];
+                    }
+                });
+            });
 
             res.status(200).json({ data: orderList });
         } catch (err) {
@@ -739,7 +1231,7 @@ const orderController = {
         
         // Fetch orders for this user
         const orders = await OrderModel.find({ user: userId })
-            .populate('products.product')
+            .populate('products.product', '-embedding -__v') // ✅ Loại bỏ embedding
             .populate("user", "username")
             .sort({ createdAt: -1 });
             

@@ -9,7 +9,9 @@ import {
     TruckOutlined,
     InfoCircleOutlined,
     CalendarOutlined,
-    DollarOutlined
+    DollarOutlined,
+    SearchOutlined,
+    FilterOutlined
 } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
@@ -38,7 +40,7 @@ import {
     Tooltip
 } from 'antd';
 import moment from 'moment';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import axiosClient from '../../apis/axiosClient';
 import orderApi from "../../apis/orderApi";
@@ -46,7 +48,7 @@ import promotionApi from "../../apis/promotionManagementApi";
 import newsApi from '../../apis/newsApi';
 import * as XLSX from 'xlsx';
 import "./orderList.css";
-import { debounce } from 'lodash';
+import debounce from 'lodash/debounce';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -101,6 +103,14 @@ const OrderList = () => {
 
     const [colorList, setColorList] = useState([]);
     const [colorMapping, setColorMapping] = useState({});
+
+    // ✅ NEW: Filter states
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterBilling, setFilterBilling] = useState('all');
+    const [searchText, setSearchText] = useState('');
+
+    // ✅ NEW: Promotion cache để tối ưu performance
+    const promotionsCacheRef = useRef(null);
 
     const getColorNameFromDB = useCallback((hex) => {
     if (!hex) return 'Màu tùy chỉnh';
@@ -162,28 +172,45 @@ const OrderList = () => {
         });
     };
 
-    // ✅ PROMOTION FUNCTIONS từ CartHistory
-    const fetchPromotionsAtOrderTime = async (orderDate) => {
+    // ✅ OPTIMIZED: Load tất cả promotions 1 lần và cache lại
+    const fetchAllPromotionsOnce = useCallback(async () => {
+        // Nếu đã có cache, return luôn
+        if (promotionsCacheRef.current) {
+            console.log("✅ Using cached promotions");
+            return promotionsCacheRef.current;
+        }
+
         try {
-            console.log("🔍 Fetching promotions for order date:", orderDate);
-            
+            console.log("🔄 Fetching ALL promotions once...");
             const response = await promotionApi.listPromotionManagement();
-            console.log("📦 Raw promotion response:", response);
             
             let promotionData = [];
             if (response?.data?.data?.docs) {
                 promotionData = response.data.data.docs;
-                console.log(`📋 Found ${promotionData.length} total promotions from docs`);
             } else if (response?.data?.docs) {
                 promotionData = response.data.docs;
-                console.log(`📋 Found ${promotionData.length} total promotions from data.docs`);
-            } else {
-                console.log("❌ Unknown response structure:", response?.data);
-                return [];
             }
 
+            // Cache lại
+            promotionsCacheRef.current = promotionData;
+            console.log(`✅ Cached ${promotionData.length} promotions`);
+            return promotionData;
+        } catch (error) {
+            console.error("❌ Error fetching promotions:", error);
+            return [];
+        }
+    }, []);
+
+    // ✅ OPTIMIZED: Lọc promotions cho 1 đơn hàng từ cache
+    const fetchPromotionsAtOrderTime = useCallback(async (orderDate) => {
+        try {
+            console.log("🔍 Fetching promotions for order date:", orderDate);
+            
+            // Lấy từ cache thay vì gọi API mỗi lần
+            const promotionData = await fetchAllPromotionsOnce();
+
             if (promotionData.length === 0) {
-                console.log("⚠️ No promotions found in API response");
+                console.log("⚠️ No promotions found in cache");
                 return [];
             }
 
@@ -222,7 +249,7 @@ const OrderList = () => {
             console.error("❌ Error fetching promotions:", error);
             return [];
         }
-    };
+    }, [fetchAllPromotionsOnce]);
 
     const calculatePriceAtOrderTime = (product, orderDate, promotions) => {
         console.log("💰 Calculating price for product:", {
@@ -470,38 +497,56 @@ const OrderList = () => {
         })();
     }
 
-    const handleFilter = (searchValue) => {
+    // ✅ UPDATED: Filter với status và billing
+    const applyFilters = useCallback(() => {
         try {
-            const searchLower = (searchValue || '').toLowerCase().trim();
-            
-            if (!searchLower) {
-                // Reset về data gốc khi search box trống
-                setOrder(originalOrder);
-                setTotalList(originalOrder.length);
-                return;
+            let filteredData = [...originalOrder];
+
+            // Filter by search text
+            if (searchText.trim()) {
+                const searchLower = searchText.toLowerCase().trim();
+                filteredData = filteredData.filter(ord => {
+                    const userName = ord.user?.username?.toLowerCase() || '';
+                    const userEmail = ord.user?.email?.toLowerCase() || '';
+                    const userPhone = ord.user?.phone?.toLowerCase() || '';
+                    const orderId = ord._id?.toLowerCase() || '';
+                    
+                    return userName.includes(searchLower) || 
+                        userEmail.includes(searchLower) || 
+                        userPhone.includes(searchLower) ||
+                        orderId.includes(searchLower);
+                });
             }
 
-            // Filter từ originalOrder thay vì order
-            const filteredOrders = originalOrder.filter(ord => {
-                const userName = ord.user?.username?.toLowerCase() || '';
-                const userEmail = ord.user?.email?.toLowerCase() || '';
-                const userPhone = ord.user?.phone?.toLowerCase() || '';
-                const orderId = ord._id?.toLowerCase() || '';
-                
-                return userName.includes(searchLower) || 
-                    userEmail.includes(searchLower) || 
-                    userPhone.includes(searchLower) ||
-                    orderId.includes(searchLower);
-            });
+            // Filter by status
+            if (filterStatus !== 'all') {
+                filteredData = filteredData.filter(ord => ord.status === filterStatus);
+            }
+
+            // Filter by billing method
+            if (filterBilling !== 'all') {
+                filteredData = filteredData.filter(ord => ord.billing === filterBilling);
+            }
+
+            setOrder(filteredData);
+            setTotalList(filteredData.length);
             
-            setOrder(filteredOrders);
-            setTotalList(filteredOrders.length);
-            
-            console.log(`🔍 Filtered ${filteredOrders.length} orders from ${originalOrder.length} total`);
+            console.log(`🔍 Filtered ${filteredData.length} orders from ${originalOrder.length} total`);
             
         } catch (error) {
-            console.log('Error in handleFilter:', error);
+            console.log('Error in applyFilters:', error);
         }
+    }, [originalOrder, searchText, filterStatus, filterBilling]);
+
+    // Apply filters when any filter changes
+    useEffect(() => {
+        if (originalOrder.length > 0) {
+            applyFilters();
+        }
+    }, [searchText, filterStatus, filterBilling, originalOrder, applyFilters]);
+
+    const handleFilter = (searchValue) => {
+        setSearchText(searchValue);
     };
 
     // Tạo debounced version để tối ưu performance
@@ -695,18 +740,48 @@ const OrderList = () => {
         XLSX.writeFile(wb, 'danh_sach_don_hang.xlsx');
     };
 
+    // ✅ NEW: Clean unnecessary data để giảm payload
+    const cleanOrderData = useCallback((orders) => {
+        return orders.map(order => ({
+            ...order,
+            products: order.products?.map(item => ({
+                ...item,
+                product: item.product ? {
+                    _id: item.product._id,
+                    name: item.product.name,
+                    price: item.product.price,
+                    image: item.product.image,
+                    color: item.product.color,
+                    sizes: item.product.sizes,
+                    variants: item.product.variants,
+                    // ✅ Bỏ embedding, slide và các field không cần
+                } : null
+            })) || []
+        }));
+    }, []);
+
     useEffect(() => {
         (async () => {
             try {
                 await orderApi.getListOrder({ page: 1, limit: 10000 }).then((res) => {
-                    console.log(res);
+                    console.log("📦 Raw data size:", JSON.stringify(res).length, "characters");
                     const docs = res?.data?.docs || [];
-                    const sortedData = docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    
+                    // ✅ Clean data trước khi set state
+                    const cleanedData = cleanOrderData(docs);
+                    console.log("✨ Cleaned data size:", JSON.stringify(cleanedData).length, "characters");
+                    
+                    const sortedData = cleanedData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                     setTotalList(res.totalDocs);
                     setOrder(sortedData);
-                    setOriginalOrder(sortedData)
+                    setOriginalOrder(sortedData);
                     setLoading(false);
                 });
+                
+                // ✅ OPTIMIZED: Preload promotions cache ngay khi load trang
+                console.log("⚡ Preloading promotions cache...");
+                await fetchAllPromotionsOnce();
+                console.log("✅ Promotions cache ready!");
             } catch (error) {
                 console.log('Failed to fetch event list:' + error);
             }
@@ -739,22 +814,51 @@ const OrderList = () => {
                                 subTitle=""
                                 style={{ fontSize: 14 }}
                             >
-                                <Row>
-                                    <Col span="18">
+                                <Row gutter={[16, 16]}>
+                                    <Col xs={24} sm={24} md={12} lg={10}>
                                         <Input
                                             placeholder="Tìm kiếm theo tên, email, số điện thoại"
                                             allowClear
                                             onChange={(e) => debouncedFilter(e.target.value)}
-                                            style={{ width: 400 }}
+                                            prefix={<SearchOutlined />}
+                                            style={{ width: '100%' }}
                                         />
                                     </Col>
-                                    <Col span="6">
+                                    <Col xs={12} sm={12} md={6} lg={4}>
+                                        <Select
+                                            placeholder="Trạng thái"
+                                            value={filterStatus}
+                                            onChange={setFilterStatus}
+                                            style={{ width: '100%' }}
+                                            suffixIcon={<FilterOutlined />}
+                                        >
+                                            <Option value="all">Tất cả trạng thái</Option>
+                                            <Option value="pending">Đợi xác nhận</Option>
+                                            <Option value="approved">Vận chuyển</Option>
+                                            <Option value="final">Đã giao</Option>
+                                            <Option value="rejected">Đã hủy</Option>
+                                        </Select>
+                                    </Col>
+                                    <Col xs={12} sm={12} md={6} lg={4}>
+                                        <Select
+                                            placeholder="Thanh toán"
+                                            value={filterBilling}
+                                            onChange={setFilterBilling}
+                                            style={{ width: '100%' }}
+                                            suffixIcon={<FilterOutlined />}
+                                        >
+                                            <Option value="all">Tất cả hình thức</Option>
+                                            <Option value="cod">COD</Option>
+                                            <Option value="paypal">PayPal</Option>
+                                        </Select>
+                                    </Col>
+                                    <Col xs={24} sm={24} md={24} lg={6}>
                                         <Row justify="end">
                                             <Space>
                                                 <Button 
                                                     onClick={exportToExcel} 
-                                                    icon={<DownloadOutlined />} 
-                                                    style={{ marginLeft: 10 }}
+                                                    icon={<DownloadOutlined />}
+                                                    type="primary"
                                                 >
                                                     Xuất Excel
                                                 </Button>

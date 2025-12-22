@@ -364,9 +364,48 @@ const PromotionManagement = () => {
             }
         } catch (error) {
             console.error('Create promotion error:', error);
+            
+            // ✅ XỬ LÝ LỖI DUPLICATE MÃ KHUYẾN MÃI
+            let errorMessage = 'Có lỗi xảy ra khi tạo khuyến mãi';
+            
+            if (error.response) {
+                const { status, data } = error.response;
+                
+                // Lỗi 400 - Bad Request (có thể là duplicate key)
+                if (status === 400 || status === 409) {
+                    if (data.message && data.message.includes('duplicate')) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
+                    } else if (data.message && data.message.includes('E11000')) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
+                    } else {
+                        errorMessage = data.message || errorMessage;
+                    }
+                }
+                // Lỗi 500 - Server Error
+                else if (status === 500) {
+                    if (data.message && (data.message.includes('duplicate') || data.message.includes('E11000'))) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
+                    } else {
+                        errorMessage = data.message || 'Lỗi server khi tạo khuyến mãi';
+                    }
+                }
+                // Các lỗi khác
+                else {
+                    errorMessage = data.message || errorMessage;
+                }
+            } else if (error.message) {
+                // Lỗi không có response (network error, timeout, etc)
+                if (error.message.includes('duplicate') || error.message.includes('E11000')) {
+                    errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
             notification["error"]({
-                message: `Thông báo`,
-                description: 'Có lỗi xảy ra khi tạo khuyến mãi: ' + error.message,
+                message: `Lỗi tạo khuyến mãi`,
+                description: errorMessage,
+                duration: 5,
             });
         }
         setLoading(false);
@@ -426,9 +465,48 @@ const PromotionManagement = () => {
             }
         } catch (error) {
             console.error('Update promotion error:', error);
+            
+            // ✅ XỬ LÝ LỖI DUPLICATE MÃ KHUYẾN MÃI KHI CẬP NHẬT
+            let errorMessage = 'Có lỗi xảy ra khi cập nhật khuyến mãi';
+            
+            if (error.response) {
+                const { status, data } = error.response;
+                
+                // Lỗi 400 - Bad Request (có thể là duplicate key)
+                if (status === 400 || status === 409) {
+                    if (data.message && data.message.includes('duplicate')) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
+                    } else if (data.message && data.message.includes('E11000')) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
+                    } else {
+                        errorMessage = data.message || errorMessage;
+                    }
+                }
+                // Lỗi 500 - Server Error
+                else if (status === 500) {
+                    if (data.message && (data.message.includes('duplicate') || data.message.includes('E11000'))) {
+                        errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
+                    } else {
+                        errorMessage = data.message || 'Lỗi server khi cập nhật khuyến mãi';
+                    }
+                }
+                // Các lỗi khác
+                else {
+                    errorMessage = data.message || errorMessage;
+                }
+            } else if (error.message) {
+                // Lỗi không có response (network error, timeout, etc)
+                if (error.message.includes('duplicate') || error.message.includes('E11000')) {
+                    errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            
             notification["error"]({
-                message: `Thông báo`,
-                description: 'Có lỗi xảy ra khi cập nhật khuyến mãi: ' + error.message,
+                message: `Lỗi cập nhật khuyến mãi`,
+                description: errorMessage,
+                duration: 5,
             });
         }
         setLoading(false);

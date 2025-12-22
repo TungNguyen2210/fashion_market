@@ -395,6 +395,16 @@ const promotionController = {
             });
         } catch (err) {
             console.error('❌ Create promotion error:', err);
+            console.error('Error code:', err.code);
+            console.error('Error name:', err.name);
+            
+            // ✅ Handle duplicate key error (MongoDB E11000)
+            if (err.code === 11000 || err.message?.includes('E11000') || err.message?.includes('duplicate')) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mã khuyến mãi đã tồn tại'
+                });
+            }
             
             // Handle mongoose validation errors
             if (err.name === 'ValidationError') {
@@ -406,17 +416,9 @@ const promotionController = {
                 });
             }
 
-            // Handle duplicate key error
-            if (err.code === 11000) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Mã khuyến mãi đã tồn tại'
-                });
-            }
-
             res.status(500).json({
                 success: false,
-                message: 'Lỗi server: ' + err.message
+                message: 'Lỗi server khi tạo khuyến mãi: ' + err.message
             });
         }
     },
@@ -505,11 +507,31 @@ const promotionController = {
         } catch (err) {
             console.error('=====================================');
             console.error('❌ ERROR:', err.message);
+            console.error('Error code:', err.code);
+            console.error('Error name:', err.name);
             console.error('=====================================');
+            
+            // ✅ Handle duplicate key error when updating
+            if (err.code === 11000 || err.message?.includes('E11000') || err.message?.includes('duplicate')) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mã khuyến mãi đã được sử dụng bởi khuyến mãi khác'
+                });
+            }
+            
+            // Handle mongoose validation errors
+            if (err.name === 'ValidationError') {
+                const messages = Object.values(err.errors).map(error => error.message);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Dữ liệu không hợp lệ',
+                    details: messages
+                });
+            }
             
             res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Lỗi server khi cập nhật khuyến mãi: ' + err.message
             });
         }
     },
