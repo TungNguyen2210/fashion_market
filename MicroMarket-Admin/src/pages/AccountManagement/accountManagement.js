@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { 
     HomeOutlined, PlusOutlined, UserOutlined, StopOutlined, 
-    CheckCircleOutlined, EditOutlined 
+    CheckCircleOutlined, EditOutlined, RedoOutlined 
 } from '@ant-design/icons';
 import userApi from "../../apis/userApi";
 import { useHistory } from 'react-router-dom';
@@ -126,6 +126,23 @@ const AccountManagement = () => {
                                 Chỉnh sửa thông tin
                             </Button>
 
+                            {/* Button Reset Mật Khẩu */}
+                            <Popconfirm
+                                title="Bạn có chắc muốn reset mật khẩu về ban đầu không?"
+                                onConfirm={() => handleResetPassword(record)}
+                                okText="Yes"
+                                cancelText="No"
+                            >
+                                <Button
+                                    size="small"
+                                    icon={<RedoOutlined />}
+                                    style={{ width: 190, borderRadius: 15, height: 30 }}
+                                    type="default"
+                                >
+                                    Reset mật khẩu
+                                </Button>
+                            </Popconfirm>
+
                             {!record.role.includes('isAdmin') && (
                                 record.status !== "actived" ? (
                                     <Popconfirm
@@ -182,240 +199,223 @@ const AccountManagement = () => {
         });
         
         setEditModalVisible(true);
-    }
+    };
+
+    const handleModalCancel = () => {
+        setEditModalVisible(false);
+        setSelectedUser(null);
+        form.resetFields();
+    };
 
     const handleUpdateUser = async (values) => {
+        console.log('Update user with values:', values);
         setModalLoading(true);
+        
         try {
-            const formatData = {
-                "username": values.name,
-                "email": values.email,
-                "phone": values.phone,
-                "role": values.role,
-                "status": selectedUser.status
+            const updateData = {
+                username: values.name,
+                email: values.email,
+                phone: values.phone,
+                role: values.role,
+                status: selectedUser.status
+            };
+
+            // FIX: Thứ tự đúng là (userId, userData)
+            const response = await userApi.updateUser(selectedUser._id, updateData);
+            
+            if (response) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Cập nhật thông tin người dùng thành công!',
+                });
+                
+                handleModalCancel();
+                handleList();
             }
-            
-            // Chỉ thêm password nếu người dùng đã nhập
-            if (values.password && values.password.trim() !== '') {
-                formatData.password = values.password;
-            }
-            
-            console.log('Updating user:', selectedUser._id, formatData);
-            
-            await userApi.updateUser(selectedUser._id, formatData);
-            
-            notification["success"]({
-                message: `Thành công`,
-                description: values.password ? 
-                    'Cập nhật thông tin và mật khẩu người dùng thành công!' : 
-                    'Cập nhật thông tin người dùng thành công!',
-            });
-            
-            form.resetFields();
-            setEditModalVisible(false);
-            setSelectedUser(null);
-            
-            handleListUser();
         } catch (error) {
-            console.error('Error updating user:', error);
-            
-            // Xử lý lỗi từ backend
-            const errorMessage = error.response?.data?.message || error.message;
-            
-            if (error.status === 400 || error.response?.status === 400) {
-                if (errorMessage === "User already exists" || 
-                    errorMessage.includes("Email đã tồn tại")) {
-                    notification["error"]({
-                        message: `Email đã tồn tại`,
-                        description: 'Email này đã được đăng ký bởi người dùng khác!',
-                        duration: 5,
-                    });
-                } else if (errorMessage.includes("Email has already been taken")) {
-                    notification["error"]({
-                        message: `Email đã tồn tại`,
-                        description: 'Email này đã được sử dụng!',
-                        duration: 5,
-                    });
-                } else if (errorMessage.includes("Số điện thoại đã tồn tại") || 
-                           errorMessage.includes("Phone has already been taken")) {
-                    notification["error"]({
-                        message: `Số điện thoại đã tồn tại`,
-                        description: 'Số điện thoại này đã được sử dụng!',
-                        duration: 5,
-                    });
-                } else if (errorMessage.includes("Mật khẩu phải có ít nhất 6 ký tự")) {
-                    notification["error"]({
-                        message: `Lỗi mật khẩu`,
-                        description: 'Mật khẩu phải có ít nhất 6 ký tự!',
-                        duration: 5,
-                    });
-                } else {
-                    notification["error"]({
-                        message: `Lỗi`,
-                        description: errorMessage || 'Cập nhật thông tin thất bại!',
-                        duration: 5,
-                    });
-                }
-            } else if (error.status === 404 || error.response?.status === 404) {
-                notification["error"]({
-                    message: `Không tìm thấy`,
-                    description: 'Không tìm thấy người dùng này!',
-                    duration: 5,
-                });
-            } else {
-                notification["error"]({
-                    message: `Lỗi`,
-                    description: errorMessage || 'Cập nhật thông tin thất bại!',
-                    duration: 5,
-                });
-            }
+            console.error('Update error:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: error?.message || 'Cập nhật thông tin thất bại!',
+            });
         } finally {
             setModalLoading(false);
         }
-    }
+    };
 
-    const handleModalCancel = () => {
-        form.resetFields();
-        setEditModalVisible(false);
-        setSelectedUser(null);
-    }
-
-    // ==================== OTHER FUNCTIONS ====================
-
-    const handleListUser = async () => {
+    // ==================== RESET PASSWORD FUNCTION ====================
+    const handleResetPassword = async (record) => {
         try {
             setLoading(true);
-            const response = await userApi.listUserByAdmin({ page: 1, limit: 1000 });
-            console.log(response);
-            setUser(response.data.docs);
-            setLoading(false);
-        } catch (error) {
-            console.log('Failed to fetch event list:' + error);
-            setLoading(false);
-        }
-    }
-
-    const handleUnBanAccount = async (data) => {
-        const params = {
-            status: "actived"
-        }
-        try {
-            await userApi.unBanAccount(params, data._id).then(response => {
-                if (response.message === "Email already exists") {
-                    notification["error"]({
-                        message: `Thông báo`,
-                        description: 'Mở khóa thất bại',
-                    });
-                }
-                else {
-                    notification["success"]({
-                        message: `Thông báo`,
-                        description: 'Mở khóa thành công',
-                    });
-                    handleListUser();
-                }
-            });
-        } catch (error) {
-            console.log('Failed to fetch event list:' + error);
-        }
-    }
-
-    const handleBanAccount = async (data) => {
-        console.log(data);
-        const params = {
-            status: "noactive"
-        }
-        try {
-            await userApi.banAccount(params, data._id).then(response => {
-                if (response === undefined) {
-                    notification["error"]({
-                        message: `Thông báo`,
-                        description: 'Chặn thất bại',
-                    });
-                }
-                else {
-                    notification["success"]({
-                        message: `Thông báo`,
-                        description: 'Chặn thành công',
-                    });
-                    handleListUser();
-                }
-            });
-        } catch (error) {
-            console.log('Failed to fetch event list:' + error);
-        }
-    }
-
-    const handleCreateAccount = () => {
-        history.push("/account-create")
-    }
-
-    const filterUsers = useCallback(
-        debounce(async (searchText, role, status) => {
-            setLoading(true);
-            try {
-                const response = await userApi.listUserByAdmin({ page: 1, limit: 1000 });
-                let filteredData = response.data.docs;
-
-                if (searchText) {
-                    filteredData = filteredData.filter(user => 
-                        user.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-                        user.username?.toLowerCase().includes(searchText.toLowerCase())
-                    );
-                }
-
-                if (role !== 'all') {
-                    filteredData = filteredData.filter(user => user.role === role);
-                }
-
-                if (status !== 'all') {
-                    filteredData = filteredData.filter(user => user.status === status);
-                }
-
-                setUser(filteredData);
-                setLoading(false);
-            } catch (error) {
-                console.log('Failed to filter users:' + error);
-                setLoading(false);
+            const response = await userApi.resetPassword(record._id, { newPassword: '123456' });
+            
+            if (response) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Đã reset mật khẩu thành công!',
+                    duration: 5,
+                });
             }
+        } catch (error) {
+            console.error('Reset password error:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: error?.message || 'Reset mật khẩu thất bại!',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ==================== BAN/UNBAN FUNCTIONS ====================
+    
+    const handleBanAccount = async (record) => {
+        try {
+            setLoading(true);
+            
+            const updateData = { 
+                username: record.username,
+                email: record.email,
+                phone: record.phone,
+                role: record.role,
+                status: "noactive"
+            };
+            
+            // FIX: Thứ tự đúng là (userId, userData)
+            const response = await userApi.updateUser(record._id, updateData);
+            
+            if (response) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Chặn tài khoản thành công!',
+                });
+                handleList();
+            }
+        } catch (error) {
+            console.error('Ban account error:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: error?.message || 'Chặn tài khoản thất bại!',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUnBanAccount = async (record) => {
+        try {
+            setLoading(true);
+            
+            const updateData = { 
+                username: record.username,
+                email: record.email,
+                phone: record.phone,
+                role: record.role,
+                status: "actived"
+            };
+            
+            // FIX: Thứ tự đúng là (userId, userData)
+            const response = await userApi.updateUser(record._id, updateData);
+            
+            if (response) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Mở khóa tài khoản thành công!',
+                });
+                handleList();
+            }
+        } catch (error) {
+            console.error('Unban account error:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: error?.message || 'Mở khóa tài khoản thất bại!',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ==================== DATA FETCHING ====================
+    
+    const handleList = async () => {
+        setLoading(true);
+        try {
+            const response = await userApi.listUserByAdmin({ page: 1, limit: 10000 });
+            console.log('User list:', response);
+            
+            let filteredUsers = response.data.docs || [];
+
+            // Filter by role
+            if (selectedRole !== 'all') {
+                filteredUsers = filteredUsers.filter(user => user.role === selectedRole);
+            }
+
+            // Filter by status
+            if (selectedStatus !== 'all') {
+                filteredUsers = filteredUsers.filter(user => user.status === selectedStatus);
+            }
+
+            // Filter by search input
+            if (selectedInput) {
+                filteredUsers = filteredUsers.filter(user =>
+                    user.email?.toLowerCase().includes(selectedInput.toLowerCase()) ||
+                    user.username?.toLowerCase().includes(selectedInput.toLowerCase()) ||
+                    user.phone?.includes(selectedInput)
+                );
+            }
+
+            setUser(filteredUsers);
+        } catch (error) {
+            console.error('Fetch users error:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể tải danh sách người dùng!',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ==================== SEARCH & FILTER ====================
+    
+    const debouncedSearch = useCallback(
+        debounce((value) => {
+            setSelectedInput(value);
         }, 500),
         []
     );
 
-    const handleFilterEmail = (e) => {
+    const handleFilter = (e) => {
         const value = e.target.value;
-        setSelectedInput(value);
-        filterUsers(value, selectedRole, selectedStatus);
-    }
+        debouncedSearch(value);
+    };
 
     const handleRoleChange = (value) => {
         setSelectedRole(value);
-        filterUsers(selectedInput, value, selectedStatus);
-    }
+    };
 
     const handleStatusChange = (value) => {
         setSelectedStatus(value);
-        filterUsers(selectedInput, selectedRole, value);
-    }
+    };
 
+    // ==================== CREATE ACCOUNT ====================
+    
+    const handleCreateAccount = () => {
+        history.push("/account-create");
+    };
+
+    // ==================== EFFECTS ====================
+    
     useEffect(() => {
-        (async () => {
-            try {
-                const response = await userApi.listUserByAdmin({ page: 1, limit: 1000 });
-                console.log(response);
-                setUser(response.data.docs);
-                setLoading(false);
-            } catch (error) {
-                console.log('Failed to fetch user list:' + error);
-            }
-        })();
-        window.scrollTo(0, 0);
-    }, [])
+        handleList();
+    }, [selectedRole, selectedStatus, selectedInput]);
 
+    // ==================== RENDER ====================
+    
     return (
         <div>
             <Spin spinning={loading}>
-                <div style={{ marginTop: 20, marginLeft: 24 }}>
+                <div style={{ marginTop: 20 }}>
                     <Breadcrumb>
                         <Breadcrumb.Item href="">
                             <HomeOutlined />
@@ -426,25 +426,18 @@ const AccountManagement = () => {
                         </Breadcrumb.Item>
                     </Breadcrumb>
                 </div>
-                
-                <div id="account">
-                    <div id="account_container">
-                        <div style={{ 
-                            fontSize: 14, 
-                            background: '#fff',
-                            padding: '20px 24px',
-                            marginBottom: 16,
-                            borderRadius: 8
-                        }}>
-                            <Row gutter={[16, 16]}>
+
+                <div style={{ marginTop: 20 }}>
+                    <div id="account">
+                        <div id="account_container">
+                            <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
                                 <Col xs={24} sm={24} md={12} lg={12}>
-                                    <Space wrap>
+                                    <Space size="middle">
                                         <Input
-                                            placeholder="Tìm kiếm theo email hoặc tên"
-                                            allowClear
-                                            style={{ width: 250 }}
-                                            onChange={handleFilterEmail}
-                                            value={selectedInput}
+                                            placeholder="Tìm theo tên, email, số điện thoại"
+                                            style={{ width: 300 }}
+                                            onChange={handleFilter}
+                                            prefix={<UserOutlined />}
                                         />
                                         <Select
                                             placeholder="Vai trò"
@@ -454,6 +447,7 @@ const AccountManagement = () => {
                                         >
                                             <Option value="all">Tất cả vai trò</Option>
                                             <Option value="isAdmin">Quản lý</Option>
+                                            <Option value="isCompany">Công ty</Option>
                                             <Option value="isClient">Khách hàng</Option>
                                         </Select>
                                         <Select
@@ -573,57 +567,6 @@ const AccountManagement = () => {
                                 <Option value="isAdmin">Quản lý</Option>
                                 <Option value="isClient">Khách hàng</Option>
                             </Select>
-                        </Form.Item>
-
-                        {/* ==================== MẬT KHẨU MỚI ==================== */}
-                        <Form.Item
-                            name="password"
-                            label="Mật khẩu mới"
-                            hasFeedback
-                            rules={[
-                                { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' },
-                            ]}
-                            extra="Để trống nếu không muốn thay đổi mật khẩu"
-                        >
-                            <Input.Password 
-                                placeholder="Nhập mật khẩu mới (để trống nếu không đổi)" 
-                                autoComplete="new-password"
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            name="confirmPassword"
-                            label="Xác nhận mật khẩu"
-                            dependencies={['password']}
-                            hasFeedback
-                            rules={[
-                                ({ getFieldValue }) => ({
-                                    validator(_, value) {
-                                        const password = getFieldValue('password');
-                                        
-                                        // Nếu không nhập mật khẩu thì không cần xác nhận
-                                        if (!password || password.trim() === '') {
-                                            return Promise.resolve();
-                                        }
-                                        
-                                        // Nếu có nhập mật khẩu thì phải xác nhận
-                                        if (!value) {
-                                            return Promise.reject(new Error('Vui lòng xác nhận mật khẩu!'));
-                                        }
-                                        
-                                        if (password === value) {
-                                            return Promise.resolve();
-                                        }
-                                        
-                                        return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
-                                    },
-                                }),
-                            ]}
-                        >
-                            <Input.Password 
-                                placeholder="Xác nhận mật khẩu mới" 
-                                autoComplete="new-password"
-                            />
                         </Form.Item>
                     </Form>
                 </Spin>

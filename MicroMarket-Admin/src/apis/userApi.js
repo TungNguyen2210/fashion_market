@@ -76,6 +76,11 @@ const userApi = {
                 }
             });
     },
+
+    resetPassword: (userId, data) => {
+        const url = `/user/reset-password/${userId}`;
+        return axiosClient.put(url, data);
+    }
 }
 
 export default userApi;

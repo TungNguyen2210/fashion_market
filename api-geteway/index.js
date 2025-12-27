@@ -286,6 +286,37 @@ app.put('/api/user/change-password', async (req, res) => {
     }
 });
 
+
+app.put('/api/user/reset-password/:id', async (req, res) => {
+    try {
+        console.log('🔐 [API GATEWAY] Forwarding reset password to Service-1...');
+        console.log('📝 [API GATEWAY] User ID:', req.params.id);
+        console.log('🔑 [API GATEWAY] Authorization:', req.headers.authorization);
+        console.log('📦 [API GATEWAY] Request body:', req.body);
+        
+        const response = await axios.put(`http://localhost:3200/api/user/reset-password/${req.params.id}`, req.body, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Reset password successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Reset password error:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-1 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến user service'
+            });
+        }
+    }
+});
+
 // Gọi API từ service 1 để lấy thông tin profile của người dùng
 app.get('/api/user/profile', async (req, res) => {
     try {
