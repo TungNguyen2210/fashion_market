@@ -27,20 +27,36 @@ const colorController = {
     },
 
     getNewsById: (req, res) => {
-        try {
-            res.status(200).json({ 
-                success: true,
-                data: res.color 
-            });
-        } catch (err) {
-            console.log(err);
-            res.status(500).json({ 
+    try {
+        console.log('=== GET COLOR BY ID ===');
+        console.log('res.news:', res.news);
+        console.log('res.color:', res.color);
+        
+        // ✅ Đọc từ res.news (vì middleware gán vào res.news)
+        const colorData = res.news;
+        
+        if (!colorData) {
+            return res.status(404).json({ 
                 success: false,
-                message: 'Lỗi khi lấy thông tin màu',
-                error: err.message 
+                message: 'Không tìm thấy màu' 
             });
         }
-    },
+        
+        console.log('Sending data:', colorData);
+        
+        res.status(200).json({ 
+            success: true,
+            data: colorData  // ✅ Bây giờ sẽ có data
+        });
+    } catch (err) {
+        console.error('Error in getNewsById:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Lỗi khi lấy thông tin màu',
+            error: err.message 
+        });
+    }
+},
 
     createNews: async (req, res) => {
         try {
