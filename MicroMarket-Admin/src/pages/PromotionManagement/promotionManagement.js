@@ -83,40 +83,30 @@ const PromotionManagement = () => {
     };
 
     // Hàm kiểm tra xem có thể xóa khuyến mãi không
-    const canDeletePromotion = (promotion) => {
-        // Không thể xóa nếu đã được sử dụng
-        if (promotion.usedCount > 0) {
-            return {
-                canDelete: false,
-                reason: `Khuyến mãi đã được sử dụng ${promotion.usedCount} lần, không thể xóa`
-            };
-        }
-
-        // Không thể xóa nếu đang active
-        if (promotion.trangThai === 'active') {
-            return {
-                canDelete: false,
-                reason: 'Không thể xóa khuyến mãi đang hoạt động'
-            };
-        }
-
-        // Không thể xóa nếu đang trong thời gian áp dụng
-        const now = new Date();
-        const startDate = new Date(promotion.thoiGianBD);
-        const endDate = new Date(promotion.thoiGianKT);
-        
-        if (now >= startDate && now <= endDate) {
-            return {
-                canDelete: false,
-                reason: 'Không thể xóa khuyến mãi đang trong thời gian áp dụng'
-            };
-        }
-
+    // Hàm kiểm tra xem có thể xóa khuyến mãi không
+const canDeletePromotion = (promotion) => {
+    // Điều kiện 1: Không thể xóa nếu đã được sử dụng
+    if (promotion.usedCount > 0) {
         return {
-            canDelete: true,
-            reason: null
+            canDelete: false,
+            reason: `Khuyến mãi đã được sử dụng ${promotion.usedCount} lần, không thể xóa`
         };
+    }
+
+    // Điều kiện 2: Chỉ cho phép xóa khi ở trạng thái "Ngừng sử dụng"
+    if (promotion.trangThai !== 'inactive') {
+        return {
+            canDelete: false,
+            reason: 'Chỉ có thể xóa khuyến mãi đang ở trạng thái "Ngừng sử dụng"'
+        };
+    }
+
+    // ✅ Thỏa mãn cả 2 điều kiện: chưa sử dụng VÀ đang inactive
+    return {
+        canDelete: true,
+        reason: null
     };
+};
 
     // Hàm kiểm tra xem có thể sửa khuyến mãi không
     const canEditPromotion = (promotion) => {
@@ -126,7 +116,7 @@ const PromotionManagement = () => {
                 canEdit: true,
                 limitedEdit: true,
                 reason: 'Khuyến mãi đã được sử dụng, chỉ có thể sửa một số thông tin',
-                editableFields: ['tenKhuyenMai', 'moTa', 'trangThai', 'thoiGianKT'] // Chỉ cho phép sửa tên, mô tả, trạng thái và gia hạn
+                editableFields: ['tenKhuyenMai', 'moTa', 'trangThai', 'thoiGianKT']
             };
         }
 
@@ -156,6 +146,30 @@ const PromotionManagement = () => {
         return {
             canEdit: true,
             limitedEdit: false,
+            reason: null
+        };
+    };
+
+    // ✅ HÀM KIỂM TRA CÓ THỂ NGỪNG SỬ DỤNG
+    const canDeactivatePromotion = (promotion) => {
+        // Không thể ngừng sử dụng nếu đã ngừng sử dụng
+        if (promotion.trangThai === 'inactive') {
+            return {
+                canDeactivate: false,
+                reason: 'Khuyến mãi đã ngừng sử dụng'
+            };
+        }
+
+        // Không thể ngừng sử dụng nếu đã hết hạn
+        if (promotion.trangThai === 'expired') {
+            return {
+                canDeactivate: false,
+                reason: 'Khuyến mãi đã hết hạn'
+            };
+        }
+
+        return {
+            canDeactivate: true,
             reason: null
         };
     };
@@ -365,13 +379,11 @@ const PromotionManagement = () => {
         } catch (error) {
             console.error('Create promotion error:', error);
             
-            // ✅ XỬ LÝ LỖI DUPLICATE MÃ KHUYẾN MÃI
             let errorMessage = 'Có lỗi xảy ra khi tạo khuyến mãi';
             
             if (error.response) {
                 const { status, data } = error.response;
                 
-                // Lỗi 400 - Bad Request (có thể là duplicate key)
                 if (status === 400 || status === 409) {
                     if (data.message && data.message.includes('duplicate')) {
                         errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
@@ -381,7 +393,6 @@ const PromotionManagement = () => {
                         errorMessage = data.message || errorMessage;
                     }
                 }
-                // Lỗi 500 - Server Error
                 else if (status === 500) {
                     if (data.message && (data.message.includes('duplicate') || data.message.includes('E11000'))) {
                         errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
@@ -389,12 +400,10 @@ const PromotionManagement = () => {
                         errorMessage = data.message || 'Lỗi server khi tạo khuyến mãi';
                     }
                 }
-                // Các lỗi khác
                 else {
                     errorMessage = data.message || errorMessage;
                 }
             } else if (error.message) {
-                // Lỗi không có response (network error, timeout, etc)
                 if (error.message.includes('duplicate') || error.message.includes('E11000')) {
                     errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã tồn tại. Vui lòng sử dụng mã khác.`;
                 } else {
@@ -412,7 +421,6 @@ const PromotionManagement = () => {
     };
 
     const handleUpdatePromotion = async (values) => {
-        // Validate trước khi submit
         const validationErrors = validatePromotionData(values);
         if (validationErrors.length > 0) {
             notification["error"]({
@@ -466,13 +474,11 @@ const PromotionManagement = () => {
         } catch (error) {
             console.error('Update promotion error:', error);
             
-            // ✅ XỬ LÝ LỖI DUPLICATE MÃ KHUYẾN MÃI KHI CẬP NHẬT
             let errorMessage = 'Có lỗi xảy ra khi cập nhật khuyến mãi';
             
             if (error.response) {
                 const { status, data } = error.response;
                 
-                // Lỗi 400 - Bad Request (có thể là duplicate key)
                 if (status === 400 || status === 409) {
                     if (data.message && data.message.includes('duplicate')) {
                         errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
@@ -482,7 +488,6 @@ const PromotionManagement = () => {
                         errorMessage = data.message || errorMessage;
                     }
                 }
-                // Lỗi 500 - Server Error
                 else if (status === 500) {
                     if (data.message && (data.message.includes('duplicate') || data.message.includes('E11000'))) {
                         errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
@@ -490,12 +495,10 @@ const PromotionManagement = () => {
                         errorMessage = data.message || 'Lỗi server khi cập nhật khuyến mãi';
                     }
                 }
-                // Các lỗi khác
                 else {
                     errorMessage = data.message || errorMessage;
                 }
             } else if (error.message) {
-                // Lỗi không có response (network error, timeout, etc)
                 if (error.message.includes('duplicate') || error.message.includes('E11000')) {
                     errorMessage = `Mã khuyến mãi "${values.maKhuyenMai}" đã được sử dụng bởi khuyến mãi khác. Vui lòng sử dụng mã khác.`;
                 } else {
@@ -598,34 +601,51 @@ const PromotionManagement = () => {
         }
     };
 
-
-    const handleDeactivatePromotion = async (id) => {
+    // ✅ SỬA HÀM handleDeactivatePromotion - ĐẢM BẢO TRUYỀN STRING ID
+    const handleDeactivatePromotion = async (promotionId) => {
+        console.log('🔴 handleDeactivatePromotion called with:', promotionId);
+        console.log('🔴 Type of promotionId:', typeof promotionId);
+        
+        // ✅ Đảm bảo promotionId là string
+        const id = typeof promotionId === 'object' ? promotionId._id : promotionId;
+        
+        console.log('🔴 Final ID to use:', id);
+        console.log('🔴 Type of final ID:', typeof id);
+        
         setLoading(true);
         try {
-            const response = await promotionManagementApi.updatePromotionManagement({
+            console.log('🔴 Calling API with ID:', id);
+            
+            // ✅ GỌI API VỚI ID ĐÚNG
+            const response = await promotionManagementApi.updatePromotionManagement(id, {
                 trangThai: 'inactive'
-            }, id);
+            });
+            
+            console.log('🔴 API Response:', response);
             
             if (response.success || response.data) {
-                notification["success"]({
-                    message: `Thông báo`,
+                notification.success({
+                    message: 'Thành công',
                     description: 'Ngừng sử dụng khuyến mãi thành công',
                 });
                 handlePromotionList();
             } else {
-                notification["error"]({
-                    message: `Thông báo`,
+                notification.error({
+                    message: 'Lỗi',
                     description: response.message || 'Ngừng sử dụng khuyến mãi thất bại',
                 });
             }
         } catch (error) {
-            console.error('Deactivate promotion error:', error);
-            notification["error"]({
-                message: `Thông báo`,
-                description: 'Có lỗi xảy ra khi ngừng sử dụng khuyến mãi: ' + error.message,
+            console.error('❌ Deactivate promotion error:', error);
+            console.error('❌ Error response:', error.response);
+            
+            notification.error({
+                message: 'Lỗi',
+                description: 'Có lỗi xảy ra khi ngừng sử dụng khuyến mãi: ' + (error.response?.data?.message || error.message),
             });
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleEditPromotion = async (promotion) => {
@@ -810,7 +830,6 @@ const PromotionManagement = () => {
     const handlePromotionTypeChange = (value, formInstance) => {
         const fields = formInstance.getFieldsValue();
         
-        // Reset các field theo loại khuyến mãi
         if (value === 'free_shipping') {
             formInstance.setFieldsValue({
                 ...fields,
@@ -839,7 +858,6 @@ const PromotionManagement = () => {
             });
         }
         
-        // Trigger validation lại cho các field
         formInstance.validateFields();
     };
 
@@ -972,6 +990,7 @@ const PromotionManagement = () => {
             render: (text, record) => {
                 const deleteCheck = canDeletePromotion(record);
                 const editCheck = canEditPromotion(record);
+                const deactivateCheck = canDeactivatePromotion(record); // ✅ Thêm check
                 
                 return (
                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -994,29 +1013,46 @@ const PromotionManagement = () => {
                             />
                         </Tooltip>
                         
-                        {record.trangThai !== 'inactive' && (
-                            <Popconfirm
-                                title="Bạn có chắc chắn ngừng sử dụng khuyến mãi này?"
-                                onConfirm={() => handleDeactivatePromotion(record._id)}
-                                okText="Có"
-                                cancelText="Không"
-                            >
-                                <Button
-                                    size="small"
-                                    icon={<StopOutlined style={{ color: '#fff' }} />}
-                                    style={{ 
-                                        backgroundColor: '#ff4d4f',
-                                        border: '1px solid #ff4d4f',
-                                        color: '#fff',
-                                        minWidth: '32px',
-                                        height: '32px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
+                        {/* ✅ CẬP NHẬT NÚT NGỪNG SỬ DỤNG */}
+                        {deactivateCheck.canDeactivate && (
+                            <Tooltip title={deactivateCheck.reason || "Ngừng sử dụng khuyến mãi"}>
+                                <Popconfirm
+                                    title="Xác nhận ngừng sử dụng?"
+                                    description={
+                                        <div>
+                                            <p>Bạn có chắc chắn muốn ngừng sử dụng khuyến mãi này?</p>
+                                            <p><strong>{record.tenKhuyenMai}</strong></p>
+                                            {record.usedCount > 0 && (
+                                                <p style={{ color: '#faad14' }}>
+                                                    ⚠️ Khuyến mãi đã được sử dụng {record.usedCount} lần
+                                                </p>
+                                            )}
+                                        </div>
+                                    }
+                                    onConfirm={() => {
+                                        console.log('🟢 Popconfirm onConfirm - record:', record);
+                                        console.log('🟢 Popconfirm onConfirm - record._id:', record._id);
+                                        handleDeactivatePromotion(record._id);
                                     }}
-                                    title="Ngừng sử dụng"
-                                />
-                            </Popconfirm>
+                                    okText="Xác nhận"
+                                    cancelText="Hủy"
+                                >
+                                    <Button
+                                        size="small"
+                                        icon={<StopOutlined style={{ color: '#fff' }} />}
+                                        style={{ 
+                                            backgroundColor: '#ff4d4f',
+                                            border: '1px solid #ff4d4f',
+                                            color: '#fff',
+                                            minWidth: '32px',
+                                            height: '32px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    />
+                                </Popconfirm>
+                            </Tooltip>
                         )}
                         
                         <Tooltip title={deleteCheck.canDelete ? "Xóa khuyến mãi" : deleteCheck.reason}>
@@ -1057,7 +1093,6 @@ const PromotionManagement = () => {
     ];
 
     const renderPromotionForm = (formInstance, isEdit = false) => {
-        // Kiểm tra xem có đang edit với giới hạn không
         const isLimitedEdit = isEdit && currentEditingPromotion && canEditPromotion(currentEditingPromotion).limitedEdit;
         const editableFields = isEdit && currentEditingPromotion ? canEditPromotion(currentEditingPromotion).editableFields : [];
 
@@ -1079,7 +1114,7 @@ const PromotionManagement = () => {
                         >
                             <Input 
                                 placeholder="VD: SUMMER2024" 
-                                disabled={isEdit} // Không cho phép sửa mã
+                                disabled={isEdit}
                             />
                         </Form.Item>
                     </Col>
@@ -1336,7 +1371,7 @@ const PromotionManagement = () => {
                         >
                             <DatePicker 
                                 style={{ width: '100%' }} 
-                                disabled={isEdit && currentEditingPromotion?.trangThai === 'active'} // Không cho sửa nếu đang active
+                                disabled={isEdit && currentEditingPromotion?.trangThai === 'active'}
                             />
                         </Form.Item>
                     </Col>
@@ -1357,7 +1392,6 @@ const PromotionManagement = () => {
                                             return Promise.resolve();
                                         }
 
-                                        // Sử dụng dayjs để so sánh chính xác
                                         if (dayjs(value).isAfter(dayjs(startDate)) || dayjs(value).isSame(dayjs(startDate))) {
                                             return Promise.resolve();
                                         }
@@ -1366,7 +1400,7 @@ const PromotionManagement = () => {
                                     },
                                 }),
                             ]}
-                            dependencies={['thoiGianBD']} // Thêm dependency để re-validate khi start date thay đổi
+                            dependencies={['thoiGianBD']}
                         >
                             <DatePicker 
                                 style={{ width: '100%' }}
@@ -1387,7 +1421,6 @@ const PromotionManagement = () => {
                     />
                 </Form.Item>
 
-                {/* Thông báo giới hạn chỉnh sửa */}
                 {isLimitedEdit && (
                     <div style={{ 
                         padding: '10px', 
@@ -1415,7 +1448,6 @@ const PromotionManagement = () => {
                     </div>
                 )}
 
-                {/* Hiển thị chọn sản phẩm cho đợt giảm giá */}
                 <Form.Item
                     noStyle
                     shouldUpdate={(prevValues, currentValues) => 
@@ -1610,7 +1642,6 @@ const PromotionManagement = () => {
                     </div>
                 </div>
 
-                {/* Modal tạo khuyến mãi */}
                 <Modal
                     title="Tạo khuyến mãi mới"
                     open={openModalCreate}
@@ -1633,7 +1664,6 @@ const PromotionManagement = () => {
                     {renderPromotionForm(form)}
                 </Modal>
 
-                {/* Modal cập nhật khuyến mãi */}
                 <Modal
                     title="Cập nhật khuyến mãi"
                     open={openModalUpdate}

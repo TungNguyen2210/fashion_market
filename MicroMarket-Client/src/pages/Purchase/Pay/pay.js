@@ -1856,6 +1856,7 @@ const Pay = () => {
                                 <Input 
                                   placeholder="Tên" 
                                   value={userData.username}
+                                  disabled={true} 
                                 />
                               </Form.Item>
                             </Col>
@@ -1869,6 +1870,7 @@ const Pay = () => {
                                 <Input 
                                   placeholder="Email" 
                                   value={userData.email}
+                                  disabled={true} 
                                 />
                               </Form.Item>
                             </Col>
@@ -1891,6 +1893,7 @@ const Pay = () => {
                                 <Input 
                                   placeholder="Số điện thoại" 
                                   value={userData.phone}
+                                  disabled={true} 
                                 />
                               </Form.Item>
                             </Col>
