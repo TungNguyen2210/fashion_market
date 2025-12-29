@@ -928,6 +928,34 @@ app.get('/api/product/:id/variants', async (req, res) => {
     }
 });
 
+// 🔥 NEW: Route kiểm tra khả năng chỉnh sửa sản phẩm
+app.get('/api/product/:id/editability', async (req, res) => {
+    try {
+        console.log('🔍 [API GATEWAY] Checking product editability for ID:', req.params.id);
+        
+        const response = await axios.get(`http://localhost:3300/api/product/${req.params.id}/editability`, {
+            headers: {
+                Authorization: req.headers.authorization
+            }
+        });
+        
+        console.log('✅ [API GATEWAY] Editability check successful');
+        res.json(response.data);
+    } catch (error) {
+        console.error('❌ [API GATEWAY] Error checking editability:', error.message);
+        
+        if (error.response) {
+            console.error('❌ [API GATEWAY] Service-2 error:', error.response.data);
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Gateway Error: Không thể kết nối đến product service'
+            });
+        }
+    }
+});
+
 app.post('/api/product/:id/reviews', async (req, res) => {
     try {
         const response = await axios.post(`http://localhost:3300/api/product/${req.params.id}/reviews`, req.body, {

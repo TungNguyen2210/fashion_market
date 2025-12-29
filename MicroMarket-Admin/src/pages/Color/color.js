@@ -219,30 +219,39 @@ const Color = () => {
     };
 
     const handleEditColor = async (id) => {
-        setLoading(true);
-        try {
-            const response = await newsApi.getDetailColor(id);
-            setId(id);
-            
-            const colorValue = response.data.description || '#000000';
-            setColor(colorValue);
-            
-            form2.setFieldsValue({
-                name: response.data.name,
-                description: colorValue,
-            });
-            
-            setLoading(false);
-            setOpenModalUpdate(true);
-        } catch (error) {
-            console.log('Failed to fetch color detail:', error);
-            notification.error({
-                message: 'Thông báo',
-                description: 'Không thể tải thông tin màu',
-            });
-            setLoading(false);
+    setLoading(true);
+    try {
+        const response = await newsApi.getDetailColor(id, { 
+            _t: Date.now() // Cache buster
+        });
+        
+        // Xử lý cả case 304 - browser trả cached data
+        const data = response?.data || response;
+        
+        if (!data || !data.name) {
+            throw new Error('Dữ liệu không hợp lệ');
         }
-    };
+        
+        setId(id);
+        const colorValue = data.description || '#000000';
+        setColor(colorValue);
+        
+        form2.setFieldsValue({
+            name: data.name,
+            description: colorValue,
+        });
+        
+        setLoading(false);
+        setOpenModalUpdate(true);
+    } catch (error) {
+        console.error('Error:', error);
+        notification.error({
+            message: 'Thông báo',
+            description: 'Không thể tải thông tin màu',
+        });
+        setLoading(false);
+    }
+};
 
     const handleFilter = async (e) => {
         const name = e.target.value;

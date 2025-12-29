@@ -1,3 +1,4 @@
+const axios = require('axios');
 const ProductModel = require('../models/product');
 const CategoryModel = require('../models/category');
 const ReviewModel = require('../models/review');
@@ -38,6 +39,7 @@ const productController = {
             res.status(500);
         }
     },
+    
     getAllProduct: async (req, res) => {
         const page = req.body.page || 1;
         const limit = req.body.limit || 10;
@@ -57,21 +59,18 @@ const productController = {
         }
     },
 
-    // ✅ ✅ ✅ SỬA HÀM getProductById ✅ ✅ ✅
     getProductById: (req, res) => {
         try {
             console.log('📦 [PRODUCT CONTROLLER] Getting product by ID');
             
-            // ✅ Middleware đã chuẩn bị sẵn dữ liệu trong req.productData
             if (req.productData) {
                 console.log('✅ [PRODUCT CONTROLLER] Returning product data from middleware');
                 return res.status(200).json({
                     success: true,
-                    ...req.productData // Spread toàn bộ data
+                    ...req.productData
                 });
             }
             
-            // ✅ Fallback nếu middleware không chạy (không nên xảy ra)
             console.log('⚠️ [PRODUCT CONTROLLER] Middleware data not found');
             return res.status(500).json({
                 success: false,
@@ -174,6 +173,7 @@ const productController = {
                 });
             }
 
+            // 1. Kiểm tra sản phẩm đã được bán chưa
             const orderCount = await OrderModel.countDocuments({
                 'products.product': productId
             });
@@ -204,6 +204,60 @@ const productController = {
                 });
             }
 
+            // 2. Kiểm tra sản phẩm có đang trong đợt khuyến mãi không
+            try {
+                const PROMOTION_SERVICE_URL = process.env.PROMOTION_SERVICE_URL || 'http://localhost:3400';
+                const now = new Date();
+                
+                const response = await axios({
+                    method: 'GET',
+                    url: `${PROMOTION_SERVICE_URL}/api/promotions`,
+                    params: {
+                        loai: 'dot_giam_gia',
+                        trangThai: 'active',
+                        page: 1,
+                        limit: 1000
+                    }
+                });
+
+                if (response.data.success && response.data.data.docs) {
+                    const activePromotions = response.data.data.docs.filter(promo => {
+                        const isActive = promo.trangThai === 'active' &&
+                                       new Date(promo.thoiGianBD) <= now &&
+                                       new Date(promo.thoiGianKT) >= now;
+                        
+                        const hasProduct = promo.sanPhamApDung && 
+                                         promo.sanPhamApDung.some(p => 
+                                             p._id?.toString() === productId || 
+                                             p.toString() === productId
+                                         );
+                        
+                        return isActive && hasProduct;
+                    });
+
+                    if (activePromotions.length > 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Không thể xóa sản phẩm này vì đang trong đợt khuyến mãi",
+                            details: {
+                                productName: product.name,
+                                activePromotions: activePromotions.map(p => ({
+                                    name: p.tenKhuyenMai,
+                                    code: p.maKhuyenMai,
+                                    discount: p.phanTramKhuyenMai,
+                                    startDate: p.thoiGianBD,
+                                    endDate: p.thoiGianKT
+                                }))
+                            }
+                        });
+                    }
+                }
+            } catch (promotionError) {
+                console.error('❌ Error checking promotions on delete:', promotionError);
+                // Không block việc xóa nếu không kết nối được promotion service
+            }
+
+            // 3. Nếu pass cả 2 điều kiện, cho phép xóa
             await ProductModel.findByIdAndDelete(productId);
             
             res.status(200).json({
@@ -756,6 +810,141 @@ const productController = {
         } catch (error) {
             console.error('Error getting products by category:', error);
             return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+        }
+    },
+
+    // 🔥 NEW: Kiểm tra khả năng chỉnh sửa sản phẩm
+    checkProductEditability: async (req, res) => {
+        try {
+            const productId = req.params.id;
+            
+            // 1. Kiểm tra sản phẩm có tồn tại không
+            const product = await ProductModel.findById(productId);
+            if (!product) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy sản phẩm'
+                });
+            }
+
+            // 2. Kiểm tra sản phẩm đã được bán chưa
+            const soldCount = await OrderModel.countDocuments({
+                'products.product': productId,
+                status: { $in: ['approved', 'final'] }
+            });
+
+            const hasSold = soldCount > 0;
+
+            // 3. Kiểm tra sản phẩm có đang trong đợt khuyến mãi không
+            let hasActivePromotion = false;
+            let activePromotions = [];
+            
+            try {
+                const PROMOTION_SERVICE_URL = process.env.PROMOTION_SERVICE_URL || 'http://localhost:3400';
+                const now = new Date();
+                
+                const response = await axios({
+                    method: 'GET',
+                    url: `${PROMOTION_SERVICE_URL}/api/promotions`,
+                    params: {
+                        loai: 'dot_giam_gia',
+                        trangThai: 'active',
+                        page: 1,
+                        limit: 1000
+                    }
+                });
+
+                if (response.data.success && response.data.data.docs) {
+                    activePromotions = response.data.data.docs.filter(promo => {
+                        const isActive = promo.trangThai === 'active' &&
+                                       new Date(promo.thoiGianBD) <= now &&
+                                       new Date(promo.thoiGianKT) >= now;
+                        
+                        const hasProduct = promo.sanPhamApDung && 
+                                         promo.sanPhamApDung.some(p => 
+                                             p._id?.toString() === productId || 
+                                             p.toString() === productId
+                                         );
+                        
+                        return isActive && hasProduct;
+                    });
+                    
+                    hasActivePromotion = activePromotions.length > 0;
+                }
+            } catch (promotionError) {
+                console.error('❌ Error checking promotions:', promotionError);
+            }
+
+            // 4. Xác định những trường có thể chỉnh sửa theo yêu cầu mới
+            const editability = {
+                // Nếu đã bán: chỉ được sửa một số trường
+                canEditName: true,                          // ✅ Luôn được sửa tên
+                canEditPrice: !hasSold,                     // ❌ Không được sửa giá nếu đã bán
+                canEditImage: true,                          // ✅ Luôn được đổi ảnh
+                canEditDescription: true,                    // ✅ Luôn được sửa mô tả
+                canEditCategory: true,                       // ✅ Luôn được đổi danh mục
+                canEditSupplier: true,                       // ✅ Luôn được đổi thương hiệu
+                canAddColors: hasSold,                       // ✅ Được thêm màu mới nếu đã bán
+                canRemoveColors: !hasSold,                   // ❌ Không được xóa màu cũ nếu đã bán
+                canModifyExistingColors: !hasSold,           // ❌ Không được sửa màu cũ nếu đã bán
+                canAddSizes: hasSold,                        // ✅ Được thêm size mới nếu đã bán
+                canRemoveSizes: !hasSold,                    // ❌ Không được xóa size cũ nếu đã bán
+                canModifyExistingSizes: !hasSold,            // ❌ Không được sửa size cũ nếu đã bán
+                canEditVariantQuantity: true,                // ✅ Luôn được sửa số lượng tồn kho
+                
+                // Điều kiện xóa
+                canDelete: !hasSold && !hasActivePromotion   // ❌ Không xóa nếu đã bán HOẶC đang KM
+            };
+
+            // Lưu màu và size gốc để frontend check
+            const originalColors = product.color || [];
+            const originalSizes = product.sizes || [];
+
+            console.log(`🔍 Product editability check for ${productId}:`, {
+                hasSold,
+                hasActivePromotion,
+                editability,
+                activePromotionsCount: activePromotions.length
+            });
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    productId,
+                    productName: product.name,
+                    hasSold,
+                    soldCount,
+                    hasActivePromotion,
+                    activePromotions: activePromotions.map(p => ({
+                        id: p._id,
+                        name: p.tenKhuyenMai,
+                        code: p.maKhuyenMai,
+                        discount: p.phanTramKhuyenMai,
+                        startDate: p.thoiGianBD,
+                        endDate: p.thoiGianKT
+                    })),
+                    editability,
+                    originalData: {
+                        colors: originalColors,
+                        sizes: originalSizes,
+                        price: product.price
+                    },
+                    restrictions: {
+                        price: hasSold ? 'Sản phẩm đã được bán - không thể thay đổi giá' : null,
+                        colors: hasSold ? 'Sản phẩm đã được bán - chỉ được thêm màu mới, không được xóa/sửa màu cũ' : null,
+                        sizes: hasSold ? 'Sản phẩm đã được bán - chỉ được thêm size mới, không được xóa/sửa size cũ' : null,
+                        delete: hasSold ? 'Sản phẩm đã được bán' : (hasActivePromotion ? 'Sản phẩm đang trong đợt khuyến mãi' : null)
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('❌ Error checking product editability:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi kiểm tra khả năng chỉnh sửa sản phẩm',
+                error: error.message
+            });
         }
     }
 };

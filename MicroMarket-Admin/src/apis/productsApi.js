@@ -64,6 +64,13 @@ const productApi = {
         const url = "/product/" + id;
         return axiosClient.delete(url);
     },
+
+    // 🔥 NEW: Kiểm tra khả năng chỉnh sửa sản phẩm
+    checkProductEditability(id) {
+        const url = `/product/${id}/editability`;
+        return axiosClient.get(url);
+    },
+
     // Gọi API sinh embedding cho 1 sản phẩm
     updateEmbedding(productId) {
         const url = `/recommend/update/${productId}`;

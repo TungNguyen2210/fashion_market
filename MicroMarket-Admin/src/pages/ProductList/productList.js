@@ -5,7 +5,8 @@ import {
     HomeOutlined,
     PlusOutlined,
     UploadOutlined,
-    DownloadOutlined
+    DownloadOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
@@ -27,7 +28,9 @@ import {
     message,
     notification,
     Divider,
-    Card
+    Card,
+    Alert,
+    Tooltip
 } from 'antd';
 import React, { useEffect, useState } from 'react';
 import SunEditor from 'suneditor-react';
@@ -64,6 +67,33 @@ const ProductList = () => {
     const [variants, setVariants] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
+
+    // 🔥 NEW: State để lưu thông tin khả năng chỉnh sửa
+    const [editability, setEditability] = useState({
+        canEditName: true,
+        canEditPrice: true,
+        canEditImage: true,
+        canEditDescription: true,
+        canEditCategory: true,
+        canEditSupplier: true,
+        canAddColors: false,
+        canRemoveColors: true,
+        canModifyExistingColors: true,
+        canAddSizes: false,
+        canRemoveSizes: true,
+        canModifyExistingSizes: true,
+        canEditVariantQuantity: true,
+        canDelete: true,
+        hasSold: false,
+        hasActivePromotion: false,
+        activePromotions: [],
+        originalData: {
+            colors: [],
+            sizes: [],
+            price: 0
+        },
+        restrictions: {}
+    });
 
     const generateVariantId = (productId, size, color) => {
         return `${productId}-${size}-${color.replace('#', '')}`;
@@ -159,7 +189,6 @@ const ProductList = () => {
                     setOpenModalCreate(false);
                     handleProductList();
 
-                    // Gọi Service-4 để sinh embedding cho sản phẩm mới
                     const newProductId = response?._id || response?.data?._id;
                     generateEmbeddingForProduct(newProductId);
                 }
@@ -175,7 +204,6 @@ const ProductList = () => {
         const image = info.file;
 
         try {
-            // Tạo một fake event object vì uploadFileApi cần e.target.files[0]
             const fakeEvent = {
                 target: {
                     files: [image]
@@ -200,21 +228,17 @@ const ProductList = () => {
 
     const [file, setUploadFile] = useState();
     
-    // Hàm đã được sửa để xử lý trường hợp người dùng hủy upload
     const handleChangeImage = async (e) => {
-        // Kiểm tra nếu người dùng cancel hoặc không chọn file
         if (!e.target.files || e.target.files.length === 0) {
             console.log('No file selected');
             return;
         }
         
-        // Kiểm tra file có tồn tại
         const file = e.target.files[0];
         if (!file) return;
         
         setLoading(true);
         try {
-            // Truyền cả event object (e) thay vì chỉ file
             const response = await uploadFileApi.uploadFile(e);
             if (response) {
                 setUploadFile(response);
@@ -228,9 +252,117 @@ const ProductList = () => {
         }
     }
 
+    // 🔥 NEW: Hàm kiểm tra khả năng chỉnh sửa sản phẩm
+    const checkProductEditability = async (productId) => {
+        try {
+            console.log('🔍 Checking editability for product:', productId);
+            const response = await axiosClient.get(`/product/${productId}/editability`);
+            
+            if (response.success && response.data) {
+                console.log('✅ Editability data:', response.data);
+                setEditability({
+                    canEditName: response.data.editability.canEditName,
+                    canEditPrice: response.data.editability.canEditPrice,
+                    canEditImage: response.data.editability.canEditImage,
+                    canEditDescription: response.data.editability.canEditDescription,
+                    canEditCategory: response.data.editability.canEditCategory,
+                    canEditSupplier: response.data.editability.canEditSupplier,
+                    canAddColors: response.data.editability.canAddColors,
+                    canRemoveColors: response.data.editability.canRemoveColors,
+                    canModifyExistingColors: response.data.editability.canModifyExistingColors,
+                    canAddSizes: response.data.editability.canAddSizes,
+                    canRemoveSizes: response.data.editability.canRemoveSizes,
+                    canModifyExistingSizes: response.data.editability.canModifyExistingSizes,
+                    canEditVariantQuantity: response.data.editability.canEditVariantQuantity,
+                    canDelete: response.data.editability.canDelete,
+                    hasSold: response.data.hasSold,
+                    hasActivePromotion: response.data.hasActivePromotion,
+                    activePromotions: response.data.activePromotions || [],
+                    originalData: response.data.originalData || { colors: [], sizes: [], price: 0 },
+                    restrictions: response.data.restrictions || {}
+                });
+                return response.data;
+            }
+        } catch (error) {
+            console.error('❌ Error checking editability:', error);
+            // Nếu lỗi, cho phép chỉnh sửa tất cả (fallback)
+            setEditability({
+                canEditName: true,
+                canEditPrice: true,
+                canEditImage: true,
+                canEditDescription: true,
+                canEditCategory: true,
+                canEditSupplier: true,
+                canAddColors: false,
+                canRemoveColors: true,
+                canModifyExistingColors: true,
+                canAddSizes: false,
+                canRemoveSizes: true,
+                canModifyExistingSizes: true,
+                canEditVariantQuantity: true,
+                canDelete: true,
+                hasSold: false,
+                hasActivePromotion: false,
+                activePromotions: [],
+                originalData: { colors: [], sizes: [], price: 0 },
+                restrictions: {}
+            });
+        }
+    };
+
     const handleUpdateProduct = async (values) => {
         setLoading(true);
         try {
+            // 🔥 Kiểm tra nếu không được phép sửa giá
+            if (!editability.canEditPrice) {
+                const originalPrice = editability.originalData.price;
+                if (values.price !== originalPrice) {
+                    notification.error({
+                        message: 'Không thể chỉnh sửa',
+                        description: editability.restrictions.price || 'Không thể thay đổi giá sản phẩm',
+                        duration: 5
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // 🔥 Kiểm tra colors - chỉ cho phép THÊM màu mới, không được XÓA/SỬA màu cũ
+            if (editability.hasSold) {
+                const originalColors = editability.originalData.colors || [];
+                const newColors = values.colors || [];
+                
+                // Kiểm tra có màu cũ nào bị xóa không
+                const removedColors = originalColors.filter(c => !newColors.includes(c));
+                if (removedColors.length > 0) {
+                    notification.error({
+                        message: 'Không thể xóa màu',
+                        description: `Không thể xóa các màu cũ khi sản phẩm đã được bán. Màu bị xóa: ${removedColors.join(', ')}`,
+                        duration: 5
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // 🔥 Kiểm tra sizes - chỉ cho phép THÊM size mới, không được XÓA/SỬA size cũ
+            if (editability.hasSold) {
+                const originalSizes = editability.originalData.sizes || [];
+                const newSizes = values.sizes || [];
+                
+                // Kiểm tra có size cũ nào bị xóa không
+                const removedSizes = originalSizes.filter(s => !newSizes.includes(s));
+                if (removedSizes.length > 0) {
+                    notification.error({
+                        message: 'Không thể xóa size',
+                        description: `Không thể xóa các size cũ khi sản phẩm đã được bán. Size bị xóa: ${removedSizes.join(', ')}`,
+                        duration: 5
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
+
             const productVariants = variants.map(variant => ({
                 variantId: generateVariantId(id, variant.size, variant.color),
                 color: variant.color,
@@ -267,7 +399,6 @@ const ProductList = () => {
                     handleProductList();
                     setLoading(false);
 
-                    //Gọi Service-4 để cập nhật embedding cho sản phẩm đã sửa                    
                     generateEmbeddingForProduct(id);
                 }
             });
@@ -280,7 +411,29 @@ const ProductList = () => {
         if (type === "create") {
             setOpenModalCreate(false);
         } else {
-            setOpenModalUpdate(false)
+            setOpenModalUpdate(false);
+            // 🔥 Reset editability khi đóng modal
+            setEditability({
+                canEditName: true,
+                canEditPrice: true,
+                canEditImage: true,
+                canEditDescription: true,
+                canEditCategory: true,
+                canEditSupplier: true,
+                canAddColors: false,
+                canRemoveColors: true,
+                canModifyExistingColors: true,
+                canAddSizes: false,
+                canRemoveSizes: true,
+                canModifyExistingSizes: true,
+                canEditVariantQuantity: true,
+                canDelete: true,
+                hasSold: false,
+                hasActivePromotion: false,
+                activePromotions: [],
+                originalData: { colors: [], sizes: [], price: 0 },
+                restrictions: {}
+            });
         }
         console.log('Clicked cancel button');
     };
@@ -302,7 +455,6 @@ const ProductList = () => {
         try {
             const response = await productApi.deleteProduct(id);
 
-            // Success case
             if (response?.success) {
                 notification.success({
                     message: 'Thành công',
@@ -316,20 +468,17 @@ const ProductList = () => {
             console.log('Delete product error:', error);
 
             if (error.response?.status === 400) {
-                // Sản phẩm đã được mua
                 notification.warning({
                     message: 'Không thể xóa',
                     description: error.response.data.message,
                     duration: 6
                 });
             } else if (error.response?.status === 404) {
-                // Sản phẩm không tồn tại  
                 notification.error({
                     message: 'Không tìm thấy',
                     description: 'Sản phẩm không tồn tại'
                 });
             } else {
-                // Lỗi khác
                 notification.error({
                     message: 'Lỗi',
                     description: error.response?.data?.message || 'Không thể xóa sản phẩm'
@@ -344,6 +493,9 @@ const ProductList = () => {
         setOpenModalUpdate(true);
         (async () => {
             try {
+                // 🔥 Kiểm tra khả năng chỉnh sửa trước
+                await checkProductEditability(id);
+
                 const response = await productApi.getDetailProduct(id);
                 console.log(response);
                 setId(id);
@@ -380,7 +532,6 @@ const ProductList = () => {
         })();
     }
 
-    // Hàm sinh embedding cho sản phẩm (tạo hoặc cập nhật)
     const generateEmbeddingForProduct = async (productId) => {
         if (!productId) return;
         try {
@@ -512,10 +663,8 @@ const ProductList = () => {
             await handleOkUser(values);
             form.resetFields();
             setVisible(false);
-            // Reset file upload sau khi submit thành công
             setUploadFile(null);
         } catch (err) {
-            // Nếu là lỗi validate form (có errorFields)
             if (err && err.errorFields) {
                 notification.error({
                     message: 'Lỗi nhập liệu',
@@ -523,7 +672,6 @@ const ProductList = () => {
                 });
                 console.warn("Validation errors:", err.errorFields);
             } else {
-                // Các lỗi khác (ví dụ từ API)
                 console.error("Unexpected error:", err);
                 notification.error({
                     message: 'Lỗi hệ thống',
@@ -643,11 +791,10 @@ const ProductList = () => {
         setSelectedSizes([]);
         setVariants([]);
         form.resetFields();
-        // Reset file upload khi mở form create
         setUploadFile(null);
     };
 
-        return (
+    return (
         <div>
             <Spin spinning={loading}>
                 <div className='container'>
@@ -702,7 +849,6 @@ const ProductList = () => {
                     visible={visible}
                     onClose={() => {
                         setVisible(false);
-                        // Reset file khi đóng drawer
                         setUploadFile(null);
                     }}
                     width={1000}
@@ -714,7 +860,6 @@ const ProductList = () => {
                         >
                             <Button onClick={() => {
                                 setVisible(false);
-                                // Reset file khi hủy
                                 setUploadFile(null);
                             }} style={{ marginRight: 8 }}>
                                 Hủy
@@ -946,7 +1091,6 @@ const ProductList = () => {
                     visible={openModalUpdate}
                     onClose={() => {
                         handleCancel("update");
-                        // Reset file khi đóng drawer update
                         setUploadFile(null);
                     }}
                     width={1000}
@@ -971,7 +1115,6 @@ const ProductList = () => {
                             </Button>
                             <Button onClick={() => {
                                 handleCancel("update");
-                                // Reset file khi hủy
                                 setUploadFile(null);
                             }}>
                                 Hủy
@@ -979,6 +1122,82 @@ const ProductList = () => {
                         </div>
                     }
                 >
+                    {/* 🔥 NEW: Hiển thị cảnh báo nếu sản phẩm có giới hạn chỉnh sửa */}
+                    {editability.hasSold && (
+                        <Alert
+                            message="Giới hạn chỉnh sửa - Sản phẩm đã được bán"
+                            description={
+                                <div>
+                                    <p><strong>⚠️ Sản phẩm này đã được bán ({editability.hasSold ? 'có đơn hàng' : 'chưa có đơn'}).</strong></p>
+                                    <p><strong>✅ Được phép chỉnh sửa:</strong></p>
+                                    <ul>
+                                        <li>✓ Tên sản phẩm</li>
+                                        <li>✓ Ảnh sản phẩm</li>
+                                        <li>✓ Mô tả</li>
+                                        <li>✓ Danh mục</li>
+                                        <li>✓ Thương hiệu</li>
+                                        <li>✓ <strong>Số lượng tồn kho</strong> của từng biến thể (màu + size)</li>
+                                        <li>✓ <strong>Thêm màu mới</strong> (không xóa/sửa màu cũ)</li>
+                                        <li>✓ <strong>Thêm size mới</strong> (không xóa/sửa size cũ)</li>
+                                    </ul>
+                                    <p><strong>❌ Không được phép:</strong></p>
+                                    <ul>
+                                        <li>✗ Thay đổi giá tiền</li>
+                                        <li>✗ Xóa hoặc sửa màu cũ</li>
+                                        <li>✗ Xóa hoặc sửa size cũ</li>
+                                    </ul>
+                                    
+                                    {editability.hasActivePromotion && (
+                                        <div style={{ marginTop: 16, padding: 12, background: '#fff7e6', borderRadius: 4 }}>
+                                            <p><strong>🎁 Sản phẩm cũng đang trong các đợt khuyến mãi:</strong></p>
+                                            <ul>
+                                                {editability.activePromotions.map((promo, index) => (
+                                                    <li key={index}>
+                                                        <strong>{promo.name}</strong> ({promo.code}) - Giảm {promo.discount}%
+                                                        <br />
+                                                        <small>
+                                                            Từ {new Date(promo.startDate).toLocaleDateString('vi-VN')} đến {new Date(promo.endDate).toLocaleDateString('vi-VN')}
+                                                        </small>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            }
+                            type="warning"
+                            showIcon
+                            icon={<WarningOutlined />}
+                            style={{ marginBottom: 20 }}
+                        />
+                    )}
+
+                    {!editability.hasSold && editability.hasActivePromotion && (
+                        <Alert
+                            message="Sản phẩm đang trong đợt khuyến mãi"
+                            description={
+                                <div>
+                                    <p>🎁 Sản phẩm đang trong các đợt khuyến mãi:</p>
+                                    <ul>
+                                        {editability.activePromotions.map((promo, index) => (
+                                            <li key={index}>
+                                                <strong>{promo.name}</strong> ({promo.code}) - Giảm {promo.discount}%
+                                                <br />
+                                                <small>
+                                                    Từ {new Date(promo.startDate).toLocaleDateString('vi-VN')} đến {new Date(promo.endDate).toLocaleDateString('vi-VN')}
+                                                </small>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p style={{ marginTop: 8 }}>Bạn có thể chỉnh sửa các thông tin khác nhưng cần cẩn thận.</p>
+                                </div>
+                            }
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 20 }}
+                        />
+                    )}
+
                     <Form
                         form={form2}
                         name="eventUpdate"
@@ -1003,9 +1222,20 @@ const ProductList = () => {
                             <Input placeholder="Tên" />
                         </Form.Item>
 
+                        {/* 🔥 NEW: Disable price field nếu không được phép sửa */}
                         <Form.Item
                             name="price"
-                            label="Giá gốc"
+                            label={
+                                <span>
+                                    Giá gốc {!editability.canEditPrice && (
+                                        <Tooltip title={editability.restrictions.price}>
+                                            <Tag color="red" icon={<WarningOutlined />} style={{ marginLeft: 8 }}>
+                                                Không thể sửa
+                                            </Tag>
+                                        </Tooltip>
+                                    )}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -1014,12 +1244,28 @@ const ProductList = () => {
                             ]}
                             style={{ marginBottom: 10 }}
                         >
-                            <Input placeholder="Giá gốc" type="number" />
+                            <Input 
+                                placeholder="Giá gốc" 
+                                type="number"
+                                disabled={!editability.canEditPrice}
+                                style={!editability.canEditPrice ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                            />
                         </Form.Item>
 
+                        {/* 🔥 NEW: Colors field với logic mới */}
                         <Form.Item
                             name="colors"
-                            label="Màu sắc"
+                            label={
+                                <span>
+                                    Màu sắc {editability.hasSold && (
+                                        <Tooltip title={editability.restrictions.colors}>
+                                            <Tag color="orange" icon={<WarningOutlined />} style={{ marginLeft: 8 }}>
+                                                Chỉ được thêm mới
+                                            </Tag>
+                                        </Tooltip>
+                                    )}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -1027,6 +1273,7 @@ const ProductList = () => {
                                 },
                             ]}
                             style={{ marginBottom: 10 }}
+                            help={editability.hasSold ? "Bạn có thể thêm màu mới nhưng không được xóa màu cũ" : undefined}
                         >
                             <Select
                                 mode="multiple"
@@ -1065,7 +1312,6 @@ const ProductList = () => {
                             </Select>
                         </Form.Item>
 
-                        {/* Bảng biến thể sản phẩm */}
                         {renderVariantsTable()}
 
                         <Divider />

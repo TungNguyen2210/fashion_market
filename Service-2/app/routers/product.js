@@ -19,6 +19,8 @@ router.get("/category/:categoryId", productController.getProductByCategory);
 // ===== RECOMMEND ROUTE =====
 router.get('/recommend/:id', productController.recommendProducts);
 
+router.get('/:id/editability', productController.checkProductEditability);
+
 // ===== VARIANT ROUTES (ĐẶT TRƯỚC /:id) =====
 router.post('/check-variant-stock', productController.checkVariantStock);
 router.post('/update-variant-stock', verifyToken.checkLogin, productController.updateVariantStock);

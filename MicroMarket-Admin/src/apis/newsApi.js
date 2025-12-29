@@ -44,10 +44,12 @@ const newsApi = {
         return axiosClient.post(url, data);
     },
 
-    getDetailColor(id) {
-        const url = '/color/' + id;
-        return axiosClient.get(url);
-    },
+    getDetailColor(id, params) {
+    const url = '/color/' + id;
+    // ✅ Thêm timestamp vào URL để bypass cache
+    const timestamp = params?._t || Date.now();
+    return axiosClient.get(`${url}?_t=${timestamp}`);
+},
 
     getListColor(data) {
         if (!data.page || !data.limit) {
